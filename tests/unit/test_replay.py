@@ -93,6 +93,66 @@ def test_replay_live_uses_current_corpus(
     assert len(new_chunk_ids) >= 1
 
 
+def test_replay_works_for_extract_claims_runs(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: extract_claims runs (from `verify --file/--url`) must be replayable.
+
+    Previously the extract_claims trace recorded only `source` and `doc_chars` in
+    inputs. Replay rebuilds skill kwargs from inputs, so the skill ran without its
+    required `document` kwarg and crashed with TypeError. Fix: store the document text
+    in trace inputs so replay can reconstruct the call.
+    """
+    from click.testing import CliRunner
+
+    from orc.cli import main
+    from tests.unit.test_extract_and_research import _Plan, _seed
+
+    name = _seed(orc_home, tmp_path)
+    plan = _Plan(
+        extract_claims=[{"text": "Skills API released October 2025", "context": ""}],
+        verdicts={
+            "Skills": {
+                "label": "supported",
+                "confidence": 0.9,
+                "reasoning": "ok",
+                "supporting_chunk_ids": [],
+                "contradicting_chunk_ids": [],
+            }
+        },
+    )
+    fake = FakeAnthropic(responder=plan)
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    draft = tmp_path / "draft.md"
+    draft.write_text("# Draft\n\nSome claim about Skills.\n")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["verify", "--file", str(draft), "--workspace", name, "--yes"]
+    )
+    assert result.exit_code == 0, result.output
+
+    # Find the extract_claims run and replay it.
+    from orc.storage.trace_store import list_runs
+
+    runs = list_runs(name, skill="extract_claims", limit=10)
+    assert runs, "expected at least one extract_claims run"
+    extract_run_id = runs[0]["run_id"]
+
+    fake.queue = []  # responder still set, will produce more claims on replay
+    out = replay(extract_run_id)
+    assert out["mode"] == "frozen"
+    assert out["new_run_id"] != extract_run_id
+
+    # Confirm the new run actually executed (no crash)
+    new_trace = load_trace(out["new_run_id"])
+    assert new_trace["status"] == "ok"
+    assert new_trace["skill"] == "extract_claims"
+    assert new_trace["output"]["claims"], "extract_claims should have produced claims on replay"
+
+
 def test_replay_records_lineage_in_inputs(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

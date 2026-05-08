@@ -126,7 +126,11 @@ def _verify_from_document(
         ws,
         directive="research",
         skill="extract_claims",
-        inputs={"source": source_label, "doc_chars": len(loaded.text)},
+        inputs={
+            "source": source_label,
+            "doc_chars": len(loaded.text),
+            "document": loaded.text,
+        },
     ) as run:
         extract_result = extract_skill.run(workspace=ws, run=run, **extract_kwargs)
         run.close(output=extract_result)

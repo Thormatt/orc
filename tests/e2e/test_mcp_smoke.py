@@ -106,3 +106,27 @@ def test_research_topic_unknown_workspace_returns_error() -> None:
 
     result = _research_topic_core("anything", workspace="nope")
     assert "error" in result
+
+
+def test_omitted_workspace_uses_env_default(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the MCP caller omits `workspace`, ORC_DEFAULT_WORKSPACE should win,
+    not a hard-coded 'default' string. Regression for MCP-workspace-default bug.
+    """
+    name = _setup_corpus(orc_home, tmp_path)
+    monkeypatch.setenv("ORC_DEFAULT_WORKSPACE", name)
+
+    result = _search_evidence_core("skills api", k=3)  # workspace omitted
+    assert "run_id" in result, result
+    assert result["chunks"], "should have routed to env-default workspace"
+
+
+def test_omitted_workspace_without_env_uses_literal_default(
+    orc_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If ORC_DEFAULT_WORKSPACE isn't set, omitted workspace falls back to literal 'default'."""
+    monkeypatch.delenv("ORC_DEFAULT_WORKSPACE", raising=False)
+    ws_module.create("default")
+    result = _search_evidence_core("anything", k=3)  # workspace omitted
+    assert "run_id" in result, result

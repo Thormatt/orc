@@ -73,10 +73,11 @@ class _ResearchTopic:
             raise ValueError("topic must be a non-empty string")
 
         resolved_model = resolve_research_model(model)
-        candidates = bm25_search(
+        pool = bm25_search(
             run.conn, topic, limit=retrieval_pool, corpus_version=corpus_version
-        )[:k]
-        run.record_retrieval(candidates, method="bm25", candidates_considered=len(candidates))
+        )
+        candidates = pool[:k]
+        run.record_retrieval(candidates, method="bm25", candidates_considered=len(pool))
 
         if not candidates:
             return {

@@ -6,6 +6,11 @@ Exposes four tools:
 All tools resolve a workspace, open a Run, dispatch through the directive registry,
 and return JSON-friendly dicts. Every call writes a trace.
 
+Workspace resolution: if the caller omits `workspace`, the env-aware default is used
+(ORC_DEFAULT_WORKSPACE, falling back to the literal "default" workspace). If the
+caller passes a workspace name explicitly — including the string "default" — that
+exact name is used.
+
 Use `orc mcp serve` to start the server.
 """
 
@@ -22,7 +27,7 @@ from orc.storage import workspace as ws_module
 from orc.storage.trace_store import load_trace
 
 
-def _verify_claim_core(claim: str, workspace: str = "default") -> dict[str, Any]:
+def _verify_claim_core(claim: str, workspace: str | None = None) -> dict[str, Any]:
     if not claim or not claim.strip():
         return {"error": "claim must be a non-empty string"}
     try:
@@ -37,14 +42,16 @@ def _verify_claim_core(claim: str, workspace: str = "default") -> dict[str, Any]
         ws,
         directive="research",
         skill="verify_claim",
-        inputs={"claim": claim, "workspace": workspace},
+        inputs={"claim": claim, "workspace": ws.name},
     ) as run:
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
     return {"run_id": run.run_id, **result}
 
 
-def _search_evidence_core(query: str, workspace: str = "default", k: int = 10) -> dict[str, Any]:
+def _search_evidence_core(
+    query: str, workspace: str | None = None, k: int = 10
+) -> dict[str, Any]:
     if not query or not query.strip():
         return {"error": "query must be a non-empty string"}
     try:
@@ -59,14 +66,14 @@ def _search_evidence_core(query: str, workspace: str = "default", k: int = 10) -
         ws,
         directive="research",
         skill="search_evidence",
-        inputs={"query": query, "workspace": workspace, "k": k},
+        inputs={"query": query, "workspace": ws.name, "k": k},
     ) as run:
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
     return {"run_id": run.run_id, **result}
 
 
-def _research_topic_core(topic: str, workspace: str = "default") -> dict[str, Any]:
+def _research_topic_core(topic: str, workspace: str | None = None) -> dict[str, Any]:
     if not topic or not topic.strip():
         return {"error": "topic must be a non-empty string"}
     try:
@@ -81,7 +88,7 @@ def _research_topic_core(topic: str, workspace: str = "default") -> dict[str, An
         ws,
         directive="research",
         skill="research_topic",
-        inputs={"topic": topic, "workspace": workspace},
+        inputs={"topic": topic, "workspace": ws.name},
     ) as run:
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
@@ -99,23 +106,34 @@ def build_server() -> FastMCP:
     """Construct the MCP server. Importing alone does not auto-register tools."""
     mcp = FastMCP("orc")
 
-    @mcp.tool(description="Verify a claim against the workspace's evidence corpus.")
-    def orc_verify_claim(claim: str, workspace: str = "default") -> dict[str, Any]:
+    @mcp.tool(
+        description=(
+            "Verify a claim against the workspace's evidence corpus. "
+            "Omit `workspace` to use ORC_DEFAULT_WORKSPACE (or the literal 'default' workspace)."
+        )
+    )
+    def orc_verify_claim(claim: str, workspace: str | None = None) -> dict[str, Any]:
         return _verify_claim_core(claim, workspace)
 
     @mcp.tool(
         description=(
             "Return ranked evidence chunks for a query (no LLM synthesis). "
-            "Use this when you want the raw retrieval, not a verdict."
+            "Use this when you want the raw retrieval, not a verdict. "
+            "Omit `workspace` for the env-configured default."
         )
     )
-    def orc_search_evidence(query: str, workspace: str = "default", k: int = 10) -> dict[str, Any]:
+    def orc_search_evidence(
+        query: str, workspace: str | None = None, k: int = 10
+    ) -> dict[str, Any]:
         return _search_evidence_core(query, workspace, k)
 
     @mcp.tool(
-        description="Research a topic against the workspace, returning a synthesis with citations."
+        description=(
+            "Research a topic against the workspace, returning a synthesis with citations. "
+            "Omit `workspace` for the env-configured default."
+        )
     )
-    def orc_research_topic(topic: str, workspace: str = "default") -> dict[str, Any]:
+    def orc_research_topic(topic: str, workspace: str | None = None) -> dict[str, Any]:
         return _research_topic_core(topic, workspace)
 
     @mcp.tool(description="Retrieve a full trace JSON by run_id.")

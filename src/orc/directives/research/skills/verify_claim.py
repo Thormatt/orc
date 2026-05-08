@@ -98,10 +98,11 @@ class _VerifyClaim:
         resolved_model = resolve_verify_model(model)
 
         # 1. Retrieve. corpus_version pins the snapshot used by `orc replay` (frozen mode).
-        candidates = bm25_search(
+        pool = bm25_search(
             run.conn, claim, limit=retrieval_pool, corpus_version=corpus_version
-        )[:k]
-        run.record_retrieval(candidates, method="bm25", candidates_considered=len(candidates))
+        )
+        candidates = pool[:k]
+        run.record_retrieval(candidates, method="bm25", candidates_considered=len(pool))
 
         if not candidates:
             return _make_not_found(claim=claim, model=resolved_model, run=run)
