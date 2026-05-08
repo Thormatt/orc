@@ -1,0 +1,263 @@
+"""verify_claim skill tests with a fake Anthropic client."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from click.testing import CliRunner
+
+from orc import directives
+from orc.cli import main
+from orc.ingest.pipeline import ingest as do_ingest
+from orc.llm import client as client_module
+from orc.paths import workspace_db_path, workspace_traces_dir
+from orc.runs import open_run
+from orc.storage import workspace as ws_module
+from orc.storage.db import open_connection
+from tests._fake_llm import FakeAnthropic, make_verdict_response
+
+
+def _setup_corpus(orc_home: Path, tmp_path: Path) -> str:
+    ws = ws_module.create("demo")
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "skills.md").write_text(
+        "# Skills API\n\n"
+        "Anthropic released the Skills API in October 2025. Skills are versioned, auditable\n"
+        "capabilities Claude composes at runtime.\n"
+    )
+    (corpus / "context.md").write_text(
+        "# Context engineering\n\nContext engineering is iterative.\n"
+    )
+    do_ingest(ws, str(corpus))
+    return ws.name
+
+
+def _install_fake_client(monkeypatch: pytest.MonkeyPatch, fake: FakeAnthropic) -> None:
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+
+def _supporting_chunk_id(workspace_name: str, evidence_title: str) -> str:
+    with open_connection(workspace_db_path(workspace_name)) as conn:
+        row = conn.execute(
+            "SELECT chunk.chunk_id FROM chunk "
+            "JOIN evidence ON evidence.evidence_id = chunk.evidence_id "
+            "WHERE evidence.title = ? ORDER BY chunk.seq LIMIT 1",
+            (evidence_title,),
+        ).fetchone()
+    assert row is not None, f"no chunk for {evidence_title!r}"
+    return row["chunk_id"]
+
+
+def test_verify_supported_returns_label_and_records_trace(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = _setup_corpus(orc_home, tmp_path)
+    chunk_id = _supporting_chunk_id(name, "Skills API")
+
+    fake = FakeAnthropic(
+        responses=[
+            make_verdict_response(
+                label="supported",
+                confidence=0.92,
+                reasoning="Chunk affirms the claim.",
+                supporting_chunk_ids=[chunk_id],
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={"claim": "x"}) as run:
+        result = skill.run(
+            workspace=ws, run=run, claim="Anthropic released the Skills API in October 2025"
+        )
+        run.close(output=result)
+
+    assert result["label"] == "supported"
+    assert result["confidence"] == pytest.approx(0.92)
+    assert any(c["chunk_id"] == chunk_id for c in result["supporting_chunks"])
+    assert result["model"] == "claude-sonnet-4-6"
+
+    # Trace JSON exists with retrieval + llm_calls + output
+    traces = list(workspace_traces_dir(name).rglob(f"{run.run_id}.json"))
+    assert len(traces) == 1
+    trace = json.loads(traces[0].read_text())
+    assert trace["retrieval"]["method"] == "bm25"
+    assert len(trace["llm_calls"]) == 1
+    assert trace["output"]["label"] == "supported"
+
+    # run_evidence has retrieved + supporting roles
+    with open_connection(workspace_db_path(name)) as conn:
+        roles = {
+            r["role"]
+            for r in conn.execute(
+                "SELECT role FROM run_evidence WHERE run_id = ?", (run.run_id,)
+            ).fetchall()
+        }
+    assert "retrieved" in roles
+    assert "supporting" in roles
+
+
+def test_verify_not_found_when_corpus_empty(
+    orc_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty corpus -> no LLM call, automatic not_found verdict."""
+    ws_module.create("demo")
+    fake = FakeAnthropic()  # exhausted on call -> proves no LLM call happened
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve("demo")
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="anything")
+        run.close(output=result)
+
+    assert result["label"] == "not_found"
+    assert result["supporting_chunks"] == []
+    assert fake.calls == []  # never called the LLM
+
+
+def test_verify_drops_hallucinated_chunk_ids(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            make_verdict_response(
+                label="supported",
+                confidence=0.7,
+                supporting_chunk_ids=["FAKEID12345", "ANOTHERFAKE"],
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api")
+        run.close(output=result)
+
+    assert result["supporting_chunks"] == []  # all dropped
+
+
+def test_verify_records_token_usage_and_cache_metrics(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            make_verdict_response(
+                label="not_found",
+                confidence=0.6,
+                input_tokens=120,
+                output_tokens=40,
+                cache_read_input_tokens=900,
+                cache_creation_input_tokens=0,
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        skill.run(workspace=ws, run=run, claim="skills api")
+        run.close(output={})
+    with open_connection(workspace_db_path(name)) as conn:
+        row = conn.execute(
+            "SELECT total_input_tokens, total_output_tokens, total_cache_read, "
+            "total_cache_creation, model FROM run WHERE run_id = ?",
+            (run.run_id,),
+        ).fetchone()
+    assert row["total_input_tokens"] == 120
+    assert row["total_output_tokens"] == 40
+    assert row["total_cache_read"] == 900
+    assert row["total_cache_creation"] == 0
+    assert row["model"] == "claude-sonnet-4-6"
+
+
+def test_verify_model_override(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api", model="claude-opus-4-7")
+        run.close(output=result)
+
+    assert result["model"] == "claude-opus-4-7"
+    assert fake.calls[0]["model"] == "claude-opus-4-7"
+
+
+def test_cli_verify_supported_smoke(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = _setup_corpus(orc_home, tmp_path)
+    chunk_id = _supporting_chunk_id(name, "Skills API")
+    fake = FakeAnthropic(
+        responses=[
+            make_verdict_response(
+                label="supported",
+                confidence=0.9,
+                supporting_chunk_ids=[chunk_id],
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["verify", "Anthropic shipped the Skills API in October 2025", "--workspace", name],
+    )
+    assert result.exit_code == 0, result.output
+    assert "SUPPORTED" in result.output
+    assert "0.90" in result.output
+
+
+def test_cli_verify_json_output(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.6)])
+    _install_fake_client(monkeypatch, fake)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["verify", "An unrelated claim", "--workspace", name, "--json"],
+    )
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["label"] == "not_found"
+    assert payload["model"] == "claude-sonnet-4-6"
+
+
+def test_verify_request_includes_cache_control(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The 2nd system block must carry cache_control: ephemeral so prompt caching works."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        skill.run(workspace=ws, run=run, claim="skills api")
+        run.close(output={})
+
+    sent = fake.calls[0]
+    assert sent["tool_choice"] == {"type": "tool", "name": "record_verdict"}
+    assert sent["system"][1]["cache_control"] == {"type": "ephemeral"}
+    assert "<chunk id=" in sent["system"][1]["text"]

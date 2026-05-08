@@ -1,0 +1,53 @@
+# Golden test claims for verify_claim against tests/fixtures/test_corpus/.
+# Each claim has an expected label. The golden test asserts >= 8/10 match.
+
+claims:
+  - id: schema_version_supported
+    text: The current Orc schema version is 1.
+    expected: supported
+    note: Direct quote from workspaces.md.
+
+  - id: cli_uses_click_supported
+    text: The Orc CLI uses click.
+    expected: supported
+    note: Direct quote from cli.md.
+
+  - id: pipeline_steps_supported
+    text: verify_claim retrieves chunks via BM25 and parses a structured verdict via tool use.
+    expected: supported
+    note: verification.md describes exactly this pipeline.
+
+  - id: chunker_heading_aware_supported
+    text: The chunker preserves heading hierarchy as headings_path on each chunk.
+    expected: supported
+    note: ingest.md states this verbatim.
+
+  - id: postgres_storage_contradicted
+    text: Orc workspaces are stored in PostgreSQL.
+    expected: contradicted
+    note: workspaces.md says SQLite.
+
+  - id: directives_count_contradicted
+    text: Orc v1 ships three directives — research, marketing, and code-review.
+    expected: contradicted
+    note: directives.md says exactly one directive (research).
+
+  - id: corpus_in_user_message_contradicted
+    text: verify_claim sends the corpus block in the user message.
+    expected: contradicted
+    note: verification.md describes the corpus block as a system block (with cache_control).
+
+  - id: orc_acquired_not_found
+    text: Orc was acquired by Microsoft for $1B.
+    expected: not_found
+    note: Corpus is silent on acquisitions.
+
+  - id: oauth_not_found
+    text: Orc supports OAuth authentication.
+    expected: not_found
+    note: Corpus does not mention authentication at all.
+
+  - id: written_in_rust_not_found
+    text: Orc was written in Rust.
+    expected: not_found
+    note: Corpus does not specify a language.

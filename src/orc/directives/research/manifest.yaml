@@ -1,0 +1,21 @@
+name: research
+version: 0.1.0
+description: Evidence-grounded research and claim verification on a local corpus.
+
+defaults:
+  retrieval_k: 10
+  retrieval_pool: 50
+  embedding_model: null
+
+skills:
+  search_evidence:
+    model: null
+  verify_claim:
+    model: claude-sonnet-4-6
+    max_tokens: 2048
+  research_topic:
+    model: claude-sonnet-4-6
+    max_tokens: 8192
+  extract_claims:
+    model: claude-haiku-4-5
+    max_tokens: 1024
