@@ -93,3 +93,24 @@ CREATE TABLE IF NOT EXISTS schema_meta (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- Approval queue: directives produce proposals; humans accept/reject.
+-- Source-of-truth for "things the runtime wants to do but won't do without a human."
+CREATE TABLE IF NOT EXISTS approval (
+    approval_id     TEXT PRIMARY KEY,
+    workspace       TEXT NOT NULL,
+    directive       TEXT NOT NULL,
+    skill           TEXT NOT NULL,
+    source_run_id   TEXT NOT NULL,
+    status          TEXT NOT NULL,                  -- pending | approved | rejected | expired
+    summary         TEXT NOT NULL,                  -- one-line for list output
+    payload         TEXT NOT NULL,                  -- JSON: full proposal context
+    proposed_action TEXT,                           -- JSON: what would happen if accepted
+    created_at      TEXT NOT NULL,
+    decided_at      TEXT,
+    decided_by      TEXT,
+    decision_note   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_approval_status     ON approval(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_approval_source_run ON approval(source_run_id);

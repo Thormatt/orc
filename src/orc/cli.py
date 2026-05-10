@@ -1,6 +1,7 @@
 import click
 
 from orc import __version__
+from orc.cli_commands import approve as approve_cmd
 from orc.cli_commands import ingest as ingest_cmd
 from orc.cli_commands import mcp as mcp_cmd
 from orc.cli_commands import replay as replay_cmd
@@ -24,6 +25,7 @@ main.add_command(verify_cmd.verify_command)
 main.add_command(research_cmd.research_command)
 main.add_command(trace_cmd.trace_group)
 main.add_command(replay_cmd.replay_command)
+main.add_command(approve_cmd.approve_group)
 main.add_command(mcp_cmd.mcp)
 
 
