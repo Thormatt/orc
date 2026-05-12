@@ -531,7 +531,8 @@
     <div class="logo">orc<span class="dot">.</span></div>
     <div class="nav-right">
       <a href="#how">How it works</a>
-      <a href="#use">Use cases</a>
+      <a href="#example">Example</a>
+      <a href="#moat">Moat</a>
       <a href="#access">Access</a>
       <a class="cta" href="#access">Request access</a>
     </div>
@@ -684,6 +685,57 @@ the claim's wording is slightly broader than the corpus supports.
   </div>
 </section>
 
+<section id="example">
+  <div class="container">
+    <div class="eyebrow">A real example</div>
+    <h2>One critique. Seven claims. <em>Thirty seconds.</em></h2>
+    <p class="lede">
+      A long critique lands in your inbox: seven confident-sounding claims, four citations, three specific
+      statistics. Two citations look real. One date doesn't match what you remember. Before Orc, you spend
+      an hour Googling — half of it inconclusive. Now you do this:
+    </p>
+
+    <div class="terminal" style="margin-top: 40px;">
+      <div class="terminal-bar">
+        <span class="dot-circle"></span>
+        <span class="dot-circle"></span>
+        <span class="dot-circle"></span>
+        <span class="title">~/orc — auditing a 7-claim critique against trusted sources</span>
+      </div>
+      <pre><span class="prompt">$</span> <span class="cmd">orc workspace create critique-audit</span>
+<span class="prompt">$</span> <span class="cmd">orc ingest https://www.anthropic.com/engineering/multi-agent-research-system -w critique-audit</span>
+<span class="prompt">$</span> <span class="cmd">orc ingest ./trusted-papers -w critique-audit</span>
+<span class="ok">Ingested</span> 14 evidence items.
+
+<span class="prompt">$</span> <span class="cmd">orc verify --file critique.md -w critique-audit --yes</span>
+<span class="dim">7 claims extracted from critique.md. Verifying...</span>
+
+  1. <span class="ok">supported</span>      (0.92)  Multi-agent eval delta of 90.2% was reported by Anthropic
+  2. <span class="ok">supported</span>      (0.88)  Self-MoA paper exists and reports the cited benchmark
+  3. <span class="bad">contradicted</span>   (0.95)  The cited paper argues the OPPOSITE conclusion
+  4. <span class="warn">not_found</span>      (0.97)  No paper titled "ReliabilityBench" exists in the corpus
+  5. <span class="warn">not_found</span>      (0.93)  Cited date does not match the source's actual timeline
+  6. <span class="ok">supported</span>      (0.90)  Prompt caching has a 5-minute ephemeral TTL by default
+  7. <span class="warn">partial</span>        (0.71)  Claim is broader than the corpus supports
+
+<span class="dim">Summary:</span>  supported=3  partial=1  contradicted=1  not_found=2
+<span class="dim">Cost: $0.06  ·  Elapsed: 31s  ·  Trace: </span><span class="id">01KR8...</span></pre>
+    </div>
+
+    <p class="lede" style="margin-top: 40px;">
+      The two <code>not_found</code> verdicts? One is a fabricated paper title. The other is a real paper
+      attributed to the wrong year. The <code>contradicted</code> claim cites a real paper that argues the
+      opposite of what the critique implies. You reply with three specific corrections, each with chunk-level
+      citations from the actual sources. The author concedes.
+    </p>
+    <p class="lede">
+      You save the article you'd have written if you'd taken the critique at face value.
+      <strong style="color: var(--text);">Total cost: $0.06. Time: under a minute. Credibility:
+      preserved.</strong>
+    </p>
+  </div>
+</section>
+
 <section id="use">
   <div class="container">
     <div class="eyebrow">Where it fits</div>
@@ -772,9 +824,51 @@ the claim's wording is slightly broader than the corpus supports.
   </div>
 </section>
 
-<section id="quote">
+<section id="moat">
   <div class="container">
-    <blockquote class="pull">
+    <div class="eyebrow">The moat</div>
+    <h2>Capability scaling eats cleverness. <em>It doesn't eat discipline.</em></h2>
+    <p class="lede">
+      Anything that's clever today gets absorbed into the next model. So Orc bets on the things that
+      <em>don't</em> erode when GPT-6 or Claude 5 ships. Each one of these gets <em>more</em> valuable as
+      raw capability rises — because the gap between "capable model" and "defensible deployment" widens
+      with every new frontier release.
+    </p>
+
+    <div class="features" style="margin-top: 48px;">
+      <div class="feature">
+        <div class="num">Moat 01</div>
+        <h3>Owned evidence compounds.</h3>
+        <p>Bigger models don't know your firm's matters, your published catalog, your meter data, your client documents. The corpus is your asset, and the verification quality grows with what you ingest — not with the model vendor's roadmap.</p>
+      </div>
+      <div class="feature">
+        <div class="num">Moat 02</div>
+        <h3>Structural impossibility, not prompt mitigation.</h3>
+        <p>Hallucinated citations aren't prevented by asking the model nicely. They're prevented because the data structure refuses to return chunk IDs that don't exist in retrieval. That guarantee doesn't depend on the model getting smarter — it's an architectural choice.</p>
+      </div>
+      <div class="feature">
+        <div class="num">Moat 03</div>
+        <h3>Audit infrastructure is engineering, not intelligence.</h3>
+        <p>Trace + replay are operational discipline. Any AI system deployed in a regulated workflow needs them. Most tooling skips them. The gap is engineering investment, not model capability — frontier scaling doesn't close it.</p>
+      </div>
+      <div class="feature">
+        <div class="num">Moat 04</div>
+        <h3>Blast-radius bounded by construction.</h3>
+        <p>Write paths run in separate processes with separate tokens. Approval queues sit between analysis and action. Even as agents become more capable, the maximum damage from a compromised or hijacked agent stays at zero. That's a contract, not a precaution.</p>
+      </div>
+      <div class="feature">
+        <div class="num">Moat 05</div>
+        <h3>Directives compound across verticals.</h3>
+        <p>Research today. Legal next. Marketing analytics after that. Each new directive shares the same primitives — skills, traces, verification, approvals — and the deployment surface grows without diluting the architecture. Each customer's directive library is theirs.</p>
+      </div>
+      <div class="feature">
+        <div class="num">Moat 06</div>
+        <h3>Switching costs once deployed.</h3>
+        <p>Once a team's traces, approval history, and curated corpus live in Orc, replacing it means losing months of accumulated audit material and tuned verification. That's not lock-in by feature gating — it's lock-in by the value of what you've already built inside.</p>
+      </div>
+    </div>
+
+    <blockquote class="pull" style="margin-top: 72px;">
       "The version that wins is narrow, deep, instrumented, and evidence-bound."
       <cite>— from the Orc reference architecture</cite>
     </blockquote>
