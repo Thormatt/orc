@@ -25,7 +25,7 @@ Built for **research analysts, editorial teams, legal & compliance, agentic-work
 
 ```bash
 # Install
-uv pip install git+https://github.com/thormatthiasson/orc
+uv pip install git+https://github.com/Thormatt/orc
 
 # Or, once published to PyPI:
 # uv pip install orc
@@ -118,7 +118,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for details.
 ## Development
 
 ```bash
-git clone https://github.com/thormatthiasson/orc.git
+git clone https://github.com/Thormatt/orc.git
 cd orc
 uv sync --extra dev
 

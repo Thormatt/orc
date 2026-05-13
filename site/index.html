@@ -508,8 +508,8 @@
     Bring your own Anthropic key, OpenRouter key, or local model. Storage is local SQLite under <code>~/.orc/</code>.
   </p>
 
-  <div class="term install-term"><span class="cmt"># install</span>
-<span class="pr">$</span> <span class="cmd">uv pip install orc</span>
+  <div class="term install-term"><span class="cmt"># install (pypi publish pending; install from source for now)</span>
+<span class="pr">$</span> <span class="cmd">uv pip install git+https://github.com/Thormatt/orc</span>
 
 <span class="cmt"># the four-command loop</span>
 <span class="pr">$</span> <span class="cmd">orc workspace create research</span>
@@ -521,7 +521,7 @@
 <span class="pr">$</span> <span class="cmd">orc mcp serve</span>
 <span class="pr">$</span> <span class="cmd">claude mcp add orc -- uv run orc mcp serve</span></div>
 
-  <p class="install-meta">Python 3.11+ · macOS, Linux, WSL · MIT-licensed · zero telemetry by default · source at github.com/orc</p>
+  <p class="install-meta">Python 3.11+ · macOS, Linux, WSL · MIT-licensed · zero telemetry by default · source at <a href="https://github.com/Thormatt/orc">github.com/Thormatt/orc</a></p>
 </section>
 
 <!-- ═══ trace footer — signature, replay, edit log ════════ -->

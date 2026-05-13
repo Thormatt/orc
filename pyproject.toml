@@ -59,10 +59,10 @@ dev = [
 orc = "orc.cli:main"
 
 [project.urls]
-Homepage      = "https://github.com/thormatthiasson/orc"
-Repository    = "https://github.com/thormatthiasson/orc"
-Issues        = "https://github.com/thormatthiasson/orc/issues"
-Changelog     = "https://github.com/thormatthiasson/orc/blob/main/CHANGELOG.md"
+Homepage      = "https://github.com/Thormatt/orc"
+Repository    = "https://github.com/Thormatt/orc"
+Issues        = "https://github.com/Thormatt/orc/issues"
+Changelog     = "https://github.com/Thormatt/orc/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/orc"]
