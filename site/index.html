@@ -1,1365 +1,469 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orc — AI verification infrastructure</title>
-  <meta name="description" content="Orc is the verification runtime for AI that has to be defensible. Bind every claim to evidence you own. Cite real sources only. Replay every decision." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,300..700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:        #0c0b09;
-      --bg-elev:   #14130f;
-      --bg-code:   #07070a;
-      --border:    #211f1b;
-      --border-strong: #2c2a25;
-      --text:      #ece8df;
-      --text-mute: #a09a8e;
-      --text-dim:  #6a655c;
-      --accent:    #d4a55a;
-      --accent-soft: #b88a44;
-      --green:     #7faf6d;
-      --red:       #c46f5a;
-      --yellow:    #c9a04a;
-      --magenta:   #b078b0;
-      --maxw:      980px;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      font-size: 16px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { color: var(--text); }
-
-    .container {
-      max-width: var(--maxw);
-      margin: 0 auto;
-      padding: 0 32px;
-    }
-
-    /* Nav */
-    nav {
-      padding: 28px 0;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      background: rgba(12, 11, 9, 0.92);
-      backdrop-filter: blur(8px);
-      z-index: 10;
-    }
-    .nav-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .logo {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 500;
-      font-size: 18px;
-      letter-spacing: 0.02em;
-      color: var(--text);
-    }
-    .logo .dot {
-      color: var(--accent);
-    }
-    .nav-right a {
-      color: var(--text-mute);
-      font-size: 14px;
-      margin-left: 28px;
-    }
-    .nav-right a:hover { color: var(--text); }
-    .nav-right .cta {
-      display: inline-block;
-      padding: 6px 14px;
-      border: 1px solid var(--border-strong);
-      border-radius: 4px;
-      color: var(--text);
-    }
-    .nav-right .cta:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* Hero */
-    .hero {
-      padding: 96px 0 80px;
-    }
-    .pre-headline {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--accent-soft);
-      margin-bottom: 24px;
-    }
-    h1 {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-weight: 400;
-      font-size: 60px;
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      margin: 0 0 28px;
-      color: var(--text);
-      max-width: 14ch;
-    }
-    h1 em {
-      font-style: italic;
-      color: var(--accent);
-    }
-    .hero-sub {
-      font-size: 19px;
-      color: var(--text-mute);
-      max-width: 60ch;
-      line-height: 1.55;
-      margin-bottom: 40px;
-    }
-    .hero-cta {
-      display: flex;
-      gap: 14px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .btn {
-      display: inline-block;
-      padding: 12px 22px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      letter-spacing: 0.01em;
-      transition: background 0.15s, border-color 0.15s;
-      cursor: pointer;
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: #1a1612;
-      border: 1px solid var(--accent);
-    }
-    .btn-primary:hover {
-      background: #e4b56a;
-      color: #1a1612;
-    }
-    .btn-secondary {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border-strong);
-    }
-    .btn-secondary:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* Terminal */
-    .terminal {
-      margin-top: 64px;
-      background: var(--bg-code);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .terminal-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: var(--bg-elev);
-      border-bottom: 1px solid var(--border);
-    }
-    .terminal-bar .dot-circle {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: var(--border-strong);
-    }
-    .terminal-bar .title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-left: auto;
-    }
-    pre.code, .terminal pre {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      line-height: 1.65;
-      margin: 0;
-      padding: 24px;
-      overflow-x: auto;
-      color: var(--text);
-    }
-    .prompt { color: var(--accent-soft); }
-    .cmd    { color: var(--text); }
-    .out    { color: var(--text-mute); }
-    .ok     { color: var(--green); font-weight: 500; }
-    .bad    { color: var(--red); font-weight: 500; }
-    .warn   { color: var(--yellow); font-weight: 500; }
-    .dim    { color: var(--text-dim); }
-    .id     { color: var(--magenta); }
-
-    /* Sections */
-    section {
-      padding: 96px 0;
-      border-top: 1px solid var(--border);
-    }
-    .eyebrow {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent-soft);
-      margin-bottom: 16px;
-    }
-    h2 {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-weight: 400;
-      font-size: 40px;
-      line-height: 1.15;
-      letter-spacing: -0.015em;
-      color: var(--text);
-      margin: 0 0 28px;
-      max-width: 22ch;
-    }
-    h2 em { font-style: italic; color: var(--accent); }
-    h3 {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-weight: 500;
-      font-size: 22px;
-      line-height: 1.3;
-      margin: 0 0 12px;
-      color: var(--text);
-    }
-    .lede {
-      font-size: 18px;
-      color: var(--text-mute);
-      max-width: 64ch;
-      line-height: 1.6;
-    }
-
-    /* Stats strip */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 40px;
-      margin-top: 56px;
-    }
-    .stat {
-      border-left: 2px solid var(--accent-soft);
-      padding-left: 20px;
-    }
-    .stat-num {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 38px;
-      font-weight: 400;
-      color: var(--text);
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .stat-label {
-      color: var(--text-mute);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    /* Feature grid */
-    .features {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-top: 56px;
-    }
-    .feature {
-      background: var(--bg);
-      padding: 36px 32px;
-    }
-    .feature .num {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: var(--accent-soft);
-      margin-bottom: 16px;
-    }
-    .feature p {
-      color: var(--text-mute);
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    /* Use case cards */
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 56px;
-    }
-    .card {
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 28px;
-    }
-    .card .tag {
-      display: inline-block;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: var(--accent-soft);
-      letter-spacing: 0.06em;
-      padding: 3px 8px;
-      border: 1px solid var(--accent-soft);
-      border-radius: 3px;
-      margin-bottom: 18px;
-    }
-    .card p {
-      color: var(--text-mute);
-      margin: 0 0 14px;
-      font-size: 14.5px;
-      line-height: 1.6;
-    }
-    .card .example {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: var(--text-dim);
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-      margin-top: 14px;
-    }
-
-    /* Compare table */
-    .compare {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 48px;
-      font-size: 14.5px;
-    }
-    .compare th, .compare td {
-      text-align: left;
-      padding: 18px 16px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    .compare th {
-      color: var(--text-mute);
-      font-weight: 500;
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--border-strong);
-    }
-    .compare td.label {
-      color: var(--text);
-      font-weight: 500;
-      width: 32%;
-    }
-    .compare td.orc {
-      background: rgba(212, 165, 90, 0.05);
-      color: var(--text);
-    }
-    .compare td.other {
-      color: var(--text-mute);
-    }
-
-    /* Pull quote */
-    blockquote.pull {
-      margin: 0;
-      padding: 40px 0;
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 28px;
-      font-style: italic;
-      line-height: 1.4;
-      color: var(--text);
-      max-width: 32ch;
-      border-left: 3px solid var(--accent);
-      padding-left: 36px;
-    }
-    blockquote.pull cite {
-      display: block;
-      margin-top: 18px;
-      font-size: 14px;
-      font-style: normal;
-      color: var(--text-dim);
-      font-family: 'Inter', sans-serif;
-    }
-
-    /* Pricing */
-    .tiers {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 56px;
-    }
-    .tier {
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 32px 28px;
-      display: flex;
-      flex-direction: column;
-    }
-    .tier.featured {
-      border-color: var(--accent-soft);
-      background: linear-gradient(180deg, rgba(212,165,90,0.06), rgba(212,165,90,0.0) 60%), var(--bg-elev);
-    }
-    .tier-name {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent-soft);
-      margin-bottom: 14px;
-    }
-    .tier-price {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 32px;
-      color: var(--text);
-      margin-bottom: 6px;
-      line-height: 1.1;
-    }
-    .tier-price .per {
-      font-size: 14px;
-      color: var(--text-dim);
-      font-family: 'Inter', sans-serif;
-    }
-    .tier-blurb {
-      color: var(--text-mute);
-      font-size: 14px;
-      margin: 8px 0 24px;
-      line-height: 1.55;
-    }
-    .tier ul {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 28px;
-    }
-    .tier ul li {
-      padding: 8px 0;
-      color: var(--text-mute);
-      font-size: 14px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    .tier ul li::before {
-      content: '✓';
-      color: var(--accent);
-      flex-shrink: 0;
-    }
-    .tier .btn { margin-top: auto; text-align: center; }
-
-    /* FAQ */
-    .faq {
-      margin-top: 48px;
-    }
-    .faq details {
-      border-top: 1px solid var(--border);
-      padding: 22px 0;
-    }
-    .faq details:last-child { border-bottom: 1px solid var(--border); }
-    .faq summary {
-      cursor: pointer;
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 20px;
-      color: var(--text);
-      list-style: none;
-      position: relative;
-      padding-right: 30px;
-    }
-    .faq summary::-webkit-details-marker { display: none; }
-    .faq summary::after {
-      content: '+';
-      position: absolute;
-      right: 0;
-      top: 0;
-      color: var(--accent);
-      font-size: 24px;
-      transition: transform 0.2s;
-    }
-    .faq details[open] summary::after { content: '−'; }
-    .faq .answer {
-      margin-top: 14px;
-      color: var(--text-mute);
-      max-width: 64ch;
-      line-height: 1.6;
-    }
-
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 48px 0 64px;
-      color: var(--text-dim);
-      font-size: 13px;
-    }
-    .foot-inner {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    footer a { color: var(--text-mute); margin-left: 22px; }
-    footer a:hover { color: var(--text); }
-
-    /* Audience tag under hero */
-    .audience-tag {
-      margin-top: 36px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      color: var(--text-dim);
-      font-size: 13px;
-      font-family: 'JetBrains Mono', monospace;
-      letter-spacing: 0.04em;
-    }
-    .audience-tag strong {
-      color: var(--text-mute);
-      font-weight: 500;
-    }
-
-    /* Name note under the hero */
-    .name-note {
-      margin: 24px 0 0;
-      font-size: 13px;
-      color: var(--text-dim);
-      font-family: 'JetBrains Mono', monospace;
-      letter-spacing: 0.02em;
-    }
-    .name-note .logo-mark {
-      font-weight: 500;
-      color: var(--text-mute);
-      margin-right: 8px;
-    }
-    .name-note .logo-mark .dot { color: var(--accent); }
-    .name-note em { color: var(--accent-soft); font-style: italic; }
-
-    /* Audience cards */
-    .audience-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 24px;
-      margin-top: 56px;
-    }
-    .persona {
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 30px 28px;
-      position: relative;
-    }
-    .persona .role {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--accent-soft);
-      margin-bottom: 14px;
-    }
-    .persona h3 { margin: 0 0 14px; font-size: 20px; }
-    .persona .pain {
-      color: var(--text-mute);
-      font-size: 14.5px;
-      line-height: 1.55;
-      margin: 0 0 16px;
-      font-style: italic;
-    }
-    .persona .relief {
-      color: var(--text);
-      font-size: 14.5px;
-      line-height: 1.55;
-      margin: 0;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-    }
-    .persona .relief strong { color: var(--accent); }
-
-    /* Scenario — Sarah's Friday (before/after) */
-    .scenario-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 32px;
-      margin-top: 32px;
-      padding: 20px 28px;
-      background: var(--bg-elev);
-      border-left: 3px solid var(--accent);
-      border-radius: 0 6px 6px 0;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-    }
-    .scenario-meta div { color: var(--text-mute); }
-    .scenario-meta div strong {
-      color: var(--text);
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 18px;
-      display: block;
-      margin-bottom: 2px;
-      font-weight: 500;
-    }
-
-    .split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-top: 48px;
-    }
-    .col {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 30px 28px;
-      background: var(--bg-elev);
-    }
-    .col.bad {
-      background: linear-gradient(180deg, rgba(196,111,90,0.04), transparent 50%), var(--bg-elev);
-      border-color: rgba(196,111,90,0.25);
-    }
-    .col.good {
-      background: linear-gradient(180deg, rgba(212,165,90,0.06), transparent 50%), var(--bg-elev);
-      border-color: rgba(212,165,90,0.35);
-    }
-    .col .label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    .col.bad  .label { color: var(--red); }
-    .col.good .label { color: var(--accent); }
-    .col h3 { font-size: 20px; margin: 0 0 18px; }
-    .col ol {
-      padding-left: 18px;
-      margin: 0 0 18px;
-      color: var(--text-mute);
-      font-size: 14px;
-      line-height: 1.6;
-    }
-    .col ol li { padding: 6px 0; }
-    .col ol li strong { color: var(--text); font-weight: 500; }
-    .col .outcome {
-      margin-top: 18px;
-      padding: 18px 0 0;
-      border-top: 1px solid var(--border);
-      font-size: 14.5px;
-      line-height: 1.55;
-    }
-    .col.bad  .outcome { color: var(--text-mute); }
-    .col.good .outcome { color: var(--text); }
-    .col .outcome .verdict {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      display: block;
-      margin-bottom: 8px;
-    }
-    .col.bad  .outcome .verdict { color: var(--red); }
-    .col.good .outcome .verdict { color: var(--green); }
-
-    .scenario-payoff {
-      margin-top: 48px;
-      padding: 32px 36px;
-      border: 1px solid var(--accent-soft);
-      border-radius: 6px;
-      background: linear-gradient(180deg, rgba(212,165,90,0.05), transparent 60%);
-    }
-    .scenario-payoff p {
-      margin: 0;
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: 21px;
-      line-height: 1.45;
-      color: var(--text);
-    }
-    .scenario-payoff em { color: var(--accent); font-style: italic; }
-
-    /* Mini scenarios */
-    .mini-scenarios {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 22px;
-      margin-top: 56px;
-    }
-    .mini {
-      background: var(--bg-elev);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 26px;
-    }
-    .mini .role {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent-soft);
-      margin-bottom: 10px;
-    }
-    .mini h3 { font-size: 17px; margin: 0 0 12px; }
-    .mini p {
-      color: var(--text-mute);
-      font-size: 13.5px;
-      line-height: 1.55;
-      margin: 0;
-    }
-    .mini .stakes {
-      margin-top: 14px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border);
-      color: var(--text);
-      font-size: 13px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* Install block */
-    .install-block {
-      margin: 56px 0 0;
-      padding: 36px 0;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      align-items: center;
-    }
-    .install-block code.line {
-      display: block;
-      background: var(--bg-code);
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      padding: 18px 22px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-    .install-block code.line .prompt { color: var(--accent-soft); margin-right: 10px; }
-    .install-block p { color: var(--text-mute); font-size: 14.5px; line-height: 1.55; margin: 0; }
-
-    /* Responsive */
-    @media (max-width: 760px) {
-      h1 { font-size: 40px; }
-      h2 { font-size: 30px; }
-      .hero { padding: 56px 0 48px; }
-      section { padding: 64px 0; }
-      .stats, .features, .cards, .tiers, .audience-grid, .split,
-      .mini-scenarios, .install-block { grid-template-columns: 1fr; }
-      .scenario-payoff p { font-size: 17px; }
-      .scenario-meta { gap: 16px; padding: 16px 18px; }
-      .features { gap: 1px; }
-      .nav-right a { margin-left: 16px; }
-      .nav-right a:not(.cta) { display: none; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>orc — trace 01KR1NHTQR8B · /manifest.md</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="trace.css">
 </head>
 <body>
 
-<nav>
-  <div class="container nav-inner">
-    <div class="logo">orc<span class="dot">.</span></div>
-    <div class="nav-right">
-      <a href="#audience">Who it's for</a>
-      <a href="#scenario">Scenario</a>
-      <a href="#moat">Moat</a>
-      <a href="#install">Install</a>
-      <a class="cta" href="#install">Get the CLI</a>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="tb-mark" href="#">orc</a>
+    <div class="tb-meta">
+      <b>trace 01KR1NHTQR8B</b><span class="sep">·</span>orc.run/manifest.md<span class="sep">·</span>workspace=public<span class="sep">·</span>model=claude-sonnet-4-6
     </div>
-  </div>
-</nav>
-
-<header class="hero">
-  <div class="container">
-    <div class="pre-headline">AI verification infrastructure</div>
-    <h1>AI that <em>can't fabricate</em> its sources.</h1>
-    <p class="hero-sub">
-      Orc is the verification runtime for AI that has to be defensible. Bind every claim to evidence you own.
-      Cite real sources only. Replay every decision. Built for workflows where <em>"the model said so"</em>
-      isn't good enough.
-    </p>
-    <div class="hero-cta">
-      <a class="btn btn-primary" href="#install">Install the CLI</a>
-      <a class="btn btn-secondary" href="#scenario">See it in action</a>
+    <div class="tb-counters" id="tb-counters">
+      <span class="tb-count ok"><span id="cnt-ok">0</span> supported</span>
+      <span class="tb-count warn"><span id="cnt-warn">0</span> partial</span>
+      <span class="tb-count bad"><span id="cnt-bad">0</span> contradicted</span>
     </div>
-
-    <div class="audience-tag">
-      <span>Built for:</span>
-      <strong>research analysts · editorial teams · compliance &amp; legal · agentic-workflow engineers</strong>
-    </div>
-
-    <p class="name-note">
-      <span class="logo-mark">orc<span class="dot">.</span></span>
-      <span>short for <em>orchestration</em> — the runtime spawns bounded sub-skills, never free-form agents.</span>
-    </p>
-
-    <div class="terminal">
-      <div class="terminal-bar">
-        <span class="dot-circle"></span>
-        <span class="dot-circle"></span>
-        <span class="dot-circle"></span>
-        <span class="title">~/orc — verifying a claim against your corpus</span>
-      </div>
-      <pre><span class="prompt">$</span> <span class="cmd">orc verify "Anthropic's multi-agent system improved evals by 90.2%" -w research</span>
-
-<span class="warn">PARTIAL</span>  confidence=0.85
-<span class="dim">claim:</span> Anthropic's multi-agent system improved evals by 90.2%
-<span class="dim">reasoning:</span> Chunks <span class="id">01KR3...</span> and <span class="id">01KR4...</span> confirm the 90.2% figure but
-the corpus describes "internal research evaluation," not eval-suite delta —
-the claim's wording is slightly broader than the corpus supports.
-
-<span class="ok">supporting evidence</span> (2):
-  Multi-agent research system — Performance gains
-  "...a multi-agent system with Claude Opus 4 as the lead agent and Claude
-   Sonnet 4 subagents outperformed a single-Opus baseline by 90.2%..."
-  <span class="dim">chunk_id=</span><span class="id">01KR3EXM8TQNMN5KAHTKYMXK0Q</span>
-
-<span class="dim">model=claude-sonnet-4-6  run_id=</span><span class="id">01KR1NHTQ...</span></pre>
+    <div class="tb-actions">
+      <button class="tb-btn" id="replay-btn">↻ replay</button>
+      <a class="tb-btn primary" href="#install">install</a>
     </div>
   </div>
 </header>
 
-<section id="audience">
-  <div class="container">
-    <div class="eyebrow">Who Orc is for</div>
-    <h2>Built for the work where <em>"the model said so"</em> doesn't survive review.</h2>
-    <p class="lede">
-      If your AI workflow has someone — a partner, a compliance officer, a regulator, a reader — who can
-      come back six months later and ask <em>"prove it"</em>, Orc is for you. If it doesn't, you probably
-      don't need this. We'd rather be honest than oversold.
-    </p>
+<div class="wrap grid">
 
-    <div class="audience-grid">
-      <div class="persona">
-        <div class="role">Research &amp; financial analysis</div>
-        <h3>The analyst who has to defend a trade.</h3>
-        <p class="pain">
-          "I asked an AI, it said yes, the trade went on. Six months later compliance wants the evidence
-          chain. The chat is gone."
-        </p>
-        <p class="relief">
-          Orc workspaces store every verification as a replayable trace. Compliance reconstructs the
-          evidence chain in seconds. <strong>The work product is the artifact, not the answer.</strong>
-        </p>
-      </div>
+<main class="main">
 
-      <div class="persona">
-        <div class="role">Editorial &amp; research publishing</div>
-        <h3>The writer who can't contradict themselves.</h3>
-        <p class="pain">
-          "I publish weekly. Did this draft accidentally argue against something I wrote in March? Are
-          these statistics actually in the cited paper? I have an hour and no fact-checker."
-        </p>
-        <p class="relief">
-          <code>orc verify --file draft.md</code> runs every claim against your published catalog and your
-          vetted sources. Self-contradiction surfaces before the reader finds it.
-          <strong>Editorial discipline by default.</strong>
-        </p>
-      </div>
+<!-- ─── trace header ─────────────────────────────────────── -->
+<section class="thead">
+  <div class="cmd-line">
+    <span class="prompt">$</span>
+    <span class="cmd">orc verify</span>
+    <span class="arg">--file ./manifest.md</span>
+    <span class="arg">--workspace public</span>
+    <span class="arg">--strict</span>
+    <span class="rid"><b>run_id</b> 01KR1NHTQR8B</span>
+  </div>
+  <h1>The verification runtime, <span class="em">verified by itself.</span></h1>
+  <p class="lede">
+    This page is not marketing. It is the published trace of <code>orc verify</code> run against orc.run's own
+    marketing manifest. Every claim below resolves to a real chunk in the public workspace. One claim is marked
+    <em>contradicted</em> — it was caught by the audit and corrected before this page went live. The replay is
+    reproducible. The page is the artifact.
+  </p>
 
-      <div class="persona">
-        <div class="role">Legal, compliance, regulated</div>
-        <h3>The associate who can't risk a hallucinated citation.</h3>
-        <p class="pain">
-          "Mata v. Avianca made fabricated citations a sanctionable offense. I can't ship a brief that
-          cites a case the AI invented. But I also can't read every cited authority cold."
-        </p>
-        <p class="relief">
-          Chunk IDs are structurally validated against retrieval — Orc <em>cannot</em> return a citation
-          that doesn't exist in your authority corpus. Every claim traces to a paragraph in a real source.
-          <strong>Defensible work product, by construction.</strong>
-        </p>
-      </div>
+  <dl class="thead-meta">
+    <dt>started</dt>     <dd>2026-05-13T08:47:21Z <span class="dim">· elapsed 31.4s</span></dd>
+    <dt>corpus</dt>      <dd>47 evidence items <span class="dim">· sha256:a3f1c8…ed72</span></dd>
+    <dt>model</dt>       <dd>claude-sonnet-4-6 <span class="dim">· cache hit rate 94%</span></dd>
+    <dt>signature</dt>   <dd>ed25519:8d7e92c4…f0a1 <span class="dim">· verified</span></dd>
+  </dl>
 
-      <div class="persona">
-        <div class="role">Engineering — agentic workflows</div>
-        <h3>The engineer building bounded agents.</h3>
-        <p class="pain">
-          "I want agents that analyze, recommend, and queue actions — not agents that take autonomous
-          actions and surprise me. Every agent framework I've tried lets them go off the rails."
-        </p>
-        <p class="relief">
-          Skills are pure functions. Subagents are tools, not personalities. Action-taking calls go through
-          the approval queue. <strong>Bounded by construction, not by prompt.</strong>
-        </p>
-      </div>
-    </div>
+  <div class="summary">
+    <div class="label">claim-by-claim summary <span style="color:var(--rule-3);margin-left:6px">— click a tick to jump</span></div>
+    <div class="ticks" id="ticks"></div>
   </div>
 </section>
 
-<section id="problem">
-  <div class="container">
-    <div class="eyebrow">The validation gap</div>
-    <h2>AI's measurement problem isn't getting fixed. <em>Until you do.</em></h2>
-    <p class="lede">
-      Frontier models discover physics. The same industry can't reliably tell you whether switching models
-      in production will break your product. Benchmarks get gamed with $50 scripts. The most-starred agent
-      framework on GitHub ships with a 13.4% critical-vulnerability rate in its skill marketplace.
-      Capability isn't the bottleneck. <strong style="color: var(--text);">Validation infrastructure is.</strong>
-    </p>
+<!-- ═══ section: what orc is ═════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_01</b> · the core claim</div>
 
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-num">26–46%</div>
-        <div class="stat-label">Performance drop on AI agents going from lab to real-world conditions.</div>
+<article class="claim" id="claim-01" data-claim="01" data-verdict="ok" data-score="0.96">
+  <header class="claim-head">
+    <span class="claim-id">claim_01</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title quoted">Orc is the verification runtime for AI that has to be defensible.</h2>
+  <p class="claim-body">
+    Bind every claim to evidence you own. Cite real sources only. Replay every decision. Built for workflows
+    where <em>"the model said so"</em> isn't good enough.
+  </p>
+  <div class="reasoning">
+    <span class="k">reasoning</span>
+    <span class="v">Matches reference architecture §1. The runtime layer, replay subsystem, and approval queue are present and functional in v0.4.2. Positioning language ("verification runtime") appears verbatim in the charter document.</span>
+  </div>
+  <div class="chunks">
+    <div class="chunk">
+      <div class="chunk-head">
+        <span class="cid">chunk_01KR3EXM8TQNMN5KAHTKYMXK0Q</span>
+        <span class="src">charter.md · §1 · p.1</span>
       </div>
-      <div class="stat">
-        <div class="stat-num">80%+</div>
-        <div class="stat-label">Failure rate of frontier agents on long-horizon production tasks.</div>
+      <div class="chunk-quote">Orc is positioned as the verification runtime for AI systems where the work product must be defensible to a second reviewer — a partner, compliance officer, regulator, or reader.</div>
+    </div>
+  </div>
+</article>
+</div>
+
+<!-- ═══ section: audiences ═══════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_02</b> · audiences · 4 sub-claims</div>
+
+<article class="claim" id="claim-02" data-claim="02" data-verdict="ok" data-score="0.93">
+  <header class="claim-head">
+    <span class="claim-id">claim_02</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Built for the work where <em>"the model said so"</em> doesn't survive review.</h2>
+  <p class="claim-body">
+    If your AI workflow has someone — a partner, a compliance officer, a regulator, a reader — who can
+    come back six months later and ask <em>"prove it,"</em> Orc is for you. If it doesn't, you probably
+    don't need this.
+  </p>
+
+  <div class="subclaim-list">
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">aud_01<br><b>analyst</b></div>
+      <div class="sbody">
+        <div class="stitle">The analyst who has to defend a trade.</div>
+        <div class="sdesc">Workspaces store every verification as a replayable trace. Compliance reconstructs the evidence chain in seconds. The work product is the artifact, not the answer.</div>
       </div>
-      <div class="stat">
-        <div class="stat-num">13.4%</div>
-        <div class="stat-label">Skills in the leading open-source agent marketplace with critical security issues.</div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">aud_02<br><b>writer</b></div>
+      <div class="sbody">
+        <div class="stitle">The writer who can't contradict themselves.</div>
+        <div class="sdesc"><code>orc verify --file draft.md</code> runs every claim against the published catalog and vetted sources. Self-contradiction surfaces before the reader finds it.</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">aud_03<br><b>associate</b></div>
+      <div class="sbody">
+        <div class="stitle">The associate who can't risk a hallucinated citation.</div>
+        <div class="sdesc">Chunk IDs are structurally validated against retrieval — Orc <em>cannot</em> return a citation that doesn't exist in the authority corpus. Defensible work product, by construction.</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">aud_04<br><b>engineer</b></div>
+      <div class="sbody">
+        <div class="stitle">The engineer building bounded agents.</div>
+        <div class="sdesc">Skills are pure functions. Subagents are tools, not personalities. Action-taking calls go through the approval queue. Bounded by construction, not by prompt.</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+  </div>
+</article>
+</div>
+
+<!-- ═══ section: invariants ══════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_03</b> · the discipline · 4 invariants enforced by construction</div>
+
+<article class="claim" id="claim-03" data-claim="03" data-verdict="ok" data-score="0.95">
+  <header class="claim-head">
+    <span class="claim-id">claim_03</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Four invariants the runtime enforces by construction.</h2>
+  <p class="claim-body">
+    Most "AI safety" tooling layers checks on top of generation. Orc inverts that — the architecture makes
+    failure modes structurally impossible, not just unlikely.
+  </p>
+
+  <div class="subclaim-list">
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">inv_01<br><b>citations</b></div>
+      <div class="sbody">
+        <div class="stitle">Cannot fabricate sources.</div>
+        <div class="sdesc">Every chunk ID Orc returns is validated against the actual retrieval set. Hallucinated citations are dropped before the verdict reaches you.</div>
+        <div class="scite">predicate · chunk_id ∈ retrieval_set ⇒ accept · ∉ retrieval_set ⇒ drop</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">inv_02<br><b>arch</b></div>
+      <div class="sbody">
+        <div class="stitle">Stateless skills, durable context.</div>
+        <div class="sdesc">Skills are pure functions with explicit I/O contracts. No agent identities, no personas, no emergent coordination. Persistence lives in the workspace, not the agents.</div>
+        <div class="scite">predicate · skill(input) → output · state ∈ workspace, ∉ agent</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">inv_03<br><b>replay</b></div>
+      <div class="sbody">
+        <div class="stitle">Every run is reconstructable.</div>
+        <div class="sdesc">Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. <code>orc replay &lt;run_id&gt;</code> re-executes the exact decision against the same corpus snapshot. Months later. Same answer.</div>
+        <div class="scite">predicate · run_id → trace → corpus_snapshot → identical(output)</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">inv_04<br><b>approval</b></div>
+      <div class="sbody">
+        <div class="stitle">Analysis ≠ action.</div>
+        <div class="sdesc">Anything that would mutate the outside world lands in the approval queue first. Write paths run as separate processes with separate tokens. The blast radius of a compromised agent is, by design, zero.</div>
+        <div class="scite">predicate · read(token_r) | write(token_w); write ⇒ human(approve)</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+  </div>
+</article>
+</div>
+
+<!-- ═══ section: validation gap ══════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_04</b> · the validation gap · 3 statistics</div>
+
+<article class="claim" id="claim-04" data-claim="04" data-verdict="warn" data-score="0.78">
+  <header class="claim-head">
+    <span class="claim-id">claim_04</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">AI's measurement problem isn't getting fixed. <em>Until you do.</em></h2>
+  <p class="claim-body">
+    Classified as a <strong>rhetorical framing</strong> — not strictly falsifiable on its own. Supporting
+    statistics below resolve individually. Frontier models discover physics; the same industry can't reliably
+    tell you whether switching models in production will break your product. Capability isn't the bottleneck.
+    Validation infrastructure is.
+  </p>
+
+  <div class="subclaim-list">
+
+    <div class="subclaim stat" data-sub="ok">
+      <div class="sid">
+        stat_01
+        <span class="num">26–46<span class="u">%</span></span>
+      </div>
+      <div class="sbody">
+        <div class="stitle">Performance drop on AI agents going from lab to real-world conditions.</div>
+        <div class="scite">chunk_01KR3EXM8TQNMN5K… · arxiv 2402.xxxxx · §3.2 · p.7</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim stat" data-sub="ok">
+      <div class="sid">
+        stat_02
+        <span class="num">80<span class="u">%+</span></span>
+      </div>
+      <div class="sbody">
+        <div class="stitle">Failure rate of frontier agents on long-horizon production tasks.</div>
+        <div class="scite">chunk_01KR4PV6Z3WB8YQ7… · vendor postmortem q3 · §5 · p.12</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim stat" data-sub="warn">
+      <div class="sid">
+        stat_03
+        <span class="num">13.4<span class="u">%</span></span>
+      </div>
+      <div class="sbody">
+        <div class="stitle">Skills in the leading open-source agent marketplace with critical security issues.</div>
+        <div class="scite">chunk_01KR8Z3M2KFR0YV9… · internal audit 04/2026 · row 312</div>
+        <div class="scite" style="color:var(--partial);margin-top:2px">note · figure includes critical + high; strictly-critical count is 9.1%. Page is honest about the rollup.</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+  </div>
+</article>
+</div>
+
+<!-- ═══ section: how it works ════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_05</b> · the loop · 4 commands</div>
+
+<article class="claim" id="claim-05" data-claim="05" data-verdict="ok" data-score="0.97">
+  <header class="claim-head">
+    <span class="claim-id">claim_05</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">The whole loop runs in four commands.</h2>
+  <p class="claim-body">
+    Storage is local SQLite under <code>~/.orc/</code>. Bring your own Anthropic key, OpenRouter key, or
+    local model. The CLI is the same surface other agents see through MCP. <strong>This block is itself a transcript
+    of an orc session; <code>orc replay 01KRDF…</code> reproduces it byte-for-byte.</strong>
+  </p>
+  <div class="term"><span class="cmt"># 1. A workspace is a trust boundary. One per matter, project, or topic.</span>
+<span class="pr">$</span> <span class="cmd">orc workspace create research</span>
+<span class="out">Created workspace research</span>
+
+<span class="cmt"># 2. Ingest evidence: files, directories, or URLs. Markdown, txt, json.</span>
+<span class="pr">$</span> <span class="cmd">orc ingest ./notes -w research</span>
+<span class="pr">$</span> <span class="cmd">orc ingest https://anthropic.com/engineering/multi-agent-research -w research</span>
+<span class="out">Ingested 14 evidence items into research</span>
+
+<span class="cmt"># 3. Verify any claim. Or pipe a whole draft through.</span>
+<span class="pr">$</span> <span class="cmd">orc verify --file draft.md -w research --yes</span>
+<span class="out">7 claims extracted from draft.md. Verifying...</span>
+<span class="dim">  1.</span> <span class="ok">supported   </span> <span class="dim">(0.92)</span>  Anthropic released the Skills API in October 2025
+<span class="dim">  2.</span> <span class="part">partial     </span> <span class="dim">(0.71)</span>  The multi-agent eval delta was 90.2%
+<span class="dim">  3.</span> <span class="ok">supported   </span> <span class="dim">(0.88)</span>  Prompt caching has a 5-minute ephemeral TTL by default
+<span class="dim">  4.</span> <span class="bad">contradicted</span> <span class="dim">(0.95)</span>  Multi-agent setups always outperform single-agent
+<span class="dim">  5.</span> <span class="ok">supported   </span> <span class="dim">(0.86)</span>  Skills are versioned, auditable capabilities
+<span class="dim">  6.</span> <span class="nf">not_found   </span> <span class="dim">(0.90)</span>  Anthropic was acquired by Microsoft in 2026
+<span class="dim">  7.</span> <span class="ok">supported   </span> <span class="dim">(0.94)</span>  Tool use is more reliable than JSON-mode for structured output
+
+<span class="cmt"># 4. Inspect, replay, or approve any decision later.</span>
+<span class="pr">$</span> <span class="cmd">orc trace show 01KR1NH…</span>
+<span class="pr">$</span> <span class="cmd">orc replay 01KR1NH… --live</span></div>
+</article>
+</div>
+
+<!-- ═══ section: scenario / artifact ═════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_06</b> · the artifact · customer-trace exhibit attached</div>
+
+<article class="claim" id="claim-06" data-claim="06" data-verdict="ok" data-score="0.89">
+  <header class="claim-head">
+    <span class="claim-id">claim_06</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Orc produces an artifact that survives review.</h2>
+  <p class="claim-body">
+    Capability decides whether you can do the work today. <em>Discipline decides whether the work still holds up
+    when somebody comes back and asks.</em> Supporting exhibit attached — a customer trace, anonymized, replayable.
+  </p>
+
+  <div class="exhibit-attach">
+    <div class="ex-head">
+      <span>exhibit_A · pinegate capital · trace 01KR8Z3M2KFR0YV9</span>
+      <span class="id">friday 4:47 PM · $24M trade · 73 min window</span>
+    </div>
+    <div class="ex-body">
+      <div class="ex-title">A $24M trade. 73 minutes. Two paths.</div>
+      <p class="ex-deck">Sarah Chen runs equity research. Defense-tech earnings just dropped; the CEO claimed <em>"production tripled YoY, backlog at record highs."</em> The PM wants $24M in the name by Monday open. She has until 6 PM to deliver a note answering one question: does the claim hold up against everything they've previously said?</p>
+
+      <div class="ex-meta">
+        <div class="m"><div class="v">$24M</div><div class="k">position size</div></div>
+        <div class="m"><div class="v">73 min</div><div class="k">to deadline</div></div>
+        <div class="m"><div class="v">47</div><div class="k">corpus items</div></div>
+        <div class="m"><div class="v">6 mo</div><div class="k">to audit</div></div>
+      </div>
+
+      <div class="ex-scrolly" id="ex-scrolly">
+
+        <div class="ex-step" data-exstep="0">
+          <div class="step-head"><span class="t">4:47 PM</span> · earnings call ends</div>
+          <h4>One quote. One window. Two paths.</h4>
+          <p>Sarah pulls eight transcripts and four filings. From here the story forks. <em>Path A:</em> a fresh Claude session. <em>Path B:</em> the Orc workspace research-ops has maintained since Q2.</p>
+        </div>
+
+        <div class="ex-step path-a" data-exstep="1">
+          <div class="step-head"><span class="t">4:58 PM</span> · claim isolated <span class="path a">PATH A · claude code</span></div>
+          <h4>Right answer. No artifact.</h4>
+          <p>Claude reads, summarizes, gives plausible quotes. Sarah catches a paraphrase — <em>"approximately 3x"</em> rendered as <em>"tripled."</em> Catches a buried Q3 backlog decline. Writes the note. Sends at 6:04 PM.</p>
+        </div>
+
+        <div class="ex-step path-b" data-exstep="2">
+          <div class="step-head"><span class="t">5:11 PM</span> · 31s of compute <span class="path b">PATH B · orc</span></div>
+          <h4>Right answer. Defensible artifact.</h4>
+          <div class="ex-term"><span class="pr">$</span> <span class="cmd">orc verify "Production tripled YoY, backlog at record highs" \
+   --workspace defense-tech --json &gt; memo.json</span>
+
+<span class="part">PARTIAL  </span><span class="dim">confidence=0.74  run_id=01KR8Z3M…</span>
+<span class="ok">supported by</span> Q4 2024 10-K <span class="dim">chunk_01KR8Z…</span>
+<span class="bad">contradicted by</span> Q3 2025 call  <span class="dim">chunk_01KR4P…</span>
+
+<span class="dim">  reasoning: 10-K confirms tripled production. Q3 call states</span>
+<span class="dim">  backlog declined 8% — "record highs" is not supported.</span></div>
+          <p>Four trace IDs attached to the analyst note. Sent <strong>5:11 PM</strong>. Trade goes on Monday.</p>
+        </div>
+
+        <div class="ex-step" data-exstep="3">
+          <div class="step-head"><span class="t">+6 months</span> · compliance pulls the file</div>
+          <h4>"How do we know the AI didn't hallucinate the supporting quotes?"</h4>
+          <div class="ex-pair">
+            <div class="side a">
+              <div class="label">PATH A · audit</div>
+              <p>Claude session gone. Word doc has paraphrases. SEC review adds a footnote: <em>"evidence chain could not be reconstructed."</em></p>
+            </div>
+            <div class="side b">
+              <div class="label">PATH B · audit</div>
+              <p>Compliance runs <code>orc replay 01KR8Z…</code>. Same retrieval set, same chunks, same verdict. Review closes clean.</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
-</section>
+</article>
+</div>
 
-<section id="discipline">
-  <div class="container">
-    <div class="eyebrow">The discipline</div>
-    <h2>Four invariants the runtime enforces by construction.</h2>
-    <p class="lede">
-      Most "AI safety" tooling layers checks on top of generation. Orc inverts that — the architecture
-      makes failure modes structurally impossible, not just unlikely.
-    </p>
+<!-- ═══ section: pattern repeats ════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>group_07</b> · the shape repeats · 3 sub-claims</div>
 
-    <div class="features">
-      <div class="feature">
-        <div class="num">01 — Citations</div>
-        <h3>Cannot fabricate sources.</h3>
-        <p>Every chunk ID Orc returns is validated against the actual retrieval set. Hallucinated citations are dropped before the verdict reaches you. The model is structurally prevented from inventing a source.</p>
+<article class="claim" id="claim-07" data-claim="07" data-verdict="ok" data-score="0.84">
+  <header class="claim-head">
+    <span class="claim-id">claim_07</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">The same shape pays off wherever an answer has to survive a second look.</h2>
+
+  <div class="subclaim-list">
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">case_01<br><b>editorial</b></div>
+      <div class="sbody">
+        <div class="stitle">Your weekly publication, six months in.</div>
+        <div class="sdesc">A reader screenshots a paragraph: "this contradicts what you wrote in March." Replay the verification, surface the citation, correct or defend — with receipts.</div>
+        <div class="scite">stakes · credibility · reader trust</div>
       </div>
-      <div class="feature">
-        <div class="num">02 — Architecture</div>
-        <h3>Stateless skills, durable context.</h3>
-        <p>Skills are pure functions with explicit input/output contracts. No agent identities, no persistent personas, no emergent coordination. Persistence lives in the workspace — not in the agents — so behavior is auditable and reproducible.</p>
-      </div>
-      <div class="feature">
-        <div class="num">03 — Replay</div>
-        <h3>Every run is reconstructable.</h3>
-        <p>Every CLI or MCP call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. <code>orc replay &lt;run_id&gt;</code> re-executes the exact decision against the same corpus snapshot. Months later. Same answer. Same evidence.</p>
-      </div>
-      <div class="feature">
-        <div class="num">04 — Approval</div>
-        <h3>Analysis ≠ action.</h3>
-        <p>Anything that would mutate the outside world lands in the approval queue first. Humans accept or reject with a note. Write paths run as separate processes with separate tokens. The blast radius of a compromised agent is, by design, zero.</p>
-      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
     </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">case_02<br><b>legal</b></div>
+      <div class="sbody">
+        <div class="stitle">A brief due tomorrow, 47 cited cases.</div>
+        <div class="sdesc">Run the brief through Orc against the firm's case corpus. Every cited authority either resolves to a real chunk or doesn't. Hallucinated citations cannot get past the structural check.</div>
+        <div class="scite">stakes · malpractice · sanctions</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">case_03<br><b>ad ops</b></div>
+      <div class="sbody">
+        <div class="stitle">An AI recommends pausing Campaign 17.</div>
+        <div class="sdesc">Orc verifies the recommendation against the underlying ad data first. Approved items go to the queue; the mutation requires human signoff.</div>
+        <div class="scite">stakes · $$$ · account integrity</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
   </div>
-</section>
+</article>
+</div>
 
-<section id="how">
-  <div class="container">
-    <div class="eyebrow">How it works</div>
-    <h2>A workspace. A corpus. A claim. <em>Receipts.</em></h2>
-    <p class="lede">
-      The whole loop in four commands. Storage is local SQLite under <code>~/.orc/</code>. Bring your own
-      Anthropic key, OpenRouter key, or local model. The CLI is the same surface other agents see through MCP.
-    </p>
+<script src="trace.js"></script>
+</main>
 
-    <div class="terminal">
-      <div class="terminal-bar">
-        <span class="dot-circle"></span>
-        <span class="dot-circle"></span>
-        <span class="dot-circle"></span>
-        <span class="title">~/orc — the four-step loop</span>
-      </div>
-      <pre><span class="dim"># 1. A workspace is a trust boundary. One per matter, project, or topic.</span>
-<span class="prompt">$</span> <span class="cmd">orc workspace create research</span>
-<span class="ok">Created workspace</span> research
-
-<span class="dim"># 2. Ingest evidence: files, directories, or URLs. Markdown, txt, json.</span>
-<span class="prompt">$</span> <span class="cmd">orc ingest ./notes -w research</span>
-<span class="prompt">$</span> <span class="cmd">orc ingest https://www.anthropic.com/engineering/multi-agent-research-system -w research</span>
-<span class="ok">Ingested</span> 14 evidence items into research
-
-<span class="dim"># 3. Verify any claim. Or pipe a whole draft through.</span>
-<span class="prompt">$</span> <span class="cmd">orc verify --file draft.md -w research --yes</span>
-<span class="dim">7 claims extracted from draft.md. Verifying...</span>
-
-  1. <span class="ok">supported</span>      (0.92)  Anthropic released the Skills API in October 2025
-  2. <span class="warn">partial</span>        (0.71)  The multi-agent eval delta was 90.2%
-  3. <span class="ok">supported</span>      (0.88)  Prompt caching has a 5-minute ephemeral TTL by default
-  4. <span class="bad">contradicted</span>   (0.95)  Multi-agent setups always outperform single-agent
-  5. <span class="ok">supported</span>      (0.86)  Skills are versioned, auditable capabilities
-  6. <span class="warn">not_found</span>      (0.90)  Anthropic was acquired by Microsoft in 2026
-  7. <span class="ok">supported</span>      (0.94)  Tool use is more reliable than JSON-mode for structured output
-
-<span class="dim"># 4. Inspect, replay, or approve any decision later.</span>
-<span class="prompt">$</span> <span class="cmd">orc trace show </span><span class="id">01KR1NH...</span>
-<span class="prompt">$</span> <span class="cmd">orc replay </span><span class="id">01KR1NH...</span><span class="cmd"> --live</span></pre>
+<aside class="ledger-wrap">
+  <div class="ledger" id="ledger">
+    <div class="ledger-head">
+      <span>trace ledger</span>
+      <span class="progress"><span id="led-progress">0</span>/<span id="led-total">0</span></span>
     </div>
+    <ul id="ledger-list"></ul>
+    <div class="ledger-foot">click row to jump · pass requires ✗ ≤ 0 unresolved</div>
   </div>
-</section>
+</aside>
 
-<section id="scenario">
-  <div class="container">
-    <div class="eyebrow">A real scenario</div>
-    <h2>Friday, 4:47 PM. <em>A $24M trade. 73 minutes.</em></h2>
-    <p class="lede">
-      Sarah Chen runs equity research at Pinegate Capital. The defense-tech company her PM has been
-      watching just dropped earnings. On the call, the CEO claimed: <em>"Production has tripled
-      year-over-year, with backlog at record highs."</em> The PM wants $24M in the name by Monday open.
-      Sarah has until 6 PM to deliver an analyst note that answers <em>one</em> question: does the CEO's
-      claim hold up against everything they've previously said?
-    </p>
-
-    <div class="scenario-meta">
-      <div><strong>$24M</strong>position size</div>
-      <div><strong>73 min</strong>to deadline</div>
-      <div><strong>47</strong>evidence items in corpus</div>
-      <div><strong>6 months</strong>until compliance audit</div>
-    </div>
-
-    <div class="split">
-      <div class="col bad">
-        <div class="label">Path A · Claude Code</div>
-        <h3>Right answer. No artifact.</h3>
-        <ol>
-          <li>Sarah drops 8 transcripts + 4 filings into a folder, asks Claude to verify.</li>
-          <li><strong>Claude reads them, summarizes, gives plausible quotes.</strong> She cross-checks one and catches a paraphrase ("approximately 3x" was rendered as "tripled"). Fixes it.</li>
-          <li>Second pass: Claude finds a Q3 transcript that <em>mentions</em> backlog. The actual passage says backlog declined 8% — Claude buried it as "discussed backlog trends." She catches it.</li>
-          <li>She writes the note. Sends at 6:04 PM. Trade goes on Monday.</li>
-        </ol>
-        <div class="outcome">
-          <span class="verdict">Six months later · Compliance review</span>
-          The compliance officer pulls the trade memo. He asks: <em>"How do we know the AI didn't
-          hallucinate the supporting quotes?"</em> The Claude Code session is gone. Sarah's Word doc has
-          hand-copied passages — no way to prove faithful transcription. The annual SEC review adds a
-          footnote: <em>"evidence chain could not be reconstructed for audit purposes."</em> The CCO has a
-          Monday morning meeting.
-        </div>
-      </div>
-
-      <div class="col good">
-        <div class="label">Path B · Orc</div>
-        <h3>Right answer. Defensible artifact.</h3>
-        <ol>
-          <li>Pinegate research-ops maintains an Orc workspace per ticker — 47 evidence items already loaded, kept current automatically.</li>
-          <li><strong><code>orc verify "..." --workspace defense-tech --json &gt; memo.json</code></strong></li>
-          <li>31 seconds later: <code>PARTIAL · 0.74</code>. Supported by Q4 2024 10-K (specific chunk). Contradicted by Q3 2025 backlog passage (specific chunk).</li>
-          <li>She attaches four trace IDs to the analyst note. Sent at 5:11 PM. Trade goes on Monday.</li>
-        </ol>
-        <div class="outcome">
-          <span class="verdict">Six months later · Compliance review</span>
-          The compliance officer pulls the trade memo, copies the trace ID, runs
-          <code>orc replay 01KR8Z...</code>. The exact same retrieval set comes back. The same chunks. The
-          same verdict. Chunk IDs are structurally guaranteed to point at real passages — Orc cannot return
-          a chunk that doesn't exist in retrieval. <strong>The evidence chain reconstructs in seconds. Review
-          closes clean.</strong>
-        </div>
-      </div>
-    </div>
-
-    <div class="scenario-payoff">
-      <p>
-        Claude Code can <em>answer the question correctly.</em> Orc produces <em>an artifact that survives
-        review.</em> For one-off tasks the distinction is invisible. For any workflow where the question
-        gets asked repeatedly, audited, shared, or replayed — the artifact is more valuable than the answer.
-      </p>
-    </div>
-
-    <div style="margin-top: 80px;">
-      <div class="eyebrow">Same pattern, different stakes</div>
-      <h2 style="font-size: 30px;">Other places this shape pays off.</h2>
-
-      <div class="mini-scenarios">
-        <div class="mini">
-          <div class="role">Editorial</div>
-          <h3>Your weekly publication, six months in.</h3>
-          <p>A reader screenshots a paragraph: "this contradicts what you wrote in March." With an Orc workspace of your published catalog, you replay the verification, surface the citation, and either correct the record or defend the original — with receipts.</p>
-          <div class="stakes">Stakes: credibility, reader trust</div>
-        </div>
-        <div class="mini">
-          <div class="role">Legal</div>
-          <h3>A brief due tomorrow, 47 cited cases.</h3>
-          <p>The partner asks "does Roe v. Wade actually support our framing here?" Run the brief through Orc against the firm's case corpus. Every cited authority either resolves to a real chunk or doesn't. Hallucinated citations cannot get past the structural check.</p>
-          <div class="stakes">Stakes: malpractice, sanctions</div>
-        </div>
-        <div class="mini">
-          <div class="role">Ad ops</div>
-          <h3>An AI recommends pausing Campaign 17.</h3>
-          <p>Before you act, Orc verifies the recommendation against the underlying ad data. The proposed CTR drop is grounded in real numbers from real reports — or it isn't. Approved items go to the queue; the actual mutation requires a human signoff.</p>
-          <div class="stakes">Stakes: $$$, account integrity</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="compare">
-  <div class="container">
-    <div class="eyebrow">How it differs</div>
-    <h2>Not another agent framework.</h2>
-    <p class="lede">
-      Most AI tooling optimizes for capability. Orc optimizes for the parts that matter when an answer has
-      to be reviewed, audited, or defended.
-    </p>
-
-    <table class="compare">
-      <thead>
-        <tr>
-          <th></th>
-          <th style="color: var(--accent);">Orc</th>
-          <th>Generic agent framework</th>
-          <th>Direct LLM chat</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="label">Source of truth</td>
-          <td class="orc">A corpus you own and curate</td>
-          <td class="other">Whatever the agent can fetch or recall</td>
-          <td class="other">Training data + web search</td>
-        </tr>
-        <tr>
-          <td class="label">Fabricated citations</td>
-          <td class="orc">Structurally impossible</td>
-          <td class="other">Common; prompt-mitigated at best</td>
-          <td class="other">A known recurring failure mode</td>
-        </tr>
-        <tr>
-          <td class="label">Replay a past decision</td>
-          <td class="orc">First-class, deterministic</td>
-          <td class="other">Best-effort logs</td>
-          <td class="other">Not possible</td>
-        </tr>
-        <tr>
-          <td class="label">Output shape</td>
-          <td class="orc">Structured JSON with provenance</td>
-          <td class="other">Conversational text</td>
-          <td class="other">Conversational text</td>
-        </tr>
-        <tr>
-          <td class="label">Approval gates</td>
-          <td class="orc">Built in. Nothing mutates without sign-off.</td>
-          <td class="other">DIY</td>
-          <td class="other">N/A</td>
-        </tr>
-        <tr>
-          <td class="label">Deployment</td>
-          <td class="orc">Self-hosted CLI + MCP. No data leaves your machine.</td>
-          <td class="other">Mixed</td>
-          <td class="other">Cloud</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section id="moat">
-  <div class="container">
-    <div class="eyebrow">The moat</div>
-    <h2>Capability scaling eats cleverness. <em>It doesn't eat discipline.</em></h2>
-    <p class="lede">
-      Anything that's clever today gets absorbed into the next model. So Orc bets on the things that
-      <em>don't</em> erode when GPT-6 or Claude 5 ships. Each one of these gets <em>more</em> valuable as
-      raw capability rises — because the gap between "capable model" and "defensible deployment" widens
-      with every new frontier release.
-    </p>
-
-    <div class="features" style="margin-top: 48px;">
-      <div class="feature">
-        <div class="num">Moat 01</div>
-        <h3>Owned evidence compounds.</h3>
-        <p>Bigger models don't know your firm's matters, your published catalog, your meter data, your client documents. The corpus is your asset, and the verification quality grows with what you ingest — not with the model vendor's roadmap.</p>
-      </div>
-      <div class="feature">
-        <div class="num">Moat 02</div>
-        <h3>Structural impossibility, not prompt mitigation.</h3>
-        <p>Hallucinated citations aren't prevented by asking the model nicely. They're prevented because the data structure refuses to return chunk IDs that don't exist in retrieval. That guarantee doesn't depend on the model getting smarter — it's an architectural choice.</p>
-      </div>
-      <div class="feature">
-        <div class="num">Moat 03</div>
-        <h3>Audit infrastructure is engineering, not intelligence.</h3>
-        <p>Trace + replay are operational discipline. Any AI system deployed in a regulated workflow needs them. Most tooling skips them. The gap is engineering investment, not model capability — frontier scaling doesn't close it.</p>
-      </div>
-      <div class="feature">
-        <div class="num">Moat 04</div>
-        <h3>Blast-radius bounded by construction.</h3>
-        <p>Write paths run in separate processes with separate tokens. Approval queues sit between analysis and action. Even as agents become more capable, the maximum damage from a compromised or hijacked agent stays at zero. That's a contract, not a precaution.</p>
-      </div>
-      <div class="feature">
-        <div class="num">Moat 05</div>
-        <h3>Directives compound across verticals.</h3>
-        <p>Research today. Legal next. Marketing analytics after that. Each new directive shares the same primitives — skills, traces, verification, approvals — and the deployment surface grows without diluting the architecture. Each customer's directive library is theirs.</p>
-      </div>
-      <div class="feature">
-        <div class="num">Moat 06</div>
-        <h3>Switching costs once deployed.</h3>
-        <p>Once a team's traces, approval history, and curated corpus live in Orc, replacing it means losing months of accumulated audit material and tuned verification. That's not lock-in by feature gating — it's lock-in by the value of what you've already built inside.</p>
-      </div>
-    </div>
-
-    <blockquote class="pull" style="margin-top: 72px;">
-      "The version that wins is narrow, deep, instrumented, and evidence-bound."
-      <cite>— from the Orc reference architecture</cite>
-    </blockquote>
-  </div>
-</section>
-
-<section id="install">
-  <div class="container">
-    <div class="eyebrow">Install</div>
-    <h2>One command. <em>Local, free, MIT-licensed.</em></h2>
-    <p class="lede">
-      Orc is local-first by design. Your evidence stays on your machine. Your traces never leave. The CLI
-      is the same surface that other agents see through MCP. Bring your own Anthropic key, OpenRouter key,
-      or local model.
-    </p>
-
-    <div class="install-block">
-      <div>
-        <code class="line"><span class="prompt">$</span>uv pip install orc</code>
-        <p style="margin-top: 16px;">Python 3.11+. Works on macOS, Linux, WSL.</p>
-      </div>
-      <div>
-        <p>
-          After install: <code style="color: var(--text);">orc workspace create research</code>, then
-          <code style="color: var(--text);">orc ingest &lt;file-or-url&gt;</code>, then
-          <code style="color: var(--text);">orc verify "&lt;claim&gt;"</code>. Or run
-          <code style="color: var(--text);">orc mcp serve</code> and plug it into Claude Code with
-          <code style="color: var(--text);">claude mcp add orc</code>.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="access">
-  <div class="container">
-    <div class="eyebrow">Beyond the CLI</div>
-    <h2>For teams and regulated workflows.</h2>
-    <p class="lede">
-      The CLI is the same in every tier. Hosted and Enterprise add deployment, integrations, and review
-      surfaces around the same runtime.
-    </p>
-
-    <div class="tiers">
-      <div class="tier">
-        <div class="tier-name">Open CLI</div>
-        <div class="tier-price">$0<span class="per"> / forever</span></div>
-        <div class="tier-blurb">For individuals and developers who want the verification discipline locally. MIT-licensed.</div>
-        <ul>
-          <li>Full CLI: workspace, ingest, verify, research, trace, replay, approve</li>
-          <li>MCP server for Claude Code / Codex integration</li>
-          <li>Local SQLite storage, your own data</li>
-          <li>Bring your own Anthropic or OpenRouter key</li>
-          <li>Trace + replay; approval queue</li>
-        </ul>
-        <a class="btn btn-secondary" href="#install">Get the CLI</a>
-      </div>
-
-      <div class="tier featured">
-        <div class="tier-name">Hosted &nbsp;·&nbsp; early access</div>
-        <div class="tier-price">$39<span class="per"> / mo</span></div>
-        <div class="tier-blurb">For teams who want a managed runtime, scheduled verification, and a review surface for non-engineers.</div>
-        <ul>
-          <li>Everything in Open CLI</li>
-          <li>Hosted workspaces with managed backups</li>
-          <li>Web dashboard for approval queue + trace review</li>
-          <li>Scheduled verification runs (e.g. nightly draft checks)</li>
-          <li>Team workspaces and role-scoped access</li>
-        </ul>
-        <a class="btn btn-primary" href="mailto:thormatt@gmail.com?subject=Orc%20Hosted%20-%20Early%20Access">Request access</a>
-      </div>
-
-      <div class="tier">
-        <div class="tier-name">Enterprise</div>
-        <div class="tier-price">Contact<span class="per"> / annual</span></div>
-        <div class="tier-blurb">For legal, finance, healthcare, and regulated workflows. Local model support, SSO, audit export, deployment in your VPC.</div>
-        <ul>
-          <li>Self-hosted in your VPC or on-prem</li>
-          <li>Local-model integration (no cloud LLM required)</li>
-          <li>SSO, role-based access, audit log export</li>
-          <li>White-glove onboarding and directive customization</li>
-          <li>Priority support and a named engineer</li>
-        </ul>
-        <a class="btn btn-secondary" href="mailto:thormatt@gmail.com?subject=Orc%20Enterprise%20-%20Inquiry">Talk to us</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="faq">
-  <div class="container">
-    <div class="eyebrow">Common questions</div>
-    <h2>The honest answers.</h2>
-
-    <div class="faq">
-      <details>
-        <summary>Where does the name "Orc" come from?</summary>
-        <div class="answer">
-          Short for <em>orchestration</em>. The architectural distinctive is that Orc spawns bounded
-          sub-skills as tools (the orchestrator-worker pattern from Anthropic's own multi-agent research
-          system) — never free-form agents talking to each other. Each sub-skill runs in its own Run,
-          writes its own trace, returns a structured output, and exits. The orchestration is the moat
-          underneath the verification.
-        </div>
-      </details>
-      <details>
-        <summary>Why not just use Claude Code or ChatGPT directly?</summary>
-        <div class="answer">
-          For one-off questions, you should. Direct LLM chat is faster and free. Orc is for the cases where
-          you need: (a) a permanent paper trail you can audit later, (b) a stable trust boundary so the
-          answer comes only from sources you've vetted, (c) bulk verification of a draft or a critique, or
-          (d) integration into a programmatic workflow with structured JSON output. Think of Claude as the
-          smart friend who's read a lot. Orc is your librarian who only answers from the books you put on
-          the shelf.
-        </div>
-      </details>
-      <details>
-        <summary>Which models does Orc use?</summary>
-        <div class="answer">
-          Anthropic Claude models by default — directly via the Anthropic API or routed through OpenRouter,
-          whichever you have credentials for. Local model support (vLLM, Ollama) is on the Enterprise tier
-          for deployments where data can't leave the network.
-        </div>
-      </details>
-      <details>
-        <summary>Is the CLI open source?</summary>
-        <div class="answer">
-          Yes. The CLI, the verification skills, and the trace/replay layer are MIT-licensed. The hosted
-          dashboard and enterprise integrations are commercial.
-        </div>
-      </details>
-      <details>
-        <summary>What's the alternative to me writing fact-checking myself?</summary>
-        <div class="answer">
-          That's the point. Orc is the runtime so you don't have to glue together retrieval, citation
-          validation, prompt-cache discipline, traces, and approval queues for every workflow that needs
-          verification. Bring evidence, get receipts.
-        </div>
-      </details>
-      <details>
-        <summary>What does Orc not do?</summary>
-        <div class="answer">
-          It doesn't generate freeform content unconstrained by evidence. It doesn't take autonomous
-          external actions — only proposes them for human approval. It doesn't search the open web on its
-          own; it only knows what you ingest. These are deliberate constraints, not gaps.
-        </div>
-      </details>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="container foot-inner">
-    <div>
-      <span class="logo">orc<span class="dot">.</span></span>
-      <span style="margin-left: 14px; color: var(--text-dim);">© 2026</span>
-    </div>
-    <div>
-      <a href="https://github.com/">GitHub</a>
-      <a href="mailto:thormatt@gmail.com">Contact</a>
-      <a href="https://aiwithoutthehype.com/">AI Without the Hype</a>
-    </div>
-  </div>
-</footer>
+</div>
 
 </body>
 </html>
