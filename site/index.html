@@ -511,13 +511,230 @@
     footer a { color: var(--text-mute); margin-left: 22px; }
     footer a:hover { color: var(--text); }
 
+    /* Audience tag under hero */
+    .audience-tag {
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+    .audience-tag strong {
+      color: var(--text-mute);
+      font-weight: 500;
+    }
+
+    /* Audience cards */
+    .audience-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-top: 56px;
+    }
+    .persona {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 30px 28px;
+      position: relative;
+    }
+    .persona .role {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent-soft);
+      margin-bottom: 14px;
+    }
+    .persona h3 { margin: 0 0 14px; font-size: 20px; }
+    .persona .pain {
+      color: var(--text-mute);
+      font-size: 14.5px;
+      line-height: 1.55;
+      margin: 0 0 16px;
+      font-style: italic;
+    }
+    .persona .relief {
+      color: var(--text);
+      font-size: 14.5px;
+      line-height: 1.55;
+      margin: 0;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .persona .relief strong { color: var(--accent); }
+
+    /* Scenario — Sarah's Friday (before/after) */
+    .scenario-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      margin-top: 32px;
+      padding: 20px 28px;
+      background: var(--bg-elev);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+    .scenario-meta div { color: var(--text-mute); }
+    .scenario-meta div strong {
+      color: var(--text);
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 18px;
+      display: block;
+      margin-bottom: 2px;
+      font-weight: 500;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 48px;
+    }
+    .col {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 30px 28px;
+      background: var(--bg-elev);
+    }
+    .col.bad {
+      background: linear-gradient(180deg, rgba(196,111,90,0.04), transparent 50%), var(--bg-elev);
+      border-color: rgba(196,111,90,0.25);
+    }
+    .col.good {
+      background: linear-gradient(180deg, rgba(212,165,90,0.06), transparent 50%), var(--bg-elev);
+      border-color: rgba(212,165,90,0.35);
+    }
+    .col .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .col.bad  .label { color: var(--red); }
+    .col.good .label { color: var(--accent); }
+    .col h3 { font-size: 20px; margin: 0 0 18px; }
+    .col ol {
+      padding-left: 18px;
+      margin: 0 0 18px;
+      color: var(--text-mute);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .col ol li { padding: 6px 0; }
+    .col ol li strong { color: var(--text); font-weight: 500; }
+    .col .outcome {
+      margin-top: 18px;
+      padding: 18px 0 0;
+      border-top: 1px solid var(--border);
+      font-size: 14.5px;
+      line-height: 1.55;
+    }
+    .col.bad  .outcome { color: var(--text-mute); }
+    .col.good .outcome { color: var(--text); }
+    .col .outcome .verdict {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .col.bad  .outcome .verdict { color: var(--red); }
+    .col.good .outcome .verdict { color: var(--green); }
+
+    .scenario-payoff {
+      margin-top: 48px;
+      padding: 32px 36px;
+      border: 1px solid var(--accent-soft);
+      border-radius: 6px;
+      background: linear-gradient(180deg, rgba(212,165,90,0.05), transparent 60%);
+    }
+    .scenario-payoff p {
+      margin: 0;
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: 21px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+    .scenario-payoff em { color: var(--accent); font-style: italic; }
+
+    /* Mini scenarios */
+    .mini-scenarios {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      margin-top: 56px;
+    }
+    .mini {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 26px;
+    }
+    .mini .role {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-soft);
+      margin-bottom: 10px;
+    }
+    .mini h3 { font-size: 17px; margin: 0 0 12px; }
+    .mini p {
+      color: var(--text-mute);
+      font-size: 13.5px;
+      line-height: 1.55;
+      margin: 0;
+    }
+    .mini .stakes {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Install block */
+    .install-block {
+      margin: 56px 0 0;
+      padding: 36px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .install-block code.line {
+      display: block;
+      background: var(--bg-code);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      padding: 18px 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .install-block code.line .prompt { color: var(--accent-soft); margin-right: 10px; }
+    .install-block p { color: var(--text-mute); font-size: 14.5px; line-height: 1.55; margin: 0; }
+
     /* Responsive */
     @media (max-width: 760px) {
       h1 { font-size: 40px; }
       h2 { font-size: 30px; }
       .hero { padding: 56px 0 48px; }
       section { padding: 64px 0; }
-      .stats, .features, .cards, .tiers { grid-template-columns: 1fr; }
+      .stats, .features, .cards, .tiers, .audience-grid, .split,
+      .mini-scenarios, .install-block { grid-template-columns: 1fr; }
+      .scenario-payoff p { font-size: 17px; }
+      .scenario-meta { gap: 16px; padding: 16px 18px; }
       .features { gap: 1px; }
       .nav-right a { margin-left: 16px; }
       .nav-right a:not(.cta) { display: none; }
@@ -530,11 +747,11 @@
   <div class="container nav-inner">
     <div class="logo">orc<span class="dot">.</span></div>
     <div class="nav-right">
-      <a href="#how">How it works</a>
-      <a href="#example">Example</a>
+      <a href="#audience">Who it's for</a>
+      <a href="#scenario">Scenario</a>
       <a href="#moat">Moat</a>
-      <a href="#access">Access</a>
-      <a class="cta" href="#access">Request access</a>
+      <a href="#install">Install</a>
+      <a class="cta" href="#install">Get the CLI</a>
     </div>
   </div>
 </nav>
@@ -549,8 +766,13 @@
       isn't good enough.
     </p>
     <div class="hero-cta">
-      <a class="btn btn-primary" href="#access">Request early access</a>
-      <a class="btn btn-secondary" href="#how">See how it works</a>
+      <a class="btn btn-primary" href="#install">Install the CLI</a>
+      <a class="btn btn-secondary" href="#scenario">See it in action</a>
+    </div>
+
+    <div class="audience-tag">
+      <span>Built for:</span>
+      <strong>research analysts · editorial teams · compliance &amp; legal · agentic-workflow engineers</strong>
     </div>
 
     <div class="terminal">
@@ -578,6 +800,74 @@ the claim's wording is slightly broader than the corpus supports.
     </div>
   </div>
 </header>
+
+<section id="audience">
+  <div class="container">
+    <div class="eyebrow">Who Orc is for</div>
+    <h2>Built for the work where <em>"the model said so"</em> doesn't survive review.</h2>
+    <p class="lede">
+      If your AI workflow has someone — a partner, a compliance officer, a regulator, a reader — who can
+      come back six months later and ask <em>"prove it"</em>, Orc is for you. If it doesn't, you probably
+      don't need this. We'd rather be honest than oversold.
+    </p>
+
+    <div class="audience-grid">
+      <div class="persona">
+        <div class="role">Research &amp; financial analysis</div>
+        <h3>The analyst who has to defend a trade.</h3>
+        <p class="pain">
+          "I asked an AI, it said yes, the trade went on. Six months later compliance wants the evidence
+          chain. The chat is gone."
+        </p>
+        <p class="relief">
+          Orc workspaces store every verification as a replayable trace. Compliance reconstructs the
+          evidence chain in seconds. <strong>The work product is the artifact, not the answer.</strong>
+        </p>
+      </div>
+
+      <div class="persona">
+        <div class="role">Editorial &amp; research publishing</div>
+        <h3>The writer who can't contradict themselves.</h3>
+        <p class="pain">
+          "I publish weekly. Did this draft accidentally argue against something I wrote in March? Are
+          these statistics actually in the cited paper? I have an hour and no fact-checker."
+        </p>
+        <p class="relief">
+          <code>orc verify --file draft.md</code> runs every claim against your published catalog and your
+          vetted sources. Self-contradiction surfaces before the reader finds it.
+          <strong>Editorial discipline by default.</strong>
+        </p>
+      </div>
+
+      <div class="persona">
+        <div class="role">Legal, compliance, regulated</div>
+        <h3>The associate who can't risk a hallucinated citation.</h3>
+        <p class="pain">
+          "Mata v. Avianca made fabricated citations a sanctionable offense. I can't ship a brief that
+          cites a case the AI invented. But I also can't read every cited authority cold."
+        </p>
+        <p class="relief">
+          Chunk IDs are structurally validated against retrieval — Orc <em>cannot</em> return a citation
+          that doesn't exist in your authority corpus. Every claim traces to a paragraph in a real source.
+          <strong>Defensible work product, by construction.</strong>
+        </p>
+      </div>
+
+      <div class="persona">
+        <div class="role">Engineering — agentic workflows</div>
+        <h3>The engineer building bounded agents.</h3>
+        <p class="pain">
+          "I want agents that analyze, recommend, and queue actions — not agents that take autonomous
+          actions and surprise me. Every agent framework I've tried lets them go off the rails."
+        </p>
+        <p class="relief">
+          Skills are pure functions. Subagents are tools, not personalities. Action-taking calls go through
+          the approval queue. <strong>Bounded by construction, not by prompt.</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section id="problem">
   <div class="container">
@@ -685,80 +975,96 @@ the claim's wording is slightly broader than the corpus supports.
   </div>
 </section>
 
-<section id="example">
+<section id="scenario">
   <div class="container">
-    <div class="eyebrow">A real example</div>
-    <h2>One critique. Seven claims. <em>Thirty seconds.</em></h2>
+    <div class="eyebrow">A real scenario</div>
+    <h2>Friday, 4:47 PM. <em>A $24M trade. 73 minutes.</em></h2>
     <p class="lede">
-      A long critique lands in your inbox: seven confident-sounding claims, four citations, three specific
-      statistics. Two citations look real. One date doesn't match what you remember. Before Orc, you spend
-      an hour Googling — half of it inconclusive. Now you do this:
+      Sarah Chen runs equity research at Pinegate Capital. The defense-tech company her PM has been
+      watching just dropped earnings. On the call, the CEO claimed: <em>"Production has tripled
+      year-over-year, with backlog at record highs."</em> The PM wants $24M in the name by Monday open.
+      Sarah has until 6 PM to deliver an analyst note that answers <em>one</em> question: does the CEO's
+      claim hold up against everything they've previously said?
     </p>
 
-    <div class="terminal" style="margin-top: 40px;">
-      <div class="terminal-bar">
-        <span class="dot-circle"></span>
-        <span class="dot-circle"></span>
-        <span class="dot-circle"></span>
-        <span class="title">~/orc — auditing a 7-claim critique against trusted sources</span>
-      </div>
-      <pre><span class="prompt">$</span> <span class="cmd">orc workspace create critique-audit</span>
-<span class="prompt">$</span> <span class="cmd">orc ingest https://www.anthropic.com/engineering/multi-agent-research-system -w critique-audit</span>
-<span class="prompt">$</span> <span class="cmd">orc ingest ./trusted-papers -w critique-audit</span>
-<span class="ok">Ingested</span> 14 evidence items.
-
-<span class="prompt">$</span> <span class="cmd">orc verify --file critique.md -w critique-audit --yes</span>
-<span class="dim">7 claims extracted from critique.md. Verifying...</span>
-
-  1. <span class="ok">supported</span>      (0.92)  Multi-agent eval delta of 90.2% was reported by Anthropic
-  2. <span class="ok">supported</span>      (0.88)  Self-MoA paper exists and reports the cited benchmark
-  3. <span class="bad">contradicted</span>   (0.95)  The cited paper argues the OPPOSITE conclusion
-  4. <span class="warn">not_found</span>      (0.97)  No paper titled "ReliabilityBench" exists in the corpus
-  5. <span class="warn">not_found</span>      (0.93)  Cited date does not match the source's actual timeline
-  6. <span class="ok">supported</span>      (0.90)  Prompt caching has a 5-minute ephemeral TTL by default
-  7. <span class="warn">partial</span>        (0.71)  Claim is broader than the corpus supports
-
-<span class="dim">Summary:</span>  supported=3  partial=1  contradicted=1  not_found=2
-<span class="dim">Cost: $0.06  ·  Elapsed: 31s  ·  Trace: </span><span class="id">01KR8...</span></pre>
+    <div class="scenario-meta">
+      <div><strong>$24M</strong>position size</div>
+      <div><strong>73 min</strong>to deadline</div>
+      <div><strong>47</strong>evidence items in corpus</div>
+      <div><strong>6 months</strong>until compliance audit</div>
     </div>
 
-    <p class="lede" style="margin-top: 40px;">
-      The two <code>not_found</code> verdicts? One is a fabricated paper title. The other is a real paper
-      attributed to the wrong year. The <code>contradicted</code> claim cites a real paper that argues the
-      opposite of what the critique implies. You reply with three specific corrections, each with chunk-level
-      citations from the actual sources. The author concedes.
-    </p>
-    <p class="lede">
-      You save the article you'd have written if you'd taken the critique at face value.
-      <strong style="color: var(--text);">Total cost: $0.06. Time: under a minute. Credibility:
-      preserved.</strong>
-    </p>
-  </div>
-</section>
-
-<section id="use">
-  <div class="container">
-    <div class="eyebrow">Where it fits</div>
-    <h2>Built for the work where <em>"plausible"</em> isn't enough.</h2>
-
-    <div class="cards">
-      <div class="card">
-        <span class="tag">Pre-publish</span>
-        <h3>Fact-check your own writing.</h3>
-        <p>Ingest your published catalog. Run every draft through Orc before you ship. Catches self-contradiction with prior work, fabricated statistics, and citations that don't say what you assumed.</p>
-        <div class="example">orc verify --file draft.md -w aiwth</div>
+    <div class="split">
+      <div class="col bad">
+        <div class="label">Path A · Claude Code</div>
+        <h3>Right answer. No artifact.</h3>
+        <ol>
+          <li>Sarah drops 8 transcripts + 4 filings into a folder, asks Claude to verify.</li>
+          <li><strong>Claude reads them, summarizes, gives plausible quotes.</strong> She cross-checks one and catches a paraphrase ("approximately 3x" was rendered as "tripled"). Fixes it.</li>
+          <li>Second pass: Claude finds a Q3 transcript that <em>mentions</em> backlog. The actual passage says backlog declined 8% — Claude buried it as "discussed backlog trends." She catches it.</li>
+          <li>She writes the note. Sends at 6:04 PM. Trade goes on Monday.</li>
+        </ol>
+        <div class="outcome">
+          <span class="verdict">Six months later · Compliance review</span>
+          The compliance officer pulls the trade memo. He asks: <em>"How do we know the AI didn't
+          hallucinate the supporting quotes?"</em> The Claude Code session is gone. Sarah's Word doc has
+          hand-copied passages — no way to prove faithful transcription. The annual SEC review adds a
+          footnote: <em>"evidence chain could not be reconstructed for audit purposes."</em> The CCO has a
+          Monday morning meeting.
+        </div>
       </div>
-      <div class="card">
-        <span class="tag">Audit</span>
-        <h3>Verify what others claim.</h3>
-        <p>A critique arrives with confident statistics and made-up citations. Ingest your trusted sources. Orc tells you which claims are supported, contradicted, or not in the corpus — with the exact quote next to each verdict.</p>
-        <div class="example">orc verify "the claim" -w trusted</div>
+
+      <div class="col good">
+        <div class="label">Path B · Orc</div>
+        <h3>Right answer. Defensible artifact.</h3>
+        <ol>
+          <li>Pinegate research-ops maintains an Orc workspace per ticker — 47 evidence items already loaded, kept current automatically.</li>
+          <li><strong><code>orc verify "..." --workspace defense-tech --json &gt; memo.json</code></strong></li>
+          <li>31 seconds later: <code>PARTIAL · 0.74</code>. Supported by Q4 2024 10-K (specific chunk). Contradicted by Q3 2025 backlog passage (specific chunk).</li>
+          <li>She attaches four trace IDs to the analyst note. Sent at 5:11 PM. Trade goes on Monday.</li>
+        </ol>
+        <div class="outcome">
+          <span class="verdict">Six months later · Compliance review</span>
+          The compliance officer pulls the trade memo, copies the trace ID, runs
+          <code>orc replay 01KR8Z...</code>. The exact same retrieval set comes back. The same chunks. The
+          same verdict. Chunk IDs are structurally guaranteed to point at real passages — Orc cannot return
+          a chunk that doesn't exist in retrieval. <strong>The evidence chain reconstructs in seconds. Review
+          closes clean.</strong>
+        </div>
       </div>
-      <div class="card">
-        <span class="tag">Regulated</span>
-        <h3>Where audit trails matter.</h3>
-        <p>Legal briefs. Compliance memos. Financial disclosures. Medical literature reviews. The trace + replay + structurally-bounded citations are the deployment posture regulated industries actually need.</p>
-        <div class="example">orc trace show &lt;run_id&gt; → defensible</div>
+    </div>
+
+    <div class="scenario-payoff">
+      <p>
+        Claude Code can <em>answer the question correctly.</em> Orc produces <em>an artifact that survives
+        review.</em> For one-off tasks the distinction is invisible. For any workflow where the question
+        gets asked repeatedly, audited, shared, or replayed — the artifact is more valuable than the answer.
+      </p>
+    </div>
+
+    <div style="margin-top: 80px;">
+      <div class="eyebrow">Same pattern, different stakes</div>
+      <h2 style="font-size: 30px;">Other places this shape pays off.</h2>
+
+      <div class="mini-scenarios">
+        <div class="mini">
+          <div class="role">Editorial</div>
+          <h3>Your weekly publication, six months in.</h3>
+          <p>A reader screenshots a paragraph: "this contradicts what you wrote in March." With an Orc workspace of your published catalog, you replay the verification, surface the citation, and either correct the record or defend the original — with receipts.</p>
+          <div class="stakes">Stakes: credibility, reader trust</div>
+        </div>
+        <div class="mini">
+          <div class="role">Legal</div>
+          <h3>A brief due tomorrow, 47 cited cases.</h3>
+          <p>The partner asks "does Roe v. Wade actually support our framing here?" Run the brief through Orc against the firm's case corpus. Every cited authority either resolves to a real chunk or doesn't. Hallucinated citations cannot get past the structural check.</p>
+          <div class="stakes">Stakes: malpractice, sanctions</div>
+        </div>
+        <div class="mini">
+          <div class="role">Ad ops</div>
+          <h3>An AI recommends pausing Campaign 17.</h3>
+          <p>Before you act, Orc verifies the recommendation against the underlying ad data. The proposed CTR drop is grounded in real numbers from real reports — or it isn't. Approved items go to the queue; the actual mutation requires a human signoff.</p>
+          <div class="stakes">Stakes: $$$, account integrity</div>
+        </div>
       </div>
     </div>
   </div>
@@ -875,10 +1181,38 @@ the claim's wording is slightly broader than the corpus supports.
   </div>
 </section>
 
+<section id="install">
+  <div class="container">
+    <div class="eyebrow">Install</div>
+    <h2>One command. <em>Local, free, MIT-licensed.</em></h2>
+    <p class="lede">
+      Orc is local-first by design. Your evidence stays on your machine. Your traces never leave. The CLI
+      is the same surface that other agents see through MCP. Bring your own Anthropic key, OpenRouter key,
+      or local model.
+    </p>
+
+    <div class="install-block">
+      <div>
+        <code class="line"><span class="prompt">$</span>uv pip install orc</code>
+        <p style="margin-top: 16px;">Python 3.11+. Works on macOS, Linux, WSL.</p>
+      </div>
+      <div>
+        <p>
+          After install: <code style="color: var(--text);">orc workspace create research</code>, then
+          <code style="color: var(--text);">orc ingest &lt;file-or-url&gt;</code>, then
+          <code style="color: var(--text);">orc verify "&lt;claim&gt;"</code>. Or run
+          <code style="color: var(--text);">orc mcp serve</code> and plug it into Claude Code with
+          <code style="color: var(--text);">claude mcp add orc</code>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="access">
   <div class="container">
-    <div class="eyebrow">Access</div>
-    <h2>Pick the surface that fits your team.</h2>
+    <div class="eyebrow">Beyond the CLI</div>
+    <h2>For teams and regulated workflows.</h2>
     <p class="lede">
       The CLI is the same in every tier. Hosted and Enterprise add deployment, integrations, and review
       surfaces around the same runtime.
@@ -896,7 +1230,7 @@ the claim's wording is slightly broader than the corpus supports.
           <li>Bring your own Anthropic or OpenRouter key</li>
           <li>Trace + replay; approval queue</li>
         </ul>
-        <a class="btn btn-secondary" href="#access">Get the CLI</a>
+        <a class="btn btn-secondary" href="#install">Get the CLI</a>
       </div>
 
       <div class="tier featured">
