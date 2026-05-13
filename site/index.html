@@ -526,6 +526,22 @@
       font-weight: 500;
     }
 
+    /* Name note under the hero */
+    .name-note {
+      margin: 24px 0 0;
+      font-size: 13px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+    .name-note .logo-mark {
+      font-weight: 500;
+      color: var(--text-mute);
+      margin-right: 8px;
+    }
+    .name-note .logo-mark .dot { color: var(--accent); }
+    .name-note em { color: var(--accent-soft); font-style: italic; }
+
     /* Audience cards */
     .audience-grid {
       display: grid;
@@ -774,6 +790,11 @@
       <span>Built for:</span>
       <strong>research analysts · editorial teams · compliance &amp; legal · agentic-workflow engineers</strong>
     </div>
+
+    <p class="name-note">
+      <span class="logo-mark">orc<span class="dot">.</span></span>
+      <span>short for <em>orchestration</em> — the runtime spawns bounded sub-skills, never free-form agents.</span>
+    </p>
 
     <div class="terminal">
       <div class="terminal-bar">
@@ -1270,6 +1291,16 @@ the claim's wording is slightly broader than the corpus supports.
     <h2>The honest answers.</h2>
 
     <div class="faq">
+      <details>
+        <summary>Where does the name "Orc" come from?</summary>
+        <div class="answer">
+          Short for <em>orchestration</em>. The architectural distinctive is that Orc spawns bounded
+          sub-skills as tools (the orchestrator-worker pattern from Anthropic's own multi-agent research
+          system) — never free-form agents talking to each other. Each sub-skill runs in its own Run,
+          writes its own trace, returns a structured output, and exits. The orchestration is the moat
+          underneath the verification.
+        </div>
+      </details>
       <details>
         <summary>Why not just use Claude Code or ChatGPT directly?</summary>
         <div class="answer">
