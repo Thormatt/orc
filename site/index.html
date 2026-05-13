@@ -449,6 +449,97 @@
 </article>
 </div>
 
+<!-- ═══ section: pre-publication amendment ══════════════ -->
+<div class="section">
+<div class="section-title"><b>group_08</b> · pre-publication amendments · <em>one claim struck pre-publication, preserved per audit contract</em></div>
+
+<article class="claim" id="claim-08" data-claim="08" data-verdict="bad" data-score="0.92">
+  <header class="claim-head">
+    <span class="claim-id">claim_08</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">An earlier draft made a claim about prompt caching that the audit struck.</h2>
+  <p class="claim-body">
+    The audit pass caught one claim in <code>manifest.md</code> draft 03, line 47. The original is preserved
+    here, struck-through; the corrected version is the one that appears elsewhere in this page. The page
+    is honest about its own edit history.
+  </p>
+
+  <div class="amend">
+    <div class="amend-row">
+      <span class="amend-label">draft_03 · line 47 · 2026-05-12T19:14:08Z</span>
+      <span class="amend-tag struck">struck</span>
+    </div>
+    <p class="amend-original">"Prompt caching keeps every verification call cheap. Cache hits apply to all calls beyond the first against any workspace."</p>
+
+    <div class="amend-row">
+      <span class="amend-label">audit · 2026-05-13T08:47:38Z · trace_01KR4PV6Z3WB8YQ7</span>
+      <span class="amend-tag reason">reason</span>
+    </div>
+    <p class="amend-reason">Contradicted by orc's own deployment-log trace. Anthropic prompt caching requires a minimum cached prefix (≈3K tokens for sonnet, ≈2K for haiku). Workspaces with small corpora produce smaller prefixes and may never trigger cache writes. The blanket claim misled the reader on cost behavior.</p>
+
+    <div class="amend-row">
+      <span class="amend-label">draft_04 · line 47 · 2026-05-13T08:51:02Z</span>
+      <span class="amend-tag corrected">corrected</span>
+    </div>
+    <p class="amend-corrected">"Prompt caching is effective for workspaces whose retrieval produces &gt;3K tokens of cached prefix per call (Sonnet) or &gt;2K (Haiku). Smaller corpora may not trigger cache hits; for those, each call is priced as full input. The trace records <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code> so cost behavior is transparent."</p>
+  </div>
+
+  <div class="chunks">
+    <div class="chunk">
+      <div class="chunk-head">
+        <span class="cid">trace_01KR4PV6Z3WB8YQ7</span>
+        <span class="src">deployment-log · cache-behavior · §3</span>
+      </div>
+      <div class="chunk-quote">cache_create=2412 · cache_read=0 · across 4 successive calls against an identical workspace prefix of 2412 tokens (below sonnet caching threshold). Final verdict: cache writes occurred, cache reads did not. Cost was not reduced.</div>
+    </div>
+  </div>
+</article>
+</div>
+
+<!-- ═══ section: install — the audited artifact is also runnable ═══ -->
+<section class="install-block" id="install">
+  <div class="section-title"><b>group_09</b> · install · the audited artifact is a runnable thing</div>
+
+  <h2 class="install-title">The page is the proof. The CLI is the product.</h2>
+  <p class="install-lede">
+    Everything verified above is implemented in <code>orc v0.1.0</code>. Local-first, MIT-licensed.
+    Bring your own Anthropic key, OpenRouter key, or local model. Storage is local SQLite under <code>~/.orc/</code>.
+  </p>
+
+  <div class="term install-term"><span class="cmt"># install</span>
+<span class="pr">$</span> <span class="cmd">uv pip install orc</span>
+
+<span class="cmt"># the four-command loop</span>
+<span class="pr">$</span> <span class="cmd">orc workspace create research</span>
+<span class="pr">$</span> <span class="cmd">orc ingest ./notes -w research</span>
+<span class="pr">$</span> <span class="cmd">orc verify "your claim here" -w research</span>
+<span class="pr">$</span> <span class="cmd">orc trace show &lt;run_id&gt;</span>
+
+<span class="cmt"># or expose as MCP for Claude Code / Codex</span>
+<span class="pr">$</span> <span class="cmd">orc mcp serve</span>
+<span class="pr">$</span> <span class="cmd">claude mcp add orc -- uv run orc mcp serve</span></div>
+
+  <p class="install-meta">Python 3.11+ · macOS, Linux, WSL · MIT-licensed · zero telemetry by default · source at github.com/orc</p>
+</section>
+
+<!-- ═══ trace footer — signature, replay, edit log ════════ -->
+<footer class="tfoot">
+  <div class="tfoot-rule">━━━ end of trace ━━━</div>
+  <dl class="tfoot-grid">
+    <dt>verified by</dt> <dd>ed25519:8d7e92c4…f0a1 <span class="dim">· signed 2026-05-13T08:47:52Z</span></dd>
+    <dt>runtime</dt>     <dd>orc v0.1.0 <span class="dim">· model claude-sonnet-4-6 · workspace public · corpus sha256:a3f1c8…ed72</span></dd>
+    <dt>replay</dt>      <dd><code>$ orc replay 01KR1NHTQR8B --workspace public</code></dd>
+    <dt>edit log</dt>    <dd>1 struck · 0 dismissed · 7 supported · 1 partial · <span class="dim">all amendments preserved · see group_08</span></dd>
+    <dt>next</dt>        <dd>exhibit_A → pinegate trace 01KR8Z3M2KFR0YV9 <span class="dim">· linked in claim_06</span></dd>
+  </dl>
+  <div class="tfoot-mark">
+    <span><b>orc.</b> &nbsp;&copy; 2026 · the verification runtime · short for orchestration</span>
+    <span class="tfoot-meta">— this footer is part of the trace and is included in the signature above —</span>
+  </div>
+</footer>
+
 <script src="trace.js"></script>
 </main>
 
