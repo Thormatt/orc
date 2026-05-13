@@ -1,169 +1,145 @@
-# Orc
+# orc.
 
-Headless directive runtime for evidence-grounded research and claim verification.
+**The verification runtime for AI that has to be defensible.**
 
-Status: v0.1.0.
+Bind every claim to evidence you own. Cite real sources only. Replay every decision. Built for workflows where *"the model said so"* isn't good enough.
 
-## What it is
+`orc` is short for **orchestration** — the runtime spawns bounded sub-skills, never free-form agents.
 
-Orc is a directive runtime you invoke from Claude Code, Codex, or directly via CLI. v1 ships one directive — `research` — that verifies claims and synthesises topics against a corpus *you* curate.
+---
 
-The architecture treats reasoning as stateless. Context, evidence, authority, and audit are persistent. Future directives (`marketing`, `code-review`, `db-doctor`) drop in as configs + code modules on the same runtime, without touching the surfaces.
+## What is this
 
-## Install
+`orc` is a CLI + MCP server that runs LLM verification against a corpus you control. The architecture enforces four invariants by construction:
+
+| | Invariant |
+|---|---|
+| **Citations** | The runtime *structurally cannot* return a citation that doesn't exist in retrieval. Hallucinated chunk IDs are dropped before the verdict reaches you. |
+| **Architecture** | Skills are pure functions with explicit I/O contracts. No agent identities, no personas, no emergent coordination. Persistence lives in the workspace, not the agents. |
+| **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. `orc replay <run_id>` re-executes the exact decision against the same corpus snapshot. |
+| **Approval** | Anything that would mutate the outside world lands in the approval queue first. Write paths run as separate processes with separate tokens. Blast radius from a compromised agent is zero by design. |
+
+Built for **research analysts, editorial teams, legal & compliance, agentic-workflow engineers** — anyone whose AI work product has to survive a second reviewer six months later.
+
+## Quickstart
 
 ```bash
-uv sync --extra dev
+# Install
+uv pip install git+https://github.com/thormatthiasson/orc
+
+# Or, once published to PyPI:
+# uv pip install orc
+
+# Set up credentials (either of these works; OpenRouter takes priority if both set)
 export ANTHROPIC_API_KEY=sk-ant-...
-orc --version
-```
+export OPENROUTER_API_KEY=sk-or-...
 
-## The minimal loop
+# Create a workspace, ingest evidence, verify a claim
+orc workspace create research
+orc ingest ./notes -w research
+orc ingest https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents -w research
 
-```bash
-# 1. Create a workspace
-orc workspace create demo
+orc verify "Anthropic's prompt caching has a 5-minute ephemeral TTL by default" -w research
+# → SUPPORTED  confidence=0.88
+#   chunk_id=01KR1MQ...  source: prompt-caching docs · §2 · p.3
 
-# 2. Ingest evidence (markdown, txt, urls; PDFs deferred to v1.x)
-orc ingest ./my_notes -w demo
-orc ingest https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents -w demo
+# Or pipe a whole draft through
+orc verify --file draft.md -w research
+# → 7 claims extracted. supported=4 partial=1 contradicted=1 not_found=1
 
-# 3. Verify a claim against the corpus
-orc verify "Anthropic released the Skills API in October 2025" -w demo
-
-# 4. Inspect what just happened
-orc trace list -w demo
+# Inspect or replay any decision
 orc trace show <run_id>
+orc replay <run_id>           # frozen replay against the original corpus snapshot
+orc replay <run_id> --live    # against the current corpus
 
-# 5. Re-run any previous run, frozen against its corpus snapshot
-orc replay <run_id>
-orc replay <run_id> --live  # against the current corpus
+# Expose as MCP for Claude Code / Codex
+orc mcp serve
+# Then in another shell:
+claude mcp add orc -- uv run --directory $(pwd) orc mcp serve
 ```
 
-## Three behaviors that prove v1 works
-
-These are the load-bearing acceptance tests for the verification loop.
-
-**1. Supported claim.** Ingest a doc that affirms a fact, then verify the fact.
-
-```bash
-orc workspace create demo
-echo "# Skills API\n\nAnthropic released the Skills API in October 2025." > /tmp/doc.md
-orc ingest /tmp/doc.md -w demo
-orc verify "Anthropic released the Skills API in October 2025" -w demo
-# -> SUPPORTED, confidence ~0.9, supporting_chunk pointing back to /tmp/doc.md
-```
-
-**2. Cache hit.** Run the same verify a second time; the prompt-cache breakpoint over the corpus block should produce a cache read.
-
-```bash
-orc verify "Anthropic released the Skills API in October 2025" -w demo --json | jq '.model'
-# Inspect the trace: trace.llm_calls[0].usage.cache_read_input_tokens > 0 on the second run.
-orc trace list -w demo --skill verify_claim
-orc trace show <latest_run_id>
-```
-
-**3. Not-found claim.** Ask about something not in the corpus.
-
-```bash
-orc verify "Orc was acquired by Microsoft for $1B" -w demo
-# -> NOT_FOUND, both supporting and contradicting chunks empty,
-#    missing_information explains what evidence would change the verdict.
-```
-
-## CLI reference
+## Commands
 
 ```
-orc workspace create <name>                    Create a workspace
-orc workspace list                             List workspaces
-orc ingest <path-or-url> [-w <name>]           Add evidence (md, txt, json, url)
-orc search "<query>" [-w <name>] [--k N]       Pure BM25 retrieval (no LLM)
-orc verify "<claim>" [-w <name>] [--model X]   Verify a single claim
-orc verify --file <path> [-w <name>] [-y]      Extract+verify all claims from a draft
-orc verify --url <url>   [-w <name>] [-y]      Same, fetched from a URL
-orc research "<topic>" [-w <name>]             Corpus-grounded synthesis with citations
-orc trace show <run_id>                        Print the full trace JSON
-orc trace list [-w <name>] [--skill name]      List recent runs
-orc replay <run_id> [--live]                   Re-execute (frozen by default)
-orc mcp serve                                  Start the MCP stdio server
+orc workspace create <name>            create a new workspace
+orc workspace list                     list workspaces
+orc ingest <path-or-url> [-w <name>]   add evidence (md, txt, urls)
+orc search "<query>" [-w <name>]       BM25 retrieval, no LLM
+orc verify "<claim>" [-w <name>]       verify a single claim
+orc verify --file <path>               extract + verify every claim in a draft
+orc verify --url <url>                 same, from a URL
+orc research "<topic>" [-w <name>]     corpus-grounded synthesis with citations
+orc trace show <run_id>                full trace JSON
+orc trace list [-w <name>]             recent runs
+orc replay <run_id> [--live]           re-execute a recorded run
+orc approve list [-w <name>]           list pending approval items
+orc approve accept <id> [--note]       accept a pending recommendation
+orc approve reject <id> [--note]       reject one
+orc mcp serve                          start the MCP stdio server
 ```
-
-Most commands accept `--json` for machine-readable output and `--workspace/-w` for explicit workspace selection.
-
-## Use it from Claude Code via MCP
-
-```bash
-# Inside any directory
-claude mcp add orc -- uv run --directory /path/to/orc orc mcp serve
-```
-
-The MCP server exposes four tools:
-
-- `orc_verify_claim(claim, workspace="default")`
-- `orc_search_evidence(query, workspace="default", k=10)`
-- `orc_research_topic(topic, workspace="default")`
-- `orc_get_trace(run_id)`
-
-Every MCP tool call writes a trace, identical to the CLI path — so research you do inside Claude Code is replayable from the terminal.
 
 ## Architecture
 
 ```
 ~/.orc/
 └── workspaces/<name>/
-    ├── orc.db                       # workspace, evidence, chunks, runs, run_evidence + chunk_fts
-    ├── evidence/<evidence_id>.<ext> # original source files, copied
-    └── traces/<YYYY>/<MM>/<run_id>.json   # full per-run trace payloads
+    ├── orc.db                              workspace, evidence, chunks (FTS5), runs, run_evidence, approval
+    ├── evidence/<evidence_id>.<ext>        original ingested files, copied
+    └── traces/<YYYY>/<MM>/<run_id>.json    full per-run trace payloads
 ```
 
 - **Stateless skills + durable context.** Skills are pure functions. Workspaces, evidence, runs, and traces persist; agents do not.
-- **Verification bound to owned evidence.** `verify_claim` retrieves K=10 chunks via BM25 (FTS5), sends them in one LLM call with `cache_control: ephemeral` on the corpus block, and parses a structured verdict via tool use. Cited chunk IDs are validated against retrieval — hallucinated IDs are dropped.
-- **Trace-and-replay from day one.** Every CLI/MCP call writes a `run` row + a JSON file that contains the full retrieval, every LLM call's usage (including `cache_read_input_tokens`), and the structured output. `orc replay` re-executes deterministically against the original corpus snapshot.
-- **Directive registry.** `directives.get(name).skills[skill_name]` is the only dispatch path. Adding a new directive (`marketing`, `code-review`, …) is a `register(DirectiveSpec(...))` call plus a manifest YAML — no surface code changes.
+- **Verification bound to owned evidence.** `verify_claim` retrieves K=10 chunks via BM25 (SQLite FTS5), sends them in one LLM call with `cache_control: ephemeral` on the corpus block, and parses a structured verdict via tool use.
+- **Trace-and-replay from day one.** Every CLI/MCP call writes a `run` row + a JSON file containing the full retrieval, every LLM call's usage (including `cache_read_input_tokens`), and the structured output. `orc replay` re-executes against the corpus snapshot referenced by `corpus_version`.
+- **Directive registry.** `directives.get(name).skills[skill_name]` is the only dispatch path. Adding a new directive (e.g. `marketing`, `legal`, `db-doctor`) is a `register(DirectiveSpec(...))` call + a manifest — no surface code changes.
+- **Bounded orchestration.** `orc.orchestrate.Workflow` spawns sub-skills with explicit context budgets, in either sequential or bounded-parallel mode. No free-form inter-agent chat. Each step opens its own Run with its own trace.
 
 ## Configuration
 
 | Variable | Default | What |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | (required) | LLM auth |
+| `ANTHROPIC_API_KEY` | — | LLM auth (direct path) |
+| `OPENROUTER_API_KEY` | — | LLM auth (OpenRouter; auto-pinned to Anthropic upstream for cache fidelity) |
+| `ORC_PROVIDER` | auto | `anthropic` \| `openrouter` (explicit override; auto picks whichever key is set) |
 | `ORC_HOME` | `~/.orc` | Where workspaces live |
 | `ORC_DEFAULT_WORKSPACE` | `default` | Workspace used when `-w` is omitted |
 | `ORC_VERIFY_MODEL` | `claude-sonnet-4-6` | Override the verify model |
 | `ORC_RESEARCH_MODEL` | `claude-sonnet-4-6` | Override the research-topic model |
 | `ORC_EXTRACT_MODEL` | `claude-haiku-4-5` | Override the claim-extraction model |
 
-Per-call overrides via CLI flags (`--model`, `--k`) take precedence over env vars and manifest defaults.
+A `.env` file in the repo root or at `$ORC_HOME/.env` is auto-loaded. Shell-exported vars take precedence over `.env`.
+
+## Project status
+
+`v0.1.0` — first public release. The four-command loop (workspace / ingest / verify / replay) is stable and tested. MCP server stable. Approval queue and bounded-orchestration primitives shipped but the gads / marketing / legal directives that consume them are not yet released — those land in subsequent versions.
+
+See [CHANGELOG.md](./CHANGELOG.md) for details.
 
 ## Development
 
 ```bash
+git clone https://github.com/thormatthiasson/orc.git
+cd orc
 uv sync --extra dev
-uv run pytest                                       # full unit suite
-uv run pytest tests/golden/ -v                      # framework test (always runs)
-ORC_TEST_ALLOW_LIVE_LLM=1 uv run pytest tests/golden/ -v  # real Anthropic calls (~$0.05)
+
+uv run pytest                           # 115+ tests, 1s
 uv run ruff check src tests
-uv run ruff format src tests
+uv run orc --version
 ```
 
-Test layout:
-- `tests/unit/` — fast, mocked LLM, ~85 tests
-- `tests/golden/` — verify against `tests/fixtures/test_corpus/` + `claims.yaml`. The framework test always runs (uses fakes); the live-LLM threshold test is opt-in.
-- `tests/e2e/` — MCP smoke
+Live LLM tests are gated behind `ORC_TEST_ALLOW_LIVE_LLM=1` and require a real Anthropic or OpenRouter key. The default suite runs against a fake Anthropic client and costs nothing.
 
-## What's deliberately not in v1
+## Roadmap
 
-- HTTP API
-- Web app
-- Cloud / scheduled execution
-- Autonomous publishing (assisted-only — you approve everything)
-- Embedding-based retrieval (FTS5 BM25 only; embeddings are a v1.x add behind `--embeddings`)
-- PDF ingestion (md, txt, json, urls work; PDF is v1.x)
-- Multi-user workspaces
-
-## Roadmap (post-v1)
-
-- Voyage / local embeddings + hybrid retrieval (RRF over BM25 + vectors)
-- Long-running directives (cron-scheduled runs, e.g. a marketing autopilot)
-- A second directive: `marketing` (assisted drafting + claim review behind approval gates)
+- Embedding-based retrieval (hybrid BM25 + vector via `sqlite-vec`)
 - PDF ingestion
-- Web app for trace inspection and approval queues
+- Long-running directives (scheduled triggers, cloud execution)
+- `marketing` directive (assisted-only at first, autonomous behind approval gates later)
+- `legal` / `gads` / `code-review` directives — same runtime, new skill packages
+- `orc eval consistency` / `perturb` / `regression` — R(k,ε,λ) reliability instrumentation
+
+## License
+
+MIT. See [LICENSE](./LICENSE).
+
+The CLI, runtime, and verification skills are open source and free forever. Hosted and Enterprise tiers (managed workspaces, scheduled runs, SSO, audit export, on-prem) are commercial — see [orc.run](https://orc.run) when it goes live.

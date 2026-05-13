@@ -5,11 +5,33 @@ build-backend = "hatchling.build"
 [project]
 name = "orc"
 version = "0.1.0"
-description = "Headless directive runtime for evidence-grounded research and claim verification"
+description = "The verification runtime for AI that has to be defensible. Evidence-bound claim verification, structured citations, trace + replay, MCP-ready CLI."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Thor Matthiasson", email = "thormatt@gmail.com" },
+]
+keywords = [
+    "ai", "llm", "verification", "claim-verification", "rag",
+    "mcp", "anthropic", "claude", "agents", "audit", "trace",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Legal Industry",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: General",
+    "Typing :: Typed",
 ]
 dependencies = [
     "anthropic>=0.40",
@@ -36,11 +58,24 @@ dev = [
 [project.scripts]
 orc = "orc.cli:main"
 
+[project.urls]
+Homepage      = "https://github.com/thormatthiasson/orc"
+Repository    = "https://github.com/thormatthiasson/orc"
+Issues        = "https://github.com/thormatthiasson/orc/issues"
+Changelog     = "https://github.com/thormatthiasson/orc/blob/main/CHANGELOG.md"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/orc"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/orc", "README.md", "pyproject.toml"]
+include = [
+    "src/orc",
+    "tests",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "pyproject.toml",
+]
 
 [tool.ruff]
 line-length = 100
