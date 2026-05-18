@@ -12,6 +12,7 @@ from orc.queue import approval as approval_module
 from orc.queue.approval import (
     ApprovalAlreadyDecidedError,
     ApprovalNotFoundError,
+    DuplicateApproverError,
 )
 from orc.storage import workspace as ws_module
 
@@ -74,7 +75,7 @@ def test_accept_decides_and_locks(orc_home: Path) -> None:
     assert a.decision_note == "looks right"
 
     with pytest.raises(ApprovalAlreadyDecidedError):
-        approval_module.accept(name, aid)
+        approval_module.accept(name, aid, decided_by="other")
 
 
 def test_reject_decides(orc_home: Path) -> None:
@@ -98,7 +99,7 @@ def test_filter_by_status(orc_home: Path) -> None:
         name, directive="research", skill="verify_claim", source_run_id="r2",
         summary="stays pending", payload={},
     )
-    approval_module.accept(name, a1)
+    approval_module.accept(name, a1, decided_by="alice")
 
     pending = approval_module.list_approvals(name, status="pending")
     approved = approval_module.list_approvals(name, status="approved")
@@ -179,3 +180,176 @@ def test_cli_reject_flow(orc_home: Path) -> None:
     assert "rejected" in res.output
     a = approval_module.get(name, aid)
     assert a.status == "rejected"
+
+
+# ───────── multi-approver workflow (Article 14 §5) ─────────
+
+
+def test_decided_by_required(orc_home: Path) -> None:
+    """The regulation requires named natural persons; the module enforces that."""
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={},
+    )
+    with pytest.raises(ValueError):
+        approval_module.accept(name, aid, decided_by=None)
+    with pytest.raises(ValueError):
+        approval_module.accept(name, aid, decided_by="")
+
+
+def test_two_approver_flow_first_accept_stays_pending(orc_home: Path) -> None:
+    """First accept on a 2-approver approval leaves status pending."""
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name,
+        directive="research",
+        skill="verify_claim",
+        source_run_id="r1",
+        summary="biometric match — Annex III §1(a)",
+        payload={"subject_id": "abc"},
+        approvers_required=2,
+    )
+    a1 = approval_module.accept(name, aid, decided_by="alice", note="visual match confirmed")
+    assert a1.status == "pending"
+    assert a1.accept_count == 1
+    assert a1.approvers_required == 2
+    assert a1.progress == "1/2"
+    assert a1.decided_at is None
+    assert len(a1.decisions) == 1
+
+
+def test_two_approver_flow_second_accept_flips_status(orc_home: Path) -> None:
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={}, approvers_required=2,
+    )
+    approval_module.accept(name, aid, decided_by="alice")
+    a2 = approval_module.accept(name, aid, decided_by="bob", note="second verification")
+
+    assert a2.status == "approved"
+    assert a2.accept_count == 2
+    assert a2.progress == "2/2"
+    assert a2.decided_by == "bob"  # the deciding approver
+    assert a2.decision_note == "second verification"
+    assert a2.decided_at is not None
+    assert {d.decided_by for d in a2.decisions} == {"alice", "bob"}
+
+
+def test_any_single_rejection_blocks(orc_home: Path) -> None:
+    """Even on a 2-approver flow, one reject from anyone immediately blocks."""
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={}, approvers_required=2,
+    )
+    approval_module.accept(name, aid, decided_by="alice")
+    a = approval_module.reject(name, aid, decided_by="bob", note="not satisfied")
+    assert a.status == "rejected"
+    assert a.reject_count == 1
+    assert a.accept_count == 1
+    assert a.decided_by == "bob"
+
+
+def test_duplicate_approver_blocked(orc_home: Path) -> None:
+    """Article 14 §5 requires distinct natural persons; same person can't vote twice."""
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={}, approvers_required=2,
+    )
+    approval_module.accept(name, aid, decided_by="alice")
+    with pytest.raises(DuplicateApproverError):
+        approval_module.accept(name, aid, decided_by="alice", note="second try")
+    # Status remains pending
+    a = approval_module.get(name, aid)
+    assert a.status == "pending"
+    assert a.accept_count == 1
+
+
+def test_invalid_approvers_required(orc_home: Path) -> None:
+    name = _seed_workspace(orc_home)
+    with pytest.raises(ValueError):
+        approval_module.enqueue(
+            name, directive="research", skill="verify_claim", source_run_id="r1",
+            summary="x", payload={}, approvers_required=0,
+        )
+
+
+def test_decisions_have_full_audit_trail(orc_home: Path) -> None:
+    """Every decision is recorded with name + timestamp + note for Article 12 logging."""
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={}, approvers_required=2,
+    )
+    approval_module.accept(name, aid, decided_by="alice", note="first")
+    approval_module.accept(name, aid, decided_by="bob", note="second")
+
+    a = approval_module.get(name, aid)
+    decisions_by = {d.decided_by: d for d in a.decisions}
+    assert decisions_by["alice"].decision == "accept"
+    assert decisions_by["alice"].note == "first"
+    assert decisions_by["alice"].decided_at is not None
+    assert decisions_by["bob"].decision == "accept"
+    assert decisions_by["bob"].note == "second"
+
+
+def test_cli_two_approver_progress_shown(orc_home: Path) -> None:
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="biometric match", payload={}, approvers_required=2,
+    )
+    runner = CliRunner()
+    # First accept: pending still
+    res = runner.invoke(
+        main, ["approve", "accept", aid, "-w", name, "--by", "alice"]
+    )
+    assert res.exit_code == 0
+    assert "pending" in res.output
+    assert "1/2" in res.output
+
+    # Second accept by different person: approved
+    res = runner.invoke(
+        main, ["approve", "accept", aid, "-w", name, "--by", "bob"]
+    )
+    assert res.exit_code == 0
+    assert "approved" in res.output
+    assert "2/2" in res.output
+
+
+def test_cli_show_includes_decisions(orc_home: Path) -> None:
+    import json
+
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={}, approvers_required=2,
+    )
+    approval_module.accept(name, aid, decided_by="alice", note="first")
+    runner = CliRunner()
+    res = runner.invoke(main, ["approve", "show", aid, "-w", name])
+    assert res.exit_code == 0
+    payload = json.loads(res.output)
+    assert payload["approvers_required"] == 2
+    assert payload["approvers_progress"] == "1/2"
+    assert payload["accept_count"] == 1
+    assert payload["reject_count"] == 0
+    assert len(payload["decisions"]) == 1
+    assert payload["decisions"][0]["decided_by"] == "alice"
+
+
+def test_backward_compat_default_single_approver(orc_home: Path) -> None:
+    """An approval enqueued without approvers_required behaves like before."""
+    name = _seed_workspace(orc_home)
+    aid = approval_module.enqueue(
+        name, directive="research", skill="verify_claim", source_run_id="r1",
+        summary="x", payload={},
+    )
+    a = approval_module.get(name, aid)
+    assert a.approvers_required == 1
+    decided = approval_module.accept(name, aid, decided_by="alice")
+    assert decided.status == "approved"
+    assert decided.progress == "1/1"

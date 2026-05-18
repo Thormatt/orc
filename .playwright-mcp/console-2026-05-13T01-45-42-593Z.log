@@ -1,0 +1,2 @@
+[    3950ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ https://pagecraft.live/p/thorm/ahead-strategy:0
+[    7494ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://pagecraft.live/p/thorm/ahead-strategy:0

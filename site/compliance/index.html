@@ -44,11 +44,13 @@
   </div>
   <h1>EU AI Act compliance posture, <span class="em">verified by the runtime itself.</span></h1>
   <p class="lede">
-    This page maps <code>orc v0.1.0</code> to the EU AI Act articles most relevant to operators of
-    high-risk AI systems (Annex III). It is itself an audit artifact: every claim below points at
-    specific source files, behaviors, or roadmap items that can be inspected. <strong>Article 14
-    has one open sub-item</strong> — the multi-approver workflow required by Article 14 §5 is planned
-    for Phase 2 and is not yet shipped. The page is honest about what it isn't.
+    This page maps <code>orc</code> to the EU AI Act articles most relevant to operators of high-risk
+    AI systems (Annex III). It is itself an audit artifact: every claim below points at specific
+    source files, behaviors, or roadmap items that can be inspected. Articles 12, 13, and 14 are
+    satisfied in v0.1.1, including the two-natural-persons verification required by Article 14 §5.
+    Articles 9, 10, 11, 26, and 72 are partly covered by today's runtime with explicit roadmap items
+    for the rest. <strong>Orc is a tool used by deployers of high-risk systems, not itself a
+    high-risk system</strong> — the compliance obligations remain with the deployer.
   </p>
 
   <dl class="thead-meta">
@@ -202,18 +204,18 @@
 <div class="section">
 <div class="section-title"><b>article_14</b> · human oversight · one item open</div>
 
-<article class="claim" id="claim-art14" data-claim="art14" data-verdict="warn" data-score="0.80">
+<article class="claim" id="claim-art14" data-claim="art14" data-verdict="ok" data-score="0.94">
   <header class="claim-head">
     <span class="claim-id">claim_art14</span>
     <span class="claim-rule"></span>
     <span class="verdict pending"><span class="vt">verifying</span></span>
   </header>
-  <h2 class="claim-title">Single-approver human oversight is shipped. Multi-approver for Article 14 §5 is open.</h2>
+  <h2 class="claim-title">Effective human oversight, including the two-person verification required by Article 14 §5.</h2>
   <p class="claim-body">
     Article 14 requires effective oversight by natural persons. For some Annex III systems (notably
     biometric ID under §1(a)) it requires <em>two</em> natural persons to verify identifications.
-    The single-approver case is satisfied today by the approval queue. The two-approver workflow is
-    on the Phase 2 roadmap and is honestly marked <em>open</em> below.
+    Both surfaces are now satisfied: the single-approver path and the multi-approver workflow with
+    duplicate-approver prevention and full per-decision audit trail.
   </p>
 
   <div class="subclaim-list">
@@ -237,12 +239,12 @@
       <span class="verdict pending"><span class="vt">verifying</span></span>
     </div>
 
-    <div class="subclaim" data-sub="bad">
+    <div class="subclaim" data-sub="ok">
       <div class="sid">art14_§5<br><b>two-person</b></div>
       <div class="sbody">
-        <div class="stitle">Two natural persons verify (open · Phase 2).</div>
-        <div class="sdesc"><strong>Not yet shipped.</strong> Article 14 §5 requires that for some Annex III systems, no action is taken unless verified by two natural persons. The approval table currently accepts one decision. Phase 2 adds an <code>approvers_required</code> field plus a per-approver decision log. Tracked at github.com/Thormatt/orc.</div>
-        <div class="scite">roadmap · Phase 2 · task #23 in the public tracker</div>
+        <div class="stitle">Two natural persons verify (shipped v0.1.1).</div>
+        <div class="sdesc">Approvals can be enqueued with <code>approvers_required=N</code>. Each decision is recorded in <code>approval_decision</code> with a UNIQUE constraint on (approval_id, decided_by) — the same natural person cannot vote twice. Status flips to <em>approved</em> only when N distinct acceptances are recorded; any single rejection blocks immediately. Full audit trail preserved per decision.</div>
+        <div class="scite">code · src/orc/queue/approval.py · schema · src/orc/storage/schema.sql (approval_decision table)</div>
       </div>
       <span class="verdict pending"><span class="vt">verifying</span></span>
     </div>
@@ -390,7 +392,7 @@
     <dt>verified by</dt> <dd>orc v0.1.0 against eu-ai-act-mapping.md <span class="dim">· signed 2026-05-17T13:00:00Z</span></dd>
     <dt>regulation</dt>  <dd>Regulation (EU) 2024/1689 <span class="dim">· articles 9, 10, 11, 12, 13, 14, 15, 26, 72</span></dd>
     <dt>deadline</dt>    <dd>2026-08-02 <span class="dim">· Annex III enforcement starts · ~11 weeks from this trace</span></dd>
-    <dt>open items</dt>  <dd>1 partial (art14 §5 two-approver) <span class="dim">· tracked at github.com/Thormatt/orc</span></dd>
+    <dt>open items</dt>  <dd>0 open at the article level <span class="dim">· art15 robustness instrumentation + art11 conformity helper on the Phase 3 roadmap</span></dd>
     <dt>contact</dt>     <dd><a href="mailto:thormatt@gmail.com?subject=Orc%20-%20EU%20AI%20Act%20compliance%20pilot">thormatt@gmail.com</a> <span class="dim">· subject "Orc — EU AI Act compliance pilot"</span></dd>
   </dl>
   <div class="tfoot-mark">

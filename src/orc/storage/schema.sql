@@ -96,21 +96,39 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 
 -- Approval queue: directives produce proposals; humans accept/reject.
 -- Source-of-truth for "things the runtime wants to do but won't do without a human."
+-- Article 14 §5 of the EU AI Act requires two natural persons for some Annex III
+-- systems; approvers_required defaults to 1 for backward compat, can be set on enqueue.
 CREATE TABLE IF NOT EXISTS approval (
-    approval_id     TEXT PRIMARY KEY,
-    workspace       TEXT NOT NULL,
-    directive       TEXT NOT NULL,
-    skill           TEXT NOT NULL,
-    source_run_id   TEXT NOT NULL,
-    status          TEXT NOT NULL,                  -- pending | approved | rejected | expired
-    summary         TEXT NOT NULL,                  -- one-line for list output
-    payload         TEXT NOT NULL,                  -- JSON: full proposal context
-    proposed_action TEXT,                           -- JSON: what would happen if accepted
-    created_at      TEXT NOT NULL,
-    decided_at      TEXT,
-    decided_by      TEXT,
-    decision_note   TEXT
+    approval_id        TEXT PRIMARY KEY,
+    workspace          TEXT NOT NULL,
+    directive          TEXT NOT NULL,
+    skill              TEXT NOT NULL,
+    source_run_id      TEXT NOT NULL,
+    status             TEXT NOT NULL,             -- pending | approved | rejected | expired
+    summary            TEXT NOT NULL,             -- one-line for list output
+    payload            TEXT NOT NULL,             -- JSON: full proposal context
+    proposed_action    TEXT,                      -- JSON: what would happen if accepted
+    approvers_required INTEGER NOT NULL DEFAULT 1,
+    created_at         TEXT NOT NULL,
+    decided_at         TEXT,                      -- when status last flipped from pending
+    decided_by         TEXT,                      -- the natural person whose decision flipped status
+    decision_note      TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_approval_status     ON approval(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_approval_source_run ON approval(source_run_id);
+
+-- Per-decision audit log. Article 14 §5 requires named natural persons; one row per
+-- decision per approver. UNIQUE (approval_id, decided_by) prevents a single person
+-- from voting twice on the same approval.
+CREATE TABLE IF NOT EXISTS approval_decision (
+    decision_id     TEXT PRIMARY KEY,
+    approval_id     TEXT NOT NULL REFERENCES approval(approval_id) ON DELETE CASCADE,
+    decision        TEXT NOT NULL,                -- accept | reject
+    decided_by      TEXT NOT NULL,
+    decided_at      TEXT NOT NULL,
+    note            TEXT,
+    UNIQUE (approval_id, decided_by)
+);
+
+CREATE INDEX IF NOT EXISTS idx_approval_decision_approval ON approval_decision(approval_id);

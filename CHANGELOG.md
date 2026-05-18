@@ -7,12 +7,49 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- `orc audit export` — bundle traces + manifest for regulator handoff
+  (Article 12 / 26(6)).
+- Trace schema version field with replay-safety enforcement.
 - `gads` directive (Google Ads agentic analysis: lens-based decomposition,
   read-only MCP integration, evidence-bound recommendation verification).
 - `orc eval consistency|perturb|retrieval|regression` reliability commands.
 - Voyage-AI or local-`sentence-transformers` embeddings + hybrid retrieval (RRF over BM25 + vector).
 - PDF ingestion.
 - Hosted runtime (scheduled triggers, web dashboard, team workspaces).
+
+## [0.1.1] — 2026-05-18
+
+### Added
+
+- **Multi-approver workflow** in the approval queue, addressing EU AI Act
+  Article 14 §5 (some Annex III systems require verification by two natural
+  persons). Approvals can be enqueued with `approvers_required=N`; each
+  decision is recorded with the natural person's name in
+  `approval_decision`, with a `UNIQUE (approval_id, decided_by)` constraint
+  preventing double-voting. Status flips to *approved* only when N distinct
+  acceptances are recorded; any single rejection blocks immediately. Full
+  per-decision audit trail preserved.
+- `DuplicateApproverError` raised when the same person tries to record a
+  second decision on the same approval.
+- CLI: `orc approve list` now shows an `approvers` column (e.g. `1/2`); `orc
+  approve show` includes the full decisions array; `orc approve accept/reject`
+  surfaces the progress (`accepted by alice · progress 1/2 · still pending:
+  1 more approver(s) required`).
+
+### Changed
+
+- `decided_by` is now required on `accept()` and `reject()` (raises
+  `ValueError` if omitted/empty). The regulation requires named natural
+  persons; the module enforces it.
+- `Approval` dataclass gains `approvers_required: int` and
+  `decisions: list[Decision]`. Backward-compatible: existing single-approver
+  flows default to `approvers_required=1`.
+
+### Compliance
+
+- EU AI Act Article 14 §5 (two-natural-persons verification): now satisfied.
+  Updated `docs/compliance/eu-ai-act.md` and `/compliance` on the live site.
+  Compliance trace verdict counters now read **5 satisfied · 0 partial · 0 open**.
 
 ## [0.1.0] — 2026-05-13
 

@@ -10,7 +10,11 @@ from rich.table import Table
 
 from orc.errors import WorkspaceNotFoundError
 from orc.queue import approval as approval_module
-from orc.queue.approval import ApprovalAlreadyDecidedError, ApprovalNotFoundError
+from orc.queue.approval import (
+    ApprovalAlreadyDecidedError,
+    ApprovalNotFoundError,
+    DuplicateApproverError,
+)
 from orc.storage import workspace as ws_module
 
 console = Console()
@@ -52,15 +56,22 @@ def list_command(workspace: str | None, status: str, limit: int) -> None:
     table = Table(title=f"Approvals in {ws.name}")
     table.add_column("approval_id", style="bold")
     table.add_column("status")
+    table.add_column("approvers", justify="right")
     table.add_column("directive")
     table.add_column("skill")
     table.add_column("created")
     table.add_column("summary")
     for a in items:
         style = _STATUS_STYLE.get(a.status, "white")
+        approvers_cell = a.progress
+        if a.reject_count:
+            approvers_cell = f"[red]{approvers_cell}  · {a.reject_count}✗[/red]"
+        elif a.status == "pending" and a.approvers_required > 1:
+            approvers_cell = f"[yellow]{approvers_cell}[/yellow]"
         table.add_row(
             a.approval_id,
             f"[{style}]{a.status}[/{style}]",
+            approvers_cell,
             a.directive,
             a.skill,
             a.created_at,
@@ -92,10 +103,24 @@ def show_command(approval_id: str, workspace: str | None) -> None:
                 "source_run_id": a.source_run_id,
                 "status": a.status,
                 "summary": a.summary,
+                "approvers_required": a.approvers_required,
+                "approvers_progress": a.progress,
+                "accept_count": a.accept_count,
+                "reject_count": a.reject_count,
                 "created_at": a.created_at,
                 "decided_at": a.decided_at,
                 "decided_by": a.decided_by,
                 "decision_note": a.decision_note,
+                "decisions": [
+                    {
+                        "decision_id": d.decision_id,
+                        "decision": d.decision,
+                        "decided_by": d.decided_by,
+                        "decided_at": d.decided_at,
+                        "note": d.note,
+                    }
+                    for d in a.decisions
+                ],
                 "payload": a.payload,
                 "proposed_action": a.proposed_action,
             },
@@ -150,11 +175,18 @@ def _decide(
             a = approval_module.accept(ws.name, approval_id, decided_by=decided_by, note=note)
         else:
             a = approval_module.reject(ws.name, approval_id, decided_by=decided_by, note=note)
-    except (ApprovalNotFoundError, ApprovalAlreadyDecidedError) as exc:
+    except (ApprovalNotFoundError, ApprovalAlreadyDecidedError, DuplicateApproverError) as exc:
         raise click.ClickException(str(exc)) from exc
     style = _STATUS_STYLE.get(a.status, "white")
-    console.print(f"[{style}]{a.status}[/{style}]  {a.approval_id}")
-    if a.decision_note:
-        console.print(f"  note: {a.decision_note}")
-    if a.decided_by:
-        console.print(f"  by:   {a.decided_by}")
+    verb = "accepted" if accept else "rejected"
+    console.print(
+        f"[{style}]{a.status}[/{style}]  {a.approval_id}  "
+        f"[dim]· {verb} by {decided_by} · progress {a.progress}[/dim]"
+    )
+    if note:
+        console.print(f"  note: {note}")
+    if a.status == "pending" and a.approvers_required > 1:
+        remaining = a.approvers_required - a.accept_count
+        console.print(
+            f"  [yellow]still pending: {remaining} more approver(s) required[/yellow]"
+        )

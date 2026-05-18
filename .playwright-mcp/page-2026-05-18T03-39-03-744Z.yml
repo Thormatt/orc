@@ -1,0 +1,419 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "orc." [ref=e4] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e5]: compliance trace 01KR2X9HK4N1·eu-ai-act/articles-12-13-14·deadline=2026-08-02·workspace=public
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: "4"
+          - text: satisfied
+        - generic [ref=e9]:
+          - generic [ref=e10]: "1"
+          - text: partial
+        - generic [ref=e11]:
+          - generic [ref=e12]: "0"
+          - text: open
+      - generic [ref=e13]:
+        - link "↑ landing" [ref=e14] [cursor=pointer]:
+          - /url: /
+        - link "request pilot" [ref=e15] [cursor=pointer]:
+          - /url: mailto:thormatt@gmail.com?subject=Orc%20-%20EU%20AI%20Act%20compliance%20pilot
+  - generic [ref=e16]:
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: $
+          - generic [ref=e21]: orc verify
+          - generic [ref=e22]: "--file ./eu-ai-act-mapping.md"
+          - generic [ref=e23]: "--workspace public"
+          - generic [ref=e24]: "--strict"
+          - generic [ref=e25]: run_id 01KR2X9HK4N1
+        - heading "EU AI Act compliance posture, verified by the runtime itself." [level=1] [ref=e26]
+        - paragraph [ref=e27]:
+          - text: This page maps
+          - code [ref=e28]: orc v0.1.0
+          - text: "to the EU AI Act articles most relevant to operators of high-risk AI systems (Annex III). It is itself an audit artifact: every claim below points at specific source files, behaviors, or roadmap items that can be inspected. One claim is marked"
+          - emphasis [ref=e29]: open
+          - text: — a multi-approver workflow required by Article 14 §5 is planned for Phase 2 and is not yet shipped. The page is honest about what it isn't.
+        - generic [ref=e30]:
+          - term [ref=e31]: deadline
+          - definition [ref=e32]: 2026-08-02 · Annex III obligations enter into force
+          - term [ref=e33]: regulation
+          - definition [ref=e34]: Regulation (EU) 2024/1689 · Articles 9, 10, 11, 12, 13, 14, 15, 26, 72
+          - term [ref=e35]: penalty
+          - definition [ref=e36]: up to €15M or 3% worldwide annual turnover · whichever is higher
+          - term [ref=e37]: scope
+          - definition [ref=e38]: tool for deployers / providers of high-risk systems · not itself a high-risk system
+        - generic [ref=e39]:
+          - generic [ref=e40]: article-by-article summary — click a tick to jump
+          - generic [ref=e41]:
+            - link "claim_art12 · SUPPORTED · Orc satisfies Article 12's logging requirements by construction, not by configuration." [ref=e42] [cursor=pointer]:
+              - /url: "#claim-art12"
+            - link "claim_art13 · SUPPORTED · Every Orc output is interpretable, cited, and inspectable." [ref=e43] [cursor=pointer]:
+              - /url: "#claim-art13"
+            - link "claim_art14 · PARTIAL · Single-approver human oversight is shipped. Multi-approver for Article 14 §5 is open." [ref=e44] [cursor=pointer]:
+              - /url: "#claim-art14"
+            - link "claim_adj · SUPPORTED · Adjacent articles — partial coverage today, mapped roadmap for the rest." [ref=e45] [cursor=pointer]:
+              - /url: "#claim-adj"
+            - link "claim_scope · SUPPORTED · Orc is a tool that helps deployers meet obligations. It does not absolve them." [ref=e46] [cursor=pointer]:
+              - /url: "#claim-scope"
+      - generic [ref=e47]:
+        - generic [ref=e48]: article_12 · record-keeping · the core fit
+        - article [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]: ─ claim_art12
+            - generic [ref=e54]: SUPPORTED · 0.97
+          - heading "Orc satisfies Article 12's logging requirements by construction, not by configuration." [level=2] [ref=e55]
+          - paragraph [ref=e56]:
+            - text: Article 12 requires automatic recording of events over the lifetime of the system, with logs that identify risk situations, support post-market monitoring, and monitor operation. Article 26(6) requires retention of at least six months.
+            - strong [ref=e57]: Orc's trace + replay subsystem is the machinery to meet these requirements.
+            - text: It cannot be disabled, runs by default on every invocation, and produces append-only artifacts.
+          - generic [ref=e58]:
+            - generic [ref=e59]:
+              - generic [ref=e60]:
+                - text: art12_§1
+                - text: auto log
+              - generic [ref=e61]:
+                - generic [ref=e62]: Automatic recording of events over the lifetime.
+                - generic [ref=e63]:
+                  - text: Every CLI or MCP invocation opens a Run, which writes a row to the
+                  - code [ref=e64]: run
+                  - text: table and a JSON file under
+                  - code [ref=e65]: traces/<YYYY>/<MM>/<run_id>.json
+                  - text: . There is no flag to turn this off.
+                - generic [ref=e66]: "code · src/orc/runs/runner.py · evidence: every test fixture in tests/unit/test_run_context.py asserts trace creation"
+              - generic [ref=e68]: SUPPORTED
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - text: art12_§2a
+                - text: risk id
+              - generic [ref=e71]:
+                - generic [ref=e72]: Logs identify risk situations.
+                - generic [ref=e73]:
+                  - text: Verdict labels
+                  - emphasis [ref=e74]: contradicted
+                  - text: ","
+                  - emphasis [ref=e75]: not_found
+                  - text: ", and"
+                  - emphasis [ref=e76]: partial
+                  - text: explicitly mark unreliable outputs. Runtime errors are recorded with
+                  - code [ref=e77]: status="error"
+                  - text: and
+                  - code [ref=e78]: error_message
+                  - text: . A run with status=error is, by definition, a risk-flag event.
+                - generic [ref=e79]: code · src/orc/storage/schema.sql:run · src/orc/runs/runner.py:close
+              - generic [ref=e81]: SUPPORTED
+            - generic [ref=e82]:
+              - generic [ref=e83]:
+                - text: art12_§2b
+                - text: post-market
+              - generic [ref=e84]:
+                - generic [ref=e85]: Facilitate post-market monitoring (Art. 72).
+                - generic [ref=e86]:
+                  - code [ref=e87]: orc trace list
+                  - text: enables longitudinal queries across runs.
+                  - code [ref=e88]: orc replay <run_id>
+                  - text: re-executes against the recorded
+                  - code [ref=e89]: corpus_version
+                  - text: so drift between corpus snapshots is detectable.
+                - generic [ref=e90]: code · src/orc/cli_commands/trace.py · src/orc/runs/replay.py
+              - generic [ref=e92]: SUPPORTED
+            - generic [ref=e93]:
+              - generic [ref=e94]:
+                - text: art12_§2c
+                - text: operation
+              - generic [ref=e95]:
+                - generic [ref=e96]: Monitor operation per Art. 26(5).
+                - generic [ref=e97]:
+                  - text: "Per-run metrics:"
+                  - code [ref=e98]: total_input_tokens
+                  - text: ","
+                  - code [ref=e99]: total_output_tokens
+                  - text: ","
+                  - code [ref=e100]: total_cache_read
+                  - text: ","
+                  - code [ref=e101]: total_cache_creation
+                  - text: ", model identifier, elapsed time, retrieval set size — all recorded automatically."
+                - generic [ref=e102]: code · src/orc/runs/runner.py:close, finalize_run_row
+              - generic [ref=e104]: SUPPORTED
+            - generic [ref=e105]:
+              - generic [ref=e106]:
+                - text: art26_§6
+                - text: retention
+              - generic [ref=e107]:
+                - generic [ref=e108]: Six-month minimum retention.
+                - generic [ref=e109]:
+                  - text: Trace JSON files are append-only by default; SQLite
+                  - code [ref=e110]: run
+                  - text: rows are never deleted by Orc. The deployer is responsible for backing the workspace volume up beyond 6 months for their jurisdiction.
+                - generic [ref=e111]: filesystem · ~/.orc/workspaces/<name>/traces/ + run table
+              - generic [ref=e113]: SUPPORTED
+      - generic [ref=e114]:
+        - generic [ref=e115]: article_13 · transparency to deployers
+        - article [ref=e116]:
+          - generic [ref=e117]:
+            - generic [ref=e118]: ─ claim_art13
+            - generic [ref=e121]: SUPPORTED · 0.93
+          - heading "Every Orc output is interpretable, cited, and inspectable." [level=2] [ref=e122]
+          - paragraph [ref=e123]: Article 13 requires sufficient transparency that deployers can interpret and appropriately use the output. Orc's verdict shape is structured JSON with confidence + chunk citations + reasoning, which is materially more interpretable than the conversational outputs typical of LLM tooling.
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - text: art13_§1
+                - text: interpret
+              - generic [ref=e127]:
+                - generic [ref=e128]: Output is interpretable by the deployer.
+                - generic [ref=e129]:
+                  - text: "Every verdict ships with: structured label ("
+                  - code [ref=e130]: supported / partial / contradicted / not_found
+                  - text: ), confidence score, reasoning text, chunk-level citations, the full retrieval set.
+                - generic [ref=e131]: code · src/orc/directives/research/skills/verify_claim.py:run
+              - generic [ref=e133]: SUPPORTED
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - text: art13_§3bii
+                - text: limits
+              - generic [ref=e136]:
+                - generic [ref=e137]: Capabilities and limitations documented.
+                - generic [ref=e138]:
+                  - text: "README.md plus this page. Known limitations: BM25 retrieval only (no embeddings in v0.1), no PDF ingestion, prompt-cache threshold ~3K tokens for sonnet (see"
+                  - link "claim_08" [ref=e139] [cursor=pointer]:
+                    - /url: /#claim-08
+                  - text: on the landing page).
+                - generic [ref=e140]: file · README.md · docs/compliance/eu-ai-act.md · landing page claim_08 (publicly self-disclosed)
+              - generic [ref=e142]: SUPPORTED
+            - generic [ref=e143]:
+              - generic [ref=e144]:
+                - text: art13_§3biii
+                - text: harm risks
+              - generic [ref=e145]:
+                - generic [ref=e146]: Foreseeable circumstances likely to lead to harm.
+                - generic [ref=e147]:
+                  - text: "The runtime structurally prevents hallucinated citations: chunk IDs returned by the model are validated against the retrieval set and dropped if absent."
+                  - emphasis [ref=e148]: not_found
+                  - text: is preferred over confabulation when the corpus is silent.
+                - generic [ref=e149]: code · src/orc/directives/research/skills/verify_claim.py (candidate_ids filter)
+              - generic [ref=e151]: SUPPORTED
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - text: art13_§3bv
+                - text: input data
+              - generic [ref=e154]:
+                - generic [ref=e155]: Input data specifications.
+                - generic [ref=e156]:
+                  - text: The workspace
+                  - emphasis [ref=e157]: is
+                  - text: the input-data spec. Every evidence item carries SHA-256 hash, ingestion timestamp, source path, and corpus version. Provenance is intact across the lifecycle.
+                - generic [ref=e158]: code · src/orc/ingest/pipeline.py · src/orc/storage/schema.sql:evidence
+              - generic [ref=e160]: SUPPORTED
+      - generic [ref=e161]:
+        - generic [ref=e162]: article_14 · human oversight · one item open
+        - article [ref=e163]:
+          - generic [ref=e164]:
+            - generic [ref=e165]: ─ claim_art14
+            - generic [ref=e168]: PARTIAL · 0.80
+          - heading "Single-approver human oversight is shipped. Multi-approver for Article 14 §5 is open." [level=2] [ref=e169]
+          - paragraph [ref=e170]:
+            - text: Article 14 requires effective oversight by natural persons. For some Annex III systems (notably biometric ID under §1(a)) it requires
+            - emphasis [ref=e171]: two
+            - text: natural persons to verify identifications. The single-approver case is satisfied today by the approval queue. The two-approver workflow is on the Phase 2 roadmap and is honestly marked
+            - emphasis [ref=e172]: open
+            - text: below.
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - text: art14_§4d
+                - text: override
+              - generic [ref=e176]:
+                - generic [ref=e177]: Decide not to use, or override, the output.
+                - generic [ref=e178]:
+                  - code [ref=e179]: orc approve reject <id> --note "..."
+                  - text: records the override decision with timestamp and free-text reason. The rejection is preserved in the queue and the trace.
+                - generic [ref=e180]: code · src/orc/queue/approval.py:reject · src/orc/cli_commands/approve.py
+              - generic [ref=e182]: SUPPORTED
+            - generic [ref=e183]:
+              - generic [ref=e184]:
+                - text: art14_§4e
+                - text: intervene
+              - generic [ref=e185]:
+                - generic [ref=e186]: Intervene or interrupt.
+                - generic [ref=e187]: The approval queue is structurally between Orc's analysis and any external action. Action-taking outputs land in the queue; nothing leaves Orc until a human accepts. Compromised or malfunctioning runs cannot bypass this — there is no path that doesn't pass through the queue.
+                - generic [ref=e188]: architecture · approval queue is the only sanctioned write path
+              - generic [ref=e190]: SUPPORTED
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - text: art14_§5
+                - text: two-person
+              - generic [ref=e193]:
+                - generic [ref=e194]: Two natural persons verify (open · Phase 2).
+                - generic [ref=e195]:
+                  - strong [ref=e196]: Not yet shipped.
+                  - text: Article 14 §5 requires that for some Annex III systems, no action is taken unless verified by two natural persons. The approval table currently accepts one decision. Phase 2 adds an
+                  - code [ref=e197]: approvers_required
+                  - text: field plus a per-approver decision log. Tracked at github.com/Thormatt/orc.
+                - generic [ref=e198]: "roadmap · Phase 2 · task #23 in the public tracker"
+              - generic [ref=e200]: CONTRADICTED
+      - generic [ref=e201]:
+        - generic [ref=e202]: adjacent · articles 9 / 10 / 11 / 15 / 72
+        - article [ref=e203]:
+          - generic [ref=e204]:
+            - generic [ref=e205]: ─ claim_adj
+            - generic [ref=e208]: SUPPORTED · 0.81
+          - heading "Adjacent articles — partial coverage today, mapped roadmap for the rest." [level=2] [ref=e209]
+          - paragraph [ref=e210]: A short status pass on the articles around the core 12/13/14. Some are satisfied substantively by today's runtime; others depend on roadmap features (eval suite, audit export, conformity-helper directive). Each is honestly marked.
+          - generic [ref=e211]:
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - text: art9
+                - text: risk mgmt
+              - generic [ref=e214]:
+                - generic [ref=e215]: Risk management substrate.
+                - generic [ref=e216]:
+                  - text: Incident reconstruction via
+                  - code [ref=e217]: orc trace show
+                  - text: . Corpus-version and cache-metric drift detection via replay. The
+                  - emphasis [ref=e218]: not_found
+                  - text: verdict is the runtime's first-line risk mitigation.
+                - generic [ref=e219]: runtime · trace + replay
+              - generic [ref=e221]: SUPPORTED
+            - generic [ref=e222]:
+              - generic [ref=e223]:
+                - text: art10
+                - text: data gov
+              - generic [ref=e224]:
+                - generic [ref=e225]: Data governance basics.
+                - generic [ref=e226]:
+                  - text: Every evidence item carries SHA-256 + ingestion metadata.
+                  - code [ref=e227]: orc ingest
+                  - text: is the single audited entry point. Bias/fairness analysis of the corpus remains the deployer's responsibility.
+                - generic [ref=e228]: code · src/orc/ingest/pipeline.py
+              - generic [ref=e230]: SUPPORTED
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - text: art11
+                - text: tech docs
+              - generic [ref=e233]:
+                - generic [ref=e234]: Technical documentation scaffolding.
+                - generic [ref=e235]:
+                  - text: README + CHANGELOG cover the general description and lifecycle. The
+                  - emphasis [ref=e236]: conformity-assessment-helper
+                  - text: directive (Phase 3) will generate Annex IV scaffolding from a system spec.
+                - generic [ref=e237]: file · README.md, CHANGELOG.md · roadmap · Phase 3
+              - generic [ref=e239]: SUPPORTED
+            - generic [ref=e240]:
+              - generic [ref=e241]:
+                - text: art15
+                - text: robustness
+              - generic [ref=e242]:
+                - generic [ref=e243]: Accuracy, robustness, cybersecurity (partial).
+                - generic [ref=e244]:
+                  - text: Accuracy via per-run confidence + golden tests against a fixed corpus. Robustness instrumentation (
+                  - code [ref=e245]: orc eval consistency / perturb / regression
+                  - text: ") is on the Phase 3 roadmap. Cybersecurity: dependencies pinned, local-first, no telemetry, approval queue. SOC 2 / ISO 42001 in Phase 4."
+                - generic [ref=e246]: tests/golden/ · roadmap · Phases 3-4
+              - generic [ref=e248]: PARTIAL
+            - generic [ref=e249]:
+              - generic [ref=e250]:
+                - text: art26
+                - text: deployer
+              - generic [ref=e251]:
+                - generic [ref=e252]: Deployer obligations.
+                - generic [ref=e253]:
+                  - text: §5 monitoring →
+                  - code [ref=e254]: orc trace list
+                  - text: + replay. §6 retention → append-only by default.
+                  - code [ref=e255]: orc audit export
+                  - text: (Phase 2) bundles all artifacts for regulator handoff.
+                - generic [ref=e256]: runtime · trace + replay · roadmap · Phase 2 (audit export)
+              - generic [ref=e258]: SUPPORTED
+            - generic [ref=e259]:
+              - generic [ref=e260]:
+                - text: art72
+                - text: post-market
+              - generic [ref=e261]:
+                - generic [ref=e262]: Post-market monitoring substrate.
+                - generic [ref=e263]:
+                  - text: The trace database
+                  - emphasis [ref=e264]: is
+                  - text: the post-market monitoring substrate. Every call writes to it. Phase 3 eval commands produce drift metrics against a baseline.
+                - generic [ref=e265]: runtime · trace database · roadmap · Phase 3 (eval suite)
+              - generic [ref=e267]: SUPPORTED
+      - generic [ref=e268]:
+        - generic [ref=e269]: scope · what orc is not · honest framing
+        - article [ref=e270]:
+          - generic [ref=e271]:
+            - generic [ref=e272]: ─ claim_scope
+            - generic [ref=e275]: SUPPORTED · 0.95
+          - heading "Orc is a tool that helps deployers meet obligations. It does not absolve them." [level=2] [ref=e276]
+          - paragraph [ref=e277]:
+            - text: Orc itself is
+            - strong [ref=e278]: not
+            - text: a "high-risk AI system" per Annex III. It is a tool used by deployers and providers of high-risk systems. Article 12/13/14 obligations strictly fall on the deployer; Orc supplies the machinery to meet them. Buyer-side legal counsel should always confirm your specific obligations.
+          - generic [ref=e279]:
+            - generic [ref=e280]: also out of scope, marked honestly
+            - generic [ref=e281]: Conformity assessment under Article 43 is a procedural obligation, not a tool output. SOC 2 Type II and ISO/IEC 42001 attestations are on the Phase 4 roadmap; Orc v0.1.0 is open-source, MIT-licensed, fully inspectable code — a different (and arguably stronger) form of trust than a certificate, but not equivalent. General-purpose AI obligations under Articles 51–56 apply to the underlying LLM provider (Anthropic, OpenAI via OpenRouter), not to Orc itself.
+      - generic [ref=e282]:
+        - generic [ref=e283]: next · pilot path · 11 weeks to enforcement
+        - heading "If you're evaluating Orc for an Annex III workflow." [level=2] [ref=e284]
+        - paragraph [ref=e285]: Three ways to engage, ranked by commitment level.
+        - generic [ref=e286]: "# 1. evaluate the code — 30 minutes, no contact required $ uv pip install git+https://github.com/Thormatt/orc $ orc workspace create eu-ai-act-eval $ orc verify \"your test claim\" -w eu-ai-act-eval # 2. read the source — github.com/Thormatt/orc # src/orc/runs/runner.py ← article 12 §1, §2 # src/orc/queue/approval.py ← article 14 §4d, §4e # src/orc/directives/research/.../verify_claim.py ← article 13 §1, §3biii # 3. pilot — thormatt@gmail.com · subject \"Orc - EU AI Act compliance pilot\" # we'll scope to one specific Annex III use case + propose a 30-day evaluation"
+        - paragraph [ref=e287]:
+          - text: "Source:"
+          - link "github.com/Thormatt/orc" [ref=e288] [cursor=pointer]:
+            - /url: https://github.com/Thormatt/orc
+          - text: "· Mapping doc:"
+          - link "docs/compliance/eu-ai-act.md" [ref=e289] [cursor=pointer]:
+            - /url: https://github.com/Thormatt/orc/blob/main/docs/compliance/eu-ai-act.md
+          - text: · MIT-licensed
+      - generic [ref=e290]:
+        - generic [ref=e291]: ━━━ end of compliance trace ━━━
+        - generic [ref=e292]:
+          - term [ref=e293]: verified by
+          - definition [ref=e294]: orc v0.1.0 against eu-ai-act-mapping.md · signed 2026-05-17T13:00:00Z
+          - term [ref=e295]: regulation
+          - definition [ref=e296]: Regulation (EU) 2024/1689 · articles 9, 10, 11, 12, 13, 14, 15, 26, 72
+          - term [ref=e297]: deadline
+          - definition [ref=e298]: 2026-08-02 · Annex III enforcement starts · ~11 weeks from this trace
+          - term [ref=e299]: open items
+          - definition [ref=e300]: 1 partial (art14 §5 two-approver) · tracked at github.com/Thormatt/orc
+          - term [ref=e301]: contact
+          - definition [ref=e302]:
+            - link "thormatt@gmail.com" [ref=e303] [cursor=pointer]:
+              - /url: mailto:thormatt@gmail.com?subject=Orc%20-%20EU%20AI%20Act%20compliance%20pilot
+            - text: · subject "Orc — EU AI Act compliance pilot"
+        - generic [ref=e304]:
+          - generic [ref=e305]: orc. © 2026 · the verification runtime · short for orchestration
+          - generic [ref=e306]: — this page is itself an Article 12 audit artifact —
+    - complementary [ref=e307]:
+      - generic [ref=e308]:
+        - generic [ref=e309]:
+          - generic [ref=e310]: article ledger
+          - generic [ref=e311]: 5/5
+        - list [ref=e312]:
+          - link "✓ art12 Orc satisfies Article 12's logging requirements by construction, not by configuration." [ref=e313] [cursor=pointer]:
+            - /url: "#claim-art12"
+            - generic [ref=e314]: ✓
+            - generic [ref=e315]: art12
+            - generic [ref=e316]: Orc satisfies Article 12's logging requirements by construction, not by configuration.
+          - link "✓ art13 Every Orc output is interpretable, cited, and inspectable." [ref=e317] [cursor=pointer]:
+            - /url: "#claim-art13"
+            - generic [ref=e318]: ✓
+            - generic [ref=e319]: art13
+            - generic [ref=e320]: Every Orc output is interpretable, cited, and inspectable.
+          - link "~ art14 Single-approver human oversight is shipped. Multi-approver for Article 14 §5 is open." [ref=e321] [cursor=pointer]:
+            - /url: "#claim-art14"
+            - generic [ref=e322]: ~
+            - generic [ref=e323]: art14
+            - generic [ref=e324]: Single-approver human oversight is shipped. Multi-approver for Article 14 §5 is open.
+          - link "✓ adj Adjacent articles — partial coverage today, mapped roadmap for the rest." [ref=e325] [cursor=pointer]:
+            - /url: "#claim-adj"
+            - generic [ref=e326]: ✓
+            - generic [ref=e327]: adj
+            - generic [ref=e328]: Adjacent articles — partial coverage today, mapped roadmap for the rest.
+          - link "✓ scope Orc is a tool that helps deployers meet obligations. It does not absolve them." [ref=e329] [cursor=pointer]:
+            - /url: "#claim-scope"
+            - generic [ref=e330]: ✓
+            - generic [ref=e331]: scope
+            - generic [ref=e332]: Orc is a tool that helps deployers meet obligations. It does not absolve them.
+        - generic [ref=e333]: click row to jump · open items preserved per audit

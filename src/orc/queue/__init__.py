@@ -1,5 +1,6 @@
 from orc.queue.approval import (
     Approval,
+    Decision,
     accept,
     enqueue,
     ensure_approval_table,
@@ -10,6 +11,7 @@ from orc.queue.approval import (
 
 __all__ = [
     "Approval",
+    "Decision",
     "accept",
     "enqueue",
     "ensure_approval_table",

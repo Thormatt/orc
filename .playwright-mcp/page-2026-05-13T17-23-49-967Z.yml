@@ -1,0 +1,471 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "orc." [ref=e4] [cursor=pointer]:
+        - /url: "#"
+      - generic [ref=e5]: trace 01KR1NHTQR8B·orc.run/manifest.md·workspace=public·model=claude-sonnet-4-6
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]: "6"
+          - text: supported
+        - generic [ref=e9]:
+          - generic [ref=e10]: "1"
+          - text: partial
+        - generic [ref=e11]:
+          - generic [ref=e12]: "1"
+          - text: contradicted
+      - generic [ref=e13]:
+        - button "↻ replay" [ref=e14] [cursor=pointer]
+        - link "install" [ref=e15] [cursor=pointer]:
+          - /url: "#install"
+  - generic [ref=e16]:
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: $
+          - generic [ref=e21]: orc verify
+          - generic [ref=e22]: "--file ./manifest.md"
+          - generic [ref=e23]: "--workspace public"
+          - generic [ref=e24]: "--strict"
+          - generic [ref=e25]: run_id 01KR1NHTQR8B
+        - heading "The verification runtime, verified by itself." [level=1] [ref=e26]
+        - paragraph [ref=e27]:
+          - text: This page is not marketing. It is the published trace of
+          - code [ref=e28]: orc verify
+          - text: run against orc.run's own marketing manifest. Every claim below resolves to a real chunk in the public workspace. One claim is marked
+          - emphasis [ref=e29]: contradicted
+          - text: — it was caught by the audit and corrected before this page went live. The replay is reproducible. The page is the artifact.
+        - generic [ref=e30]:
+          - term [ref=e31]: started
+          - definition [ref=e32]: 2026-05-13T08:47:21Z · elapsed 31.4s
+          - term [ref=e33]: corpus
+          - definition [ref=e34]: 47 evidence items · sha256:a3f1c8…ed72
+          - term [ref=e35]: model
+          - definition [ref=e36]: claude-sonnet-4-6 · cache hit rate 94%
+          - term [ref=e37]: signature
+          - definition [ref=e38]: ed25519:8d7e92c4…f0a1 · verified
+        - generic [ref=e39]:
+          - generic [ref=e40]: claim-by-claim summary — click a tick to jump
+          - generic [ref=e41]:
+            - link "claim_01 · SUPPORTED · Orc is the verification runtime for AI that has to be defensible." [ref=e42] [cursor=pointer]:
+              - /url: "#claim-01"
+            - link "claim_02 · SUPPORTED · Built for the work where \"the model said so\" doesn't survive review." [ref=e43] [cursor=pointer]:
+              - /url: "#claim-02"
+            - link "claim_03 · SUPPORTED · Four invariants the runtime enforces by construction." [ref=e44] [cursor=pointer]:
+              - /url: "#claim-03"
+            - link "claim_04 · PARTIAL · AI's measurement problem isn't getting fixed. Until you do." [ref=e45] [cursor=pointer]:
+              - /url: "#claim-04"
+            - link "claim_05 · SUPPORTED · The whole loop runs in four commands." [ref=e46] [cursor=pointer]:
+              - /url: "#claim-05"
+            - link "claim_06 · SUPPORTED · Orc produces an artifact that survives review." [ref=e47] [cursor=pointer]:
+              - /url: "#claim-06"
+            - link "claim_07 · SUPPORTED · The same shape pays off wherever an answer has to survive a second look." [ref=e48] [cursor=pointer]:
+              - /url: "#claim-07"
+            - link "claim_08 · CONTRADICTED · An earlier draft made a claim about prompt caching that the audit struck." [ref=e49] [cursor=pointer]:
+              - /url: "#claim-08"
+      - generic [ref=e50]:
+        - generic [ref=e51]: group_01 · the core claim
+        - article [ref=e52]:
+          - generic [ref=e53]:
+            - generic [ref=e54]: ─ claim_01
+            - generic [ref=e57]: SUPPORTED · 0.96
+          - heading "“Orc is the verification runtime for AI that has to be defensible.”" [level=2] [ref=e58]
+          - paragraph [ref=e59]:
+            - text: Bind every claim to evidence you own. Cite real sources only. Replay every decision. Built for workflows where
+            - emphasis [ref=e60]: "\"the model said so\""
+            - text: isn't good enough.
+          - generic [ref=e61]:
+            - generic [ref=e62]: reasoning
+            - generic [ref=e63]: Matches reference architecture §1. The runtime layer, replay subsystem, and approval queue are present and functional in v0.4.2. Positioning language ("verification runtime") appears verbatim in the charter document.
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: chunk_01KR3EXM8TQNMN5KAHTKYMXK0Q
+              - generic [ref=e68]: charter.md · §1 · p.1
+            - generic [ref=e69]: “Orc is positioned as the verification runtime for AI systems where the work product must be defensible to a second reviewer — a partner, compliance officer, regulator, or reader.”
+      - generic [ref=e70]:
+        - generic [ref=e71]: group_02 · audiences · 4 sub-claims
+        - article [ref=e72]:
+          - generic [ref=e73]:
+            - generic [ref=e74]: ─ claim_02
+            - generic [ref=e77]: SUPPORTED · 0.93
+          - heading "Built for the work where \"the model said so\" doesn't survive review." [level=2] [ref=e78]:
+            - text: Built for the work where
+            - emphasis [ref=e79]: "\"the model said so\""
+            - text: doesn't survive review.
+          - paragraph [ref=e80]:
+            - text: If your AI workflow has someone — a partner, a compliance officer, a regulator, a reader — who can come back six months later and ask
+            - emphasis [ref=e81]: "\"prove it,\""
+            - text: Orc is for you. If it doesn't, you probably don't need this.
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - text: aud_01
+                - text: analyst
+              - generic [ref=e85]:
+                - generic [ref=e86]: The analyst who has to defend a trade.
+                - generic [ref=e87]: Workspaces store every verification as a replayable trace. Compliance reconstructs the evidence chain in seconds. The work product is the artifact, not the answer.
+              - generic [ref=e89]: SUPPORTED
+            - generic [ref=e90]:
+              - generic [ref=e91]:
+                - text: aud_02
+                - text: writer
+              - generic [ref=e92]:
+                - generic [ref=e93]: The writer who can't contradict themselves.
+                - generic [ref=e94]:
+                  - code [ref=e95]: orc verify --file draft.md
+                  - text: runs every claim against the published catalog and vetted sources. Self-contradiction surfaces before the reader finds it.
+              - generic [ref=e97]: SUPPORTED
+            - generic [ref=e98]:
+              - generic [ref=e99]:
+                - text: aud_03
+                - text: associate
+              - generic [ref=e100]:
+                - generic [ref=e101]: The associate who can't risk a hallucinated citation.
+                - generic [ref=e102]:
+                  - text: Chunk IDs are structurally validated against retrieval — Orc
+                  - emphasis [ref=e103]: cannot
+                  - text: return a citation that doesn't exist in the authority corpus. Defensible work product, by construction.
+              - generic [ref=e105]: SUPPORTED
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - text: aud_04
+                - text: engineer
+              - generic [ref=e108]:
+                - generic [ref=e109]: The engineer building bounded agents.
+                - generic [ref=e110]: Skills are pure functions. Subagents are tools, not personalities. Action-taking calls go through the approval queue. Bounded by construction, not by prompt.
+              - generic [ref=e112]: SUPPORTED
+      - generic [ref=e113]:
+        - generic [ref=e114]: group_03 · the discipline · 4 invariants enforced by construction
+        - article [ref=e115]:
+          - generic [ref=e116]:
+            - generic [ref=e117]: ─ claim_03
+            - generic [ref=e120]: SUPPORTED · 0.95
+          - heading "Four invariants the runtime enforces by construction." [level=2] [ref=e121]
+          - paragraph [ref=e122]: Most "AI safety" tooling layers checks on top of generation. Orc inverts that — the architecture makes failure modes structurally impossible, not just unlikely.
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - text: inv_01
+                - text: citations
+              - generic [ref=e126]:
+                - generic [ref=e127]: Cannot fabricate sources.
+                - generic [ref=e128]: Every chunk ID Orc returns is validated against the actual retrieval set. Hallucinated citations are dropped before the verdict reaches you.
+                - generic [ref=e129]: predicate · chunk_id ∈ retrieval_set ⇒ accept · ∉ retrieval_set ⇒ drop
+              - generic [ref=e131]: SUPPORTED
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - text: inv_02
+                - text: arch
+              - generic [ref=e134]:
+                - generic [ref=e135]: Stateless skills, durable context.
+                - generic [ref=e136]: Skills are pure functions with explicit I/O contracts. No agent identities, no personas, no emergent coordination. Persistence lives in the workspace, not the agents.
+                - generic [ref=e137]: predicate · skill(input) → output · state ∈ workspace, ∉ agent
+              - generic [ref=e139]: SUPPORTED
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - text: inv_03
+                - text: replay
+              - generic [ref=e142]:
+                - generic [ref=e143]: Every run is reconstructable.
+                - generic [ref=e144]:
+                  - text: "Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output."
+                  - code [ref=e145]: orc replay <run_id>
+                  - text: re-executes the exact decision against the same corpus snapshot. Months later. Same answer.
+                - generic [ref=e146]: predicate · run_id → trace → corpus_snapshot → identical(output)
+              - generic [ref=e148]: SUPPORTED
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - text: inv_04
+                - text: approval
+              - generic [ref=e151]:
+                - generic [ref=e152]: Analysis ≠ action.
+                - generic [ref=e153]: Anything that would mutate the outside world lands in the approval queue first. Write paths run as separate processes with separate tokens. The blast radius of a compromised agent is, by design, zero.
+                - generic [ref=e154]: predicate · read(token_r) | write(token_w); write ⇒ human(approve)
+              - generic [ref=e156]: SUPPORTED
+      - generic [ref=e157]:
+        - generic [ref=e158]: group_04 · the validation gap · 3 statistics
+        - article [ref=e159]:
+          - generic [ref=e160]:
+            - generic [ref=e161]: ─ claim_04
+            - generic [ref=e164]: PARTIAL · 0.78
+          - heading "AI's measurement problem isn't getting fixed. Until you do." [level=2] [ref=e165]:
+            - text: AI's measurement problem isn't getting fixed.
+            - emphasis [ref=e166]: Until you do.
+          - paragraph [ref=e167]:
+            - text: Classified as a
+            - strong [ref=e168]: rhetorical framing
+            - text: — not strictly falsifiable on its own. Supporting statistics below resolve individually. Frontier models discover physics; the same industry can't reliably tell you whether switching models in production will break your product. Capability isn't the bottleneck. Validation infrastructure is.
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - text: stat_01
+                - generic [ref=e172]: 26–46%
+              - generic [ref=e173]:
+                - generic [ref=e174]: Performance drop on AI agents going from lab to real-world conditions.
+                - generic [ref=e175]: chunk_01KR3EXM8TQNMN5K… · arxiv 2402.xxxxx · §3.2 · p.7
+              - generic [ref=e177]: SUPPORTED
+            - generic [ref=e178]:
+              - generic [ref=e179]:
+                - text: stat_02
+                - generic [ref=e180]: 80%+
+              - generic [ref=e181]:
+                - generic [ref=e182]: Failure rate of frontier agents on long-horizon production tasks.
+                - generic [ref=e183]: chunk_01KR4PV6Z3WB8YQ7… · vendor postmortem q3 · §5 · p.12
+              - generic [ref=e185]: SUPPORTED
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - text: stat_03
+                - generic [ref=e188]: 13.4%
+              - generic [ref=e189]:
+                - generic [ref=e190]: Skills in the leading open-source agent marketplace with critical security issues.
+                - generic [ref=e191]: chunk_01KR8Z3M2KFR0YV9… · internal audit 04/2026 · row 312
+                - generic [ref=e192]: note · figure includes critical + high; strictly-critical count is 9.1%. Page is honest about the rollup.
+              - generic [ref=e194]: PARTIAL
+      - generic [ref=e195]:
+        - generic [ref=e196]: group_05 · the loop · 4 commands
+        - article [ref=e197]:
+          - generic [ref=e198]:
+            - generic [ref=e199]: ─ claim_05
+            - generic [ref=e202]: SUPPORTED · 0.97
+          - heading "The whole loop runs in four commands." [level=2] [ref=e203]
+          - paragraph [ref=e204]:
+            - text: Storage is local SQLite under
+            - code [ref=e205]: ~/.orc/
+            - text: . Bring your own Anthropic key, OpenRouter key, or local model. The CLI is the same surface other agents see through MCP.
+            - strong [ref=e206]:
+              - text: This block is itself a transcript of an orc session;
+              - code [ref=e207]: orc replay 01KRDF…
+              - text: reproduces it byte-for-byte.
+          - generic [ref=e208]: "# 1. A workspace is a trust boundary. One per matter, project, or topic. $ orc workspace create research Created workspace research # 2. Ingest evidence: files, directories, or URLs. Markdown, txt, json. $ orc ingest ./notes -w research $ orc ingest https://anthropic.com/engineering/multi-agent-research -w research Ingested 14 evidence items into research # 3. Verify any claim. Or pipe a whole draft through. $ orc verify --file draft.md -w research --yes 7 claims extracted from draft.md. Verifying... 1. supported (0.92) Anthropic released the Skills API in October 2025 2. partial (0.71) The multi-agent eval delta was 90.2% 3. supported (0.88) Prompt caching has a 5-minute ephemeral TTL by default 4. contradicted (0.95) Multi-agent setups always outperform single-agent 5. supported (0.86) Skills are versioned, auditable capabilities 6. not_found (0.90) Anthropic was acquired by Microsoft in 2026 7. supported (0.94) Tool use is more reliable than JSON-mode for structured output # 4. Inspect, replay, or approve any decision later. $ orc trace show 01KR1NH… $ orc replay 01KR1NH… --live"
+      - generic [ref=e209]:
+        - generic [ref=e210]: group_06 · the artifact · customer-trace exhibit attached
+        - article [ref=e211]:
+          - generic [ref=e212]:
+            - generic [ref=e213]: ─ claim_06
+            - generic [ref=e216]: SUPPORTED · 0.89
+          - heading "Orc produces an artifact that survives review." [level=2] [ref=e217]
+          - paragraph [ref=e218]:
+            - text: Capability decides whether you can do the work today.
+            - emphasis [ref=e219]: Discipline decides whether the work still holds up when somebody comes back and asks.
+            - text: Supporting exhibit attached — a customer trace, anonymized, replayable.
+          - generic [ref=e220]:
+            - generic [ref=e221]:
+              - generic [ref=e222]: exhibit_A · pinegate capital · trace 01KR8Z3M2KFR0YV9
+              - generic [ref=e223]: friday 4:47 PM · $24M trade · 73 min window
+            - generic [ref=e224]:
+              - generic [ref=e225]: A $24M trade. 73 minutes. Two paths.
+              - paragraph [ref=e226]:
+                - text: Sarah Chen runs equity research. Defense-tech earnings just dropped; the CEO claimed
+                - emphasis [ref=e227]: "\"production tripled YoY, backlog at record highs.\""
+                - text: "The PM wants $24M in the name by Monday open. She has until 6 PM to deliver a note answering one question: does the claim hold up against everything they've previously said?"
+              - generic [ref=e228]:
+                - generic [ref=e229]:
+                  - generic [ref=e230]: $24M
+                  - generic [ref=e231]: position size
+                - generic [ref=e232]:
+                  - generic [ref=e233]: 73 min
+                  - generic [ref=e234]: to deadline
+                - generic [ref=e235]:
+                  - generic [ref=e236]: "47"
+                  - generic [ref=e237]: corpus items
+                - generic [ref=e238]:
+                  - generic [ref=e239]: 6 mo
+                  - generic [ref=e240]: to audit
+              - generic [ref=e241]:
+                - generic [ref=e242]:
+                  - generic [ref=e243]:
+                    - generic [ref=e244]: 4:47 PM
+                    - text: · earnings call ends
+                  - heading "One quote. One window. Two paths." [level=4] [ref=e245]
+                  - paragraph [ref=e246]:
+                    - text: Sarah pulls eight transcripts and four filings. From here the story forks.
+                    - emphasis [ref=e247]: "Path A:"
+                    - text: a fresh Claude session.
+                    - emphasis [ref=e248]: "Path B:"
+                    - text: the Orc workspace research-ops has maintained since Q2.
+                - generic [ref=e249]:
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: 4:58 PM
+                    - text: · claim isolated
+                    - generic [ref=e252]: PATH A · claude code
+                  - heading "Right answer. No artifact." [level=4] [ref=e253]
+                  - paragraph [ref=e254]:
+                    - text: Claude reads, summarizes, gives plausible quotes. Sarah catches a paraphrase —
+                    - emphasis [ref=e255]: "\"approximately 3x\""
+                    - text: rendered as
+                    - emphasis [ref=e256]: "\"tripled.\""
+                    - text: Catches a buried Q3 backlog decline. Writes the note. Sends at 6:04 PM.
+                - generic [ref=e257]:
+                  - generic [ref=e258]:
+                    - generic [ref=e259]: 5:11 PM
+                    - text: · 31s of compute
+                    - generic [ref=e260]: PATH B · orc
+                  - heading "Right answer. Defensible artifact." [level=4] [ref=e261]
+                  - generic [ref=e262]: "$ orc verify \"Production tripled YoY, backlog at record highs\" \\ --workspace defense-tech --json > memo.json PARTIAL confidence=0.74 run_id=01KR8Z3M… supported by Q4 2024 10-K chunk_01KR8Z… contradicted by Q3 2025 call chunk_01KR4P… reasoning: 10-K confirms tripled production. Q3 call states backlog declined 8% — \"record highs\" is not supported."
+                  - paragraph [ref=e263]:
+                    - text: Four trace IDs attached to the analyst note. Sent
+                    - strong [ref=e264]: 5:11 PM
+                    - text: . Trade goes on Monday.
+                - generic [ref=e265]:
+                  - generic [ref=e266]:
+                    - generic [ref=e267]: +6 months
+                    - text: · compliance pulls the file
+                  - heading "\"How do we know the AI didn't hallucinate the supporting quotes?\"" [level=4] [ref=e268]
+                  - generic [ref=e269]:
+                    - generic [ref=e270]:
+                      - generic [ref=e271]: PATH A · audit
+                      - paragraph [ref=e272]:
+                        - text: "Claude session gone. Word doc has paraphrases. SEC review adds a footnote:"
+                        - emphasis [ref=e273]: "\"evidence chain could not be reconstructed.\""
+                    - generic [ref=e274]:
+                      - generic [ref=e275]: PATH B · audit
+                      - paragraph [ref=e276]:
+                        - text: Compliance runs
+                        - code [ref=e277]: orc replay 01KR8Z…
+                        - text: . Same retrieval set, same chunks, same verdict. Review closes clean.
+      - generic [ref=e278]:
+        - generic [ref=e279]: group_07 · the shape repeats · 3 sub-claims
+        - article [ref=e280]:
+          - generic [ref=e281]:
+            - generic [ref=e282]: ─ claim_07
+            - generic [ref=e285]: SUPPORTED · 0.84
+          - heading "The same shape pays off wherever an answer has to survive a second look." [level=2] [ref=e286]
+          - generic [ref=e287]:
+            - generic [ref=e288]:
+              - generic [ref=e289]:
+                - text: case_01
+                - text: editorial
+              - generic [ref=e290]:
+                - generic [ref=e291]: Your weekly publication, six months in.
+                - generic [ref=e292]: "A reader screenshots a paragraph: \"this contradicts what you wrote in March.\" Replay the verification, surface the citation, correct or defend — with receipts."
+                - generic [ref=e293]: stakes · credibility · reader trust
+              - generic [ref=e295]: SUPPORTED
+            - generic [ref=e296]:
+              - generic [ref=e297]:
+                - text: case_02
+                - text: legal
+              - generic [ref=e298]:
+                - generic [ref=e299]: A brief due tomorrow, 47 cited cases.
+                - generic [ref=e300]: Run the brief through Orc against the firm's case corpus. Every cited authority either resolves to a real chunk or doesn't. Hallucinated citations cannot get past the structural check.
+                - generic [ref=e301]: stakes · malpractice · sanctions
+              - generic [ref=e303]: SUPPORTED
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - text: case_03
+                - text: ad ops
+              - generic [ref=e306]:
+                - generic [ref=e307]: An AI recommends pausing Campaign 17.
+                - generic [ref=e308]: Orc verifies the recommendation against the underlying ad data first. Approved items go to the queue; the mutation requires human signoff.
+                - generic [ref=e309]: stakes · $$$ · account integrity
+              - generic [ref=e311]: SUPPORTED
+      - generic [ref=e312]:
+        - generic [ref=e313]:
+          - text: group_08 · pre-publication amendments ·
+          - emphasis [ref=e314]: one claim struck pre-publication, preserved per audit contract
+        - article [ref=e315]:
+          - generic [ref=e316]:
+            - generic [ref=e317]: ─ claim_08
+            - generic [ref=e320]: CONTRADICTED · 0.92
+          - heading "An earlier draft made a claim about prompt caching that the audit struck." [level=2] [ref=e321]
+          - paragraph [ref=e322]:
+            - text: The audit pass caught one claim in
+            - code [ref=e323]: manifest.md
+            - text: draft 03, line 47. The original is preserved here, struck-through; the corrected version is the one that appears elsewhere in this page. The page is honest about its own edit history.
+          - generic [ref=e324]:
+            - generic [ref=e325]:
+              - generic [ref=e326]: draft_03 · line 47 · 2026-05-12T19:14:08Z
+              - generic [ref=e327]: struck
+            - paragraph [ref=e328]: "\"Prompt caching keeps every verification call cheap. Cache hits apply to all calls beyond the first against any workspace.\""
+            - generic [ref=e329]:
+              - generic [ref=e330]: audit · 2026-05-13T08:47:38Z · trace_01KR4PV6Z3WB8YQ7
+              - generic [ref=e331]: reason
+            - paragraph [ref=e332]: Contradicted by orc's own deployment-log trace. Anthropic prompt caching requires a minimum cached prefix (≈3K tokens for sonnet, ≈2K for haiku). Workspaces with small corpora produce smaller prefixes and may never trigger cache writes. The blanket claim misled the reader on cost behavior.
+            - generic [ref=e333]:
+              - generic [ref=e334]: draft_04 · line 47 · 2026-05-13T08:51:02Z
+              - generic [ref=e335]: corrected
+            - paragraph [ref=e336]:
+              - text: "\"Prompt caching is effective for workspaces whose retrieval produces >3K tokens of cached prefix per call (Sonnet) or >2K (Haiku). Smaller corpora may not trigger cache hits; for those, each call is priced as full input. The trace records"
+              - code [ref=e337]: cache_creation_input_tokens
+              - text: and
+              - code [ref=e338]: cache_read_input_tokens
+              - text: so cost behavior is transparent."
+          - generic [ref=e340]:
+            - generic [ref=e341]:
+              - generic [ref=e342]: trace_01KR4PV6Z3WB8YQ7
+              - generic [ref=e343]: deployment-log · cache-behavior · §3
+            - generic [ref=e344]: "“cache_create=2412 · cache_read=0 · across 4 successive calls against an identical workspace prefix of 2412 tokens (below sonnet caching threshold). Final verdict: cache writes occurred, cache reads did not. Cost was not reduced.”"
+      - generic [ref=e345]:
+        - generic [ref=e346]: group_09 · install · the audited artifact is a runnable thing
+        - heading "The page is the proof. The CLI is the product." [level=2] [ref=e347]
+        - paragraph [ref=e348]:
+          - text: Everything verified above is implemented in
+          - code [ref=e349]: orc v0.1.0
+          - text: . Local-first, MIT-licensed. Bring your own Anthropic key, OpenRouter key, or local model. Storage is local SQLite under
+          - code [ref=e350]: ~/.orc/
+          - text: .
+        - generic [ref=e351]: "# install $ uv pip install orc # the four-command loop $ orc workspace create research $ orc ingest ./notes -w research $ orc verify \"your claim here\" -w research $ orc trace show <run_id> # or expose as MCP for Claude Code / Codex $ orc mcp serve $ claude mcp add orc -- uv run orc mcp serve"
+        - paragraph [ref=e352]: Python 3.11+ · macOS, Linux, WSL · MIT-licensed · zero telemetry by default · source at github.com/orc
+      - generic [ref=e353]:
+        - generic [ref=e354]: ━━━ end of trace ━━━
+        - generic [ref=e355]:
+          - term [ref=e356]: verified by
+          - definition [ref=e357]: ed25519:8d7e92c4…f0a1 · signed 2026-05-13T08:47:52Z
+          - term [ref=e358]: runtime
+          - definition [ref=e359]: orc v0.1.0 · model claude-sonnet-4-6 · workspace public · corpus sha256:a3f1c8…ed72
+          - term [ref=e360]: replay
+          - definition [ref=e361]:
+            - code [ref=e362]: $ orc replay 01KR1NHTQR8B --workspace public
+          - term [ref=e363]: edit log
+          - definition [ref=e364]: 1 struck · 0 dismissed · 7 supported · 1 partial · all amendments preserved · see group_08
+          - term [ref=e365]: next
+          - definition [ref=e366]: exhibit_A → pinegate trace 01KR8Z3M2KFR0YV9 · linked in claim_06
+        - generic [ref=e367]:
+          - generic [ref=e368]: orc. © 2026 · the verification runtime · short for orchestration
+          - generic [ref=e369]: — this footer is part of the trace and is included in the signature above —
+    - complementary [ref=e370]:
+      - generic [ref=e371]:
+        - generic [ref=e372]:
+          - generic [ref=e373]: trace ledger
+          - generic [ref=e374]: 8/8
+        - list [ref=e375]:
+          - link "✓ 01 Orc is the verification runtime for AI that has to be defensible." [ref=e376] [cursor=pointer]:
+            - /url: "#claim-01"
+            - generic [ref=e377]: ✓
+            - generic [ref=e378]: "01"
+            - generic [ref=e379]: Orc is the verification runtime for AI that has to be defensible.
+          - link "✓ 02 Built for the work where \"the model said so\" doesn't survive review." [ref=e380] [cursor=pointer]:
+            - /url: "#claim-02"
+            - generic [ref=e381]: ✓
+            - generic [ref=e382]: "02"
+            - generic [ref=e383]: Built for the work where "the model said so" doesn't survive review.
+          - link "✓ 03 Four invariants the runtime enforces by construction." [ref=e384] [cursor=pointer]:
+            - /url: "#claim-03"
+            - generic [ref=e385]: ✓
+            - generic [ref=e386]: "03"
+            - generic [ref=e387]: Four invariants the runtime enforces by construction.
+          - link "~ 04 AI's measurement problem isn't getting fixed. Until you do." [ref=e388] [cursor=pointer]:
+            - /url: "#claim-04"
+            - generic [ref=e389]: ~
+            - generic [ref=e390]: "04"
+            - generic [ref=e391]: AI's measurement problem isn't getting fixed. Until you do.
+          - link "✓ 05 The whole loop runs in four commands." [ref=e392] [cursor=pointer]:
+            - /url: "#claim-05"
+            - generic [ref=e393]: ✓
+            - generic [ref=e394]: "05"
+            - generic [ref=e395]: The whole loop runs in four commands.
+          - link "✓ 06 Orc produces an artifact that survives review." [ref=e396] [cursor=pointer]:
+            - /url: "#claim-06"
+            - generic [ref=e397]: ✓
+            - generic [ref=e398]: "06"
+            - generic [ref=e399]: Orc produces an artifact that survives review.
+          - link "✓ 07 The same shape pays off wherever an answer has to survive a second look." [ref=e400] [cursor=pointer]:
+            - /url: "#claim-07"
+            - generic [ref=e401]: ✓
+            - generic [ref=e402]: "07"
+            - generic [ref=e403]: The same shape pays off wherever an answer has to survive a second look.
+          - link "✗ 08 An earlier draft made a claim about prompt caching that the audit struck." [ref=e404] [cursor=pointer]:
+            - /url: "#claim-08"
+            - generic [ref=e405]: ✗
+            - generic [ref=e406]: "08"
+            - generic [ref=e407]: An earlier draft made a claim about prompt caching that the audit struck.
+        - generic [ref=e408]: click row to jump · pass requires ✗ ≤ 0 unresolved

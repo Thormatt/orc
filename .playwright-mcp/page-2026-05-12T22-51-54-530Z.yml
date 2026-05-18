@@ -1,0 +1,276 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: orc.
+      - generic [ref=e5]:
+        - link "How it works" [ref=e6] [cursor=pointer]:
+          - /url: "#how"
+        - link "Example" [ref=e7] [cursor=pointer]:
+          - /url: "#example"
+        - link "Moat" [ref=e8] [cursor=pointer]:
+          - /url: "#moat"
+        - link "Access" [ref=e9] [cursor=pointer]:
+          - /url: "#access"
+        - link "Request access" [ref=e10] [cursor=pointer]:
+          - /url: "#access"
+  - banner [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]: AI verification infrastructure
+      - heading "AI that can't fabricate its sources." [level=1] [ref=e14]:
+        - text: AI that
+        - emphasis [ref=e15]: can't fabricate
+        - text: its sources.
+      - paragraph [ref=e16]:
+        - text: Orc is the verification runtime for AI that has to be defensible. Bind every claim to evidence you own. Cite real sources only. Replay every decision. Built for workflows where
+        - emphasis [ref=e17]: "\"the model said so\""
+        - text: isn't good enough.
+      - generic [ref=e18]:
+        - link "Request early access" [ref=e19] [cursor=pointer]:
+          - /url: "#access"
+        - link "See how it works" [ref=e20] [cursor=pointer]:
+          - /url: "#how"
+      - generic [ref=e21]:
+        - generic [ref=e26]: ~/orc — verifying a claim against your corpus
+        - generic [ref=e27]: "$ orc verify \"Anthropic's multi-agent system improved evals by 90.2%\" -w research PARTIAL confidence=0.85 claim: Anthropic's multi-agent system improved evals by 90.2% reasoning: Chunks 01KR3... and 01KR4... confirm the 90.2% figure but the corpus describes \"internal research evaluation,\" not eval-suite delta — the claim's wording is slightly broader than the corpus supports. supporting evidence (2): Multi-agent research system — Performance gains \"...a multi-agent system with Claude Opus 4 as the lead agent and Claude Sonnet 4 subagents outperformed a single-Opus baseline by 90.2%...\" chunk_id=01KR3EXM8TQNMN5KAHTKYMXK0Q model=claude-sonnet-4-6 run_id=01KR1NHTQ..."
+  - generic [ref=e29]:
+    - generic [ref=e30]: The validation gap
+    - heading "AI's measurement problem isn't getting fixed. Until you do." [level=2] [ref=e31]:
+      - text: AI's measurement problem isn't getting fixed.
+      - emphasis [ref=e32]: Until you do.
+    - paragraph [ref=e33]:
+      - text: Frontier models discover physics. The same industry can't reliably tell you whether switching models in production will break your product. Benchmarks get gamed with $50 scripts. The most-starred agent framework on GitHub ships with a 13.4% critical-vulnerability rate in its skill marketplace. Capability isn't the bottleneck.
+      - strong [ref=e34]: Validation infrastructure is.
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]: 26–46%
+        - generic [ref=e38]: Performance drop on AI agents going from lab to real-world conditions.
+      - generic [ref=e39]:
+        - generic [ref=e40]: 80%+
+        - generic [ref=e41]: Failure rate of frontier agents on long-horizon production tasks.
+      - generic [ref=e42]:
+        - generic [ref=e43]: 13.4%
+        - generic [ref=e44]: Skills in the leading open-source agent marketplace with critical security issues.
+  - generic [ref=e46]:
+    - generic [ref=e47]: The discipline
+    - heading "Four invariants the runtime enforces by construction." [level=2] [ref=e48]
+    - paragraph [ref=e49]: Most "AI safety" tooling layers checks on top of generation. Orc inverts that — the architecture makes failure modes structurally impossible, not just unlikely.
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]: 01 — Citations
+        - heading "Cannot fabricate sources." [level=3] [ref=e53]
+        - paragraph [ref=e54]: Every chunk ID Orc returns is validated against the actual retrieval set. Hallucinated citations are dropped before the verdict reaches you. The model is structurally prevented from inventing a source.
+      - generic [ref=e55]:
+        - generic [ref=e56]: 02 — Architecture
+        - heading "Stateless skills, durable context." [level=3] [ref=e57]
+        - paragraph [ref=e58]: Skills are pure functions with explicit input/output contracts. No agent identities, no persistent personas, no emergent coordination. Persistence lives in the workspace — not in the agents — so behavior is auditable and reproducible.
+      - generic [ref=e59]:
+        - generic [ref=e60]: 03 — Replay
+        - heading "Every run is reconstructable." [level=3] [ref=e61]
+        - paragraph [ref=e62]:
+          - text: "Every CLI or MCP call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output."
+          - code [ref=e63]: orc replay <run_id>
+          - text: re-executes the exact decision against the same corpus snapshot. Months later. Same answer. Same evidence.
+      - generic [ref=e64]:
+        - generic [ref=e65]: 04 — Approval
+        - heading "Analysis ≠ action." [level=3] [ref=e66]
+        - paragraph [ref=e67]: Anything that would mutate the outside world lands in the approval queue first. Humans accept or reject with a note. Write paths run as separate processes with separate tokens. The blast radius of a compromised agent is, by design, zero.
+  - generic [ref=e69]:
+    - generic [ref=e70]: How it works
+    - heading "A workspace. A corpus. A claim. Receipts." [level=2] [ref=e71]:
+      - text: A workspace. A corpus. A claim.
+      - emphasis [ref=e72]: Receipts.
+    - paragraph [ref=e73]:
+      - text: The whole loop in four commands. Storage is local SQLite under
+      - code [ref=e74]: ~/.orc/
+      - text: . Bring your own Anthropic key, OpenRouter key, or local model. The CLI is the same surface other agents see through MCP.
+    - generic [ref=e75]:
+      - generic [ref=e80]: ~/orc — the four-step loop
+      - generic [ref=e81]: "# 1. A workspace is a trust boundary. One per matter, project, or topic. $ orc workspace create research Created workspace research # 2. Ingest evidence: files, directories, or URLs. Markdown, txt, json. $ orc ingest ./notes -w research $ orc ingest https://www.anthropic.com/engineering/multi-agent-research-system -w research Ingested 14 evidence items into research # 3. Verify any claim. Or pipe a whole draft through. $ orc verify --file draft.md -w research --yes 7 claims extracted from draft.md. Verifying... 1. supported (0.92) Anthropic released the Skills API in October 2025 2. partial (0.71) The multi-agent eval delta was 90.2% 3. supported (0.88) Prompt caching has a 5-minute ephemeral TTL by default 4. contradicted (0.95) Multi-agent setups always outperform single-agent 5. supported (0.86) Skills are versioned, auditable capabilities 6. not_found (0.90) Anthropic was acquired by Microsoft in 2026 7. supported (0.94) Tool use is more reliable than JSON-mode for structured output # 4. Inspect, replay, or approve any decision later. $ orc trace show 01KR1NH... $ orc replay 01KR1NH... --live"
+  - generic [ref=e83]:
+    - generic [ref=e84]: A real example
+    - heading "One critique. Seven claims. Thirty seconds." [level=2] [ref=e85]:
+      - text: One critique. Seven claims.
+      - emphasis [ref=e86]: Thirty seconds.
+    - paragraph [ref=e87]: "A long critique lands in your inbox: seven confident-sounding claims, four citations, three specific statistics. Two citations look real. One date doesn't match what you remember. Before Orc, you spend an hour Googling — half of it inconclusive. Now you do this:"
+    - generic [ref=e88]:
+      - generic [ref=e93]: ~/orc — auditing a 7-claim critique against trusted sources
+      - generic [ref=e94]: "$ orc workspace create critique-audit $ orc ingest https://www.anthropic.com/engineering/multi-agent-research-system -w critique-audit $ orc ingest ./trusted-papers -w critique-audit Ingested 14 evidence items. $ orc verify --file critique.md -w critique-audit --yes 7 claims extracted from critique.md. Verifying... 1. supported (0.92) Multi-agent eval delta of 90.2% was reported by Anthropic 2. supported (0.88) Self-MoA paper exists and reports the cited benchmark 3. contradicted (0.95) The cited paper argues the OPPOSITE conclusion 4. not_found (0.97) No paper titled \"ReliabilityBench\" exists in the corpus 5. not_found (0.93) Cited date does not match the source's actual timeline 6. supported (0.90) Prompt caching has a 5-minute ephemeral TTL by default 7. partial (0.71) Claim is broader than the corpus supports Summary: supported=3 partial=1 contradicted=1 not_found=2 Cost: $0.06 · Elapsed: 31s · Trace: 01KR8..."
+    - paragraph [ref=e95]:
+      - text: The two
+      - code [ref=e96]: not_found
+      - text: verdicts? One is a fabricated paper title. The other is a real paper attributed to the wrong year. The
+      - code [ref=e97]: contradicted
+      - text: claim cites a real paper that argues the opposite of what the critique implies. You reply with three specific corrections, each with chunk-level citations from the actual sources. The author concedes.
+    - paragraph [ref=e98]:
+      - text: You save the article you'd have written if you'd taken the critique at face value.
+      - strong [ref=e99]: "Total cost: $0.06. Time: under a minute. Credibility: preserved."
+  - generic [ref=e101]:
+    - generic [ref=e102]: Where it fits
+    - heading "Built for the work where \"plausible\" isn't enough." [level=2] [ref=e103]:
+      - text: Built for the work where
+      - emphasis [ref=e104]: "\"plausible\""
+      - text: isn't enough.
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]: Pre-publish
+        - heading "Fact-check your own writing." [level=3] [ref=e108]
+        - paragraph [ref=e109]: Ingest your published catalog. Run every draft through Orc before you ship. Catches self-contradiction with prior work, fabricated statistics, and citations that don't say what you assumed.
+        - generic [ref=e110]: orc verify --file draft.md -w aiwth
+      - generic [ref=e111]:
+        - generic [ref=e112]: Audit
+        - heading "Verify what others claim." [level=3] [ref=e113]
+        - paragraph [ref=e114]: A critique arrives with confident statistics and made-up citations. Ingest your trusted sources. Orc tells you which claims are supported, contradicted, or not in the corpus — with the exact quote next to each verdict.
+        - generic [ref=e115]: orc verify "the claim" -w trusted
+      - generic [ref=e116]:
+        - generic [ref=e117]: Regulated
+        - heading "Where audit trails matter." [level=3] [ref=e118]
+        - paragraph [ref=e119]: Legal briefs. Compliance memos. Financial disclosures. Medical literature reviews. The trace + replay + structurally-bounded citations are the deployment posture regulated industries actually need.
+        - generic [ref=e120]: orc trace show <run_id> → defensible
+  - generic [ref=e122]:
+    - generic [ref=e123]: How it differs
+    - heading "Not another agent framework." [level=2] [ref=e124]
+    - paragraph [ref=e125]: Most AI tooling optimizes for capability. Orc optimizes for the parts that matter when an answer has to be reviewed, audited, or defended.
+    - table [ref=e126]:
+      - rowgroup [ref=e127]:
+        - row "Orc Generic agent framework Direct LLM chat" [ref=e128]:
+          - columnheader [ref=e129]
+          - columnheader "Orc" [ref=e130]
+          - columnheader "Generic agent framework" [ref=e131]
+          - columnheader "Direct LLM chat" [ref=e132]
+      - rowgroup [ref=e133]:
+        - row "Source of truth A corpus you own and curate Whatever the agent can fetch or recall Training data + web search" [ref=e134]:
+          - cell "Source of truth" [ref=e135]
+          - cell "A corpus you own and curate" [ref=e136]
+          - cell "Whatever the agent can fetch or recall" [ref=e137]
+          - cell "Training data + web search" [ref=e138]
+        - row "Fabricated citations Structurally impossible Common; prompt-mitigated at best A known recurring failure mode" [ref=e139]:
+          - cell "Fabricated citations" [ref=e140]
+          - cell "Structurally impossible" [ref=e141]
+          - cell "Common; prompt-mitigated at best" [ref=e142]
+          - cell "A known recurring failure mode" [ref=e143]
+        - row "Replay a past decision First-class, deterministic Best-effort logs Not possible" [ref=e144]:
+          - cell "Replay a past decision" [ref=e145]
+          - cell "First-class, deterministic" [ref=e146]
+          - cell "Best-effort logs" [ref=e147]
+          - cell "Not possible" [ref=e148]
+        - row "Output shape Structured JSON with provenance Conversational text Conversational text" [ref=e149]:
+          - cell "Output shape" [ref=e150]
+          - cell "Structured JSON with provenance" [ref=e151]
+          - cell "Conversational text" [ref=e152]
+          - cell "Conversational text" [ref=e153]
+        - row "Approval gates Built in. Nothing mutates without sign-off. DIY N/A" [ref=e154]:
+          - cell "Approval gates" [ref=e155]
+          - cell "Built in. Nothing mutates without sign-off." [ref=e156]
+          - cell "DIY" [ref=e157]
+          - cell "N/A" [ref=e158]
+        - row "Deployment Self-hosted CLI + MCP. No data leaves your machine. Mixed Cloud" [ref=e159]:
+          - cell "Deployment" [ref=e160]
+          - cell "Self-hosted CLI + MCP. No data leaves your machine." [ref=e161]
+          - cell "Mixed" [ref=e162]
+          - cell "Cloud" [ref=e163]
+  - generic [ref=e165]:
+    - generic [ref=e166]: The moat
+    - heading "Capability scaling eats cleverness. It doesn't eat discipline." [level=2] [ref=e167]:
+      - text: Capability scaling eats cleverness.
+      - emphasis [ref=e168]: It doesn't eat discipline.
+    - paragraph [ref=e169]:
+      - text: Anything that's clever today gets absorbed into the next model. So Orc bets on the things that
+      - emphasis [ref=e170]: don't
+      - text: erode when GPT-6 or Claude 5 ships. Each one of these gets
+      - emphasis [ref=e171]: more
+      - text: valuable as raw capability rises — because the gap between "capable model" and "defensible deployment" widens with every new frontier release.
+    - generic [ref=e172]:
+      - generic [ref=e173]:
+        - generic [ref=e174]: Moat 01
+        - heading "Owned evidence compounds." [level=3] [ref=e175]
+        - paragraph [ref=e176]: Bigger models don't know your firm's matters, your published catalog, your meter data, your client documents. The corpus is your asset, and the verification quality grows with what you ingest — not with the model vendor's roadmap.
+      - generic [ref=e177]:
+        - generic [ref=e178]: Moat 02
+        - heading "Structural impossibility, not prompt mitigation." [level=3] [ref=e179]
+        - paragraph [ref=e180]: Hallucinated citations aren't prevented by asking the model nicely. They're prevented because the data structure refuses to return chunk IDs that don't exist in retrieval. That guarantee doesn't depend on the model getting smarter — it's an architectural choice.
+      - generic [ref=e181]:
+        - generic [ref=e182]: Moat 03
+        - heading "Audit infrastructure is engineering, not intelligence." [level=3] [ref=e183]
+        - paragraph [ref=e184]: Trace + replay are operational discipline. Any AI system deployed in a regulated workflow needs them. Most tooling skips them. The gap is engineering investment, not model capability — frontier scaling doesn't close it.
+      - generic [ref=e185]:
+        - generic [ref=e186]: Moat 04
+        - heading "Blast-radius bounded by construction." [level=3] [ref=e187]
+        - paragraph [ref=e188]: Write paths run in separate processes with separate tokens. Approval queues sit between analysis and action. Even as agents become more capable, the maximum damage from a compromised or hijacked agent stays at zero. That's a contract, not a precaution.
+      - generic [ref=e189]:
+        - generic [ref=e190]: Moat 05
+        - heading "Directives compound across verticals." [level=3] [ref=e191]
+        - paragraph [ref=e192]: Research today. Legal next. Marketing analytics after that. Each new directive shares the same primitives — skills, traces, verification, approvals — and the deployment surface grows without diluting the architecture. Each customer's directive library is theirs.
+      - generic [ref=e193]:
+        - generic [ref=e194]: Moat 06
+        - heading "Switching costs once deployed." [level=3] [ref=e195]
+        - paragraph [ref=e196]: Once a team's traces, approval history, and curated corpus live in Orc, replacing it means losing months of accumulated audit material and tuned verification. That's not lock-in by feature gating — it's lock-in by the value of what you've already built inside.
+    - blockquote [ref=e197]:
+      - text: "\"The version that wins is narrow, deep, instrumented, and evidence-bound.\""
+      - generic [ref=e198]: — from the Orc reference architecture
+  - generic [ref=e200]:
+    - generic [ref=e201]: Access
+    - heading "Pick the surface that fits your team." [level=2] [ref=e202]
+    - paragraph [ref=e203]: The CLI is the same in every tier. Hosted and Enterprise add deployment, integrations, and review surfaces around the same runtime.
+    - generic [ref=e204]:
+      - generic [ref=e205]:
+        - generic [ref=e206]: Open CLI
+        - generic [ref=e207]: $0 / forever
+        - generic [ref=e208]: For individuals and developers who want the verification discipline locally. MIT-licensed.
+        - list [ref=e209]:
+          - listitem [ref=e210]: "✓ Full CLI: workspace, ingest, verify, research, trace, replay, approve"
+          - listitem [ref=e211]: ✓ MCP server for Claude Code / Codex integration
+          - listitem [ref=e212]: ✓ Local SQLite storage, your own data
+          - listitem [ref=e213]: ✓ Bring your own Anthropic or OpenRouter key
+          - listitem [ref=e214]: ✓ Trace + replay; approval queue
+        - link "Get the CLI" [ref=e215] [cursor=pointer]:
+          - /url: "#access"
+      - generic [ref=e216]:
+        - generic [ref=e217]: Hosted · early access
+        - generic [ref=e218]: $39 / mo
+        - generic [ref=e219]: For teams who want a managed runtime, scheduled verification, and a review surface for non-engineers.
+        - list [ref=e220]:
+          - listitem [ref=e221]: ✓ Everything in Open CLI
+          - listitem [ref=e222]: ✓ Hosted workspaces with managed backups
+          - listitem [ref=e223]: ✓ Web dashboard for approval queue + trace review
+          - listitem [ref=e224]: ✓ Scheduled verification runs (e.g. nightly draft checks)
+          - listitem [ref=e225]: ✓ Team workspaces and role-scoped access
+        - link "Request access" [ref=e226] [cursor=pointer]:
+          - /url: mailto:thormatt@gmail.com?subject=Orc%20Hosted%20-%20Early%20Access
+      - generic [ref=e227]:
+        - generic [ref=e228]: Enterprise
+        - generic [ref=e229]: Contact / annual
+        - generic [ref=e230]: For legal, finance, healthcare, and regulated workflows. Local model support, SSO, audit export, deployment in your VPC.
+        - list [ref=e231]:
+          - listitem [ref=e232]: ✓ Self-hosted in your VPC or on-prem
+          - listitem [ref=e233]: ✓ Local-model integration (no cloud LLM required)
+          - listitem [ref=e234]: ✓ SSO, role-based access, audit log export
+          - listitem [ref=e235]: ✓ White-glove onboarding and directive customization
+          - listitem [ref=e236]: ✓ Priority support and a named engineer
+        - link "Talk to us" [ref=e237] [cursor=pointer]:
+          - /url: mailto:thormatt@gmail.com?subject=Orc%20Enterprise%20-%20Inquiry
+  - generic [ref=e239]:
+    - generic [ref=e240]: Common questions
+    - heading "The honest answers." [level=2] [ref=e241]
+    - generic [ref=e242]:
+      - group [ref=e243]:
+        - generic "Why not just use Claude Code or ChatGPT directly? +" [ref=e244] [cursor=pointer]
+      - group [ref=e245]:
+        - generic "Which models does Orc use? +" [ref=e246] [cursor=pointer]
+      - group [ref=e247]:
+        - generic "Is the CLI open source? +" [ref=e248] [cursor=pointer]
+      - group [ref=e249]:
+        - generic "What's the alternative to me writing fact-checking myself? +" [ref=e250] [cursor=pointer]
+      - group [ref=e251]:
+        - generic "What does Orc not do? +" [ref=e252] [cursor=pointer]
+  - contentinfo [ref=e253]:
+    - generic [ref=e254]:
+      - generic [ref=e255]:
+        - generic [ref=e256]: orc.
+        - text: © 2026
+      - generic [ref=e257]:
+        - link "GitHub" [ref=e258] [cursor=pointer]:
+          - /url: https://github.com/
+        - link "Contact" [ref=e259] [cursor=pointer]:
+          - /url: mailto:thormatt@gmail.com
+        - link "AI Without the Hype" [ref=e260] [cursor=pointer]:
+          - /url: https://aiwithoutthehype.com/
