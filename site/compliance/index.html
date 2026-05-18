@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>orc — compliance trace · EU AI Act · Articles 12/13/14</title>
+<meta name="description" content="Article-by-article mapping of orc v0.1.0 to the EU AI Act. Compliance posture, evidence chain, deadline 2 August 2026.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../trace.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="tb-mark" href="/">orc</a>
+    <div class="tb-meta">
+      <b>compliance trace 01KR2X9HK4N1</b><span class="sep">·</span>eu-ai-act/articles-12-13-14<span class="sep">·</span>deadline=2026-08-02<span class="sep">·</span>workspace=public
+    </div>
+    <div class="tb-counters" id="tb-counters">
+      <span class="tb-count ok"><span id="cnt-ok">0</span> satisfied</span>
+      <span class="tb-count warn"><span id="cnt-warn">0</span> partial</span>
+      <span class="tb-count bad"><span id="cnt-bad">0</span> open</span>
+    </div>
+    <div class="tb-actions">
+      <a class="tb-btn" href="/">↑ landing</a>
+      <a class="tb-btn primary" href="mailto:thormatt@gmail.com?subject=Orc%20-%20EU%20AI%20Act%20compliance%20pilot">request pilot</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap grid">
+<main class="main">
+
+<section class="thead">
+  <div class="cmd-line">
+    <span class="prompt">$</span>
+    <span class="cmd">orc verify</span>
+    <span class="arg">--file ./eu-ai-act-mapping.md</span>
+    <span class="arg">--workspace public</span>
+    <span class="arg">--strict</span>
+    <span class="rid"><b>run_id</b> 01KR2X9HK4N1</span>
+  </div>
+  <h1>EU AI Act compliance posture, <span class="em">verified by the runtime itself.</span></h1>
+  <p class="lede">
+    This page maps <code>orc v0.1.0</code> to the EU AI Act articles most relevant to operators of
+    high-risk AI systems (Annex III). It is itself an audit artifact: every claim below points at
+    specific source files, behaviors, or roadmap items that can be inspected. <strong>Article 14
+    has one open sub-item</strong> — the multi-approver workflow required by Article 14 §5 is planned
+    for Phase 2 and is not yet shipped. The page is honest about what it isn't.
+  </p>
+
+  <dl class="thead-meta">
+    <dt>deadline</dt>    <dd>2026-08-02 <span class="dim">· Annex III obligations enter into force</span></dd>
+    <dt>regulation</dt>  <dd>Regulation (EU) 2024/1689 <span class="dim">· Articles 9, 10, 11, 12, 13, 14, 15, 26, 72</span></dd>
+    <dt>penalty</dt>     <dd>up to €15M or 3% worldwide annual turnover <span class="dim">· whichever is higher</span></dd>
+    <dt>scope</dt>       <dd>tool for deployers / providers of high-risk systems <span class="dim">· not itself a high-risk system</span></dd>
+  </dl>
+
+  <div class="summary">
+    <div class="label">article-by-article summary <span style="color:var(--rule-3);margin-left:6px">— click a tick to jump</span></div>
+    <div class="ticks" id="ticks"></div>
+  </div>
+</section>
+
+<!-- ═══ Article 12 ═════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>article_12</b> · record-keeping · the core fit</div>
+
+<article class="claim" id="claim-art12" data-claim="art12" data-verdict="ok" data-score="0.97">
+  <header class="claim-head">
+    <span class="claim-id">claim_art12</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Orc satisfies Article 12's logging requirements by construction, not by configuration.</h2>
+  <p class="claim-body">
+    Article 12 requires automatic recording of events over the lifetime of the system, with logs
+    that identify risk situations, support post-market monitoring, and monitor operation. Article
+    26(6) requires retention of at least six months. <strong>Orc's trace + replay subsystem is the
+    machinery to meet these requirements.</strong> It cannot be disabled, runs by default on every
+    invocation, and produces append-only artifacts.
+  </p>
+
+  <div class="subclaim-list">
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art12_§1<br><b>auto log</b></div>
+      <div class="sbody">
+        <div class="stitle">Automatic recording of events over the lifetime.</div>
+        <div class="sdesc">Every CLI or MCP invocation opens a Run, which writes a row to the <code>run</code> table and a JSON file under <code>traces/&lt;YYYY&gt;/&lt;MM&gt;/&lt;run_id&gt;.json</code>. There is no flag to turn this off.</div>
+        <div class="scite">code · src/orc/runs/runner.py · evidence: every test fixture in tests/unit/test_run_context.py asserts trace creation</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art12_§2a<br><b>risk id</b></div>
+      <div class="sbody">
+        <div class="stitle">Logs identify risk situations.</div>
+        <div class="sdesc">Verdict labels <em>contradicted</em>, <em>not_found</em>, and <em>partial</em> explicitly mark unreliable outputs. Runtime errors are recorded with <code>status="error"</code> and <code>error_message</code>. A run with status=error is, by definition, a risk-flag event.</div>
+        <div class="scite">code · src/orc/storage/schema.sql:run · src/orc/runs/runner.py:close</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art12_§2b<br><b>post-market</b></div>
+      <div class="sbody">
+        <div class="stitle">Facilitate post-market monitoring (Art. 72).</div>
+        <div class="sdesc"><code>orc trace list</code> enables longitudinal queries across runs. <code>orc replay &lt;run_id&gt;</code> re-executes against the recorded <code>corpus_version</code> so drift between corpus snapshots is detectable.</div>
+        <div class="scite">code · src/orc/cli_commands/trace.py · src/orc/runs/replay.py</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art12_§2c<br><b>operation</b></div>
+      <div class="sbody">
+        <div class="stitle">Monitor operation per Art. 26(5).</div>
+        <div class="sdesc">Per-run metrics: <code>total_input_tokens</code>, <code>total_output_tokens</code>, <code>total_cache_read</code>, <code>total_cache_creation</code>, model identifier, elapsed time, retrieval set size — all recorded automatically.</div>
+        <div class="scite">code · src/orc/runs/runner.py:close, finalize_run_row</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art26_§6<br><b>retention</b></div>
+      <div class="sbody">
+        <div class="stitle">Six-month minimum retention.</div>
+        <div class="sdesc">Trace JSON files are append-only by default; SQLite <code>run</code> rows are never deleted by Orc. The deployer is responsible for backing the workspace volume up beyond 6 months for their jurisdiction.</div>
+        <div class="scite">filesystem · ~/.orc/workspaces/&lt;name&gt;/traces/ + run table</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+  </div>
+</article>
+</div>
+
+<!-- ═══ Article 13 ═════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>article_13</b> · transparency to deployers</div>
+
+<article class="claim" id="claim-art13" data-claim="art13" data-verdict="ok" data-score="0.93">
+  <header class="claim-head">
+    <span class="claim-id">claim_art13</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Every Orc output is interpretable, cited, and inspectable.</h2>
+  <p class="claim-body">
+    Article 13 requires sufficient transparency that deployers can interpret and appropriately use
+    the output. Orc's verdict shape is structured JSON with confidence + chunk citations + reasoning,
+    which is materially more interpretable than the conversational outputs typical of LLM tooling.
+  </p>
+
+  <div class="subclaim-list">
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art13_§1<br><b>interpret</b></div>
+      <div class="sbody">
+        <div class="stitle">Output is interpretable by the deployer.</div>
+        <div class="sdesc">Every verdict ships with: structured label (<code>supported / partial / contradicted / not_found</code>), confidence score, reasoning text, chunk-level citations, the full retrieval set.</div>
+        <div class="scite">code · src/orc/directives/research/skills/verify_claim.py:run</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art13_§3bii<br><b>limits</b></div>
+      <div class="sbody">
+        <div class="stitle">Capabilities and limitations documented.</div>
+        <div class="sdesc">README.md plus this page. Known limitations: BM25 retrieval only (no embeddings in v0.1), no PDF ingestion, prompt-cache threshold ~3K tokens for sonnet (see <a href="/#claim-08">claim_08</a> on the landing page).</div>
+        <div class="scite">file · README.md · docs/compliance/eu-ai-act.md · landing page claim_08 (publicly self-disclosed)</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art13_§3biii<br><b>harm risks</b></div>
+      <div class="sbody">
+        <div class="stitle">Foreseeable circumstances likely to lead to harm.</div>
+        <div class="sdesc">The runtime structurally prevents hallucinated citations: chunk IDs returned by the model are validated against the retrieval set and dropped if absent. <em>not_found</em> is preferred over confabulation when the corpus is silent.</div>
+        <div class="scite">code · src/orc/directives/research/skills/verify_claim.py (candidate_ids filter)</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art13_§3bv<br><b>input data</b></div>
+      <div class="sbody">
+        <div class="stitle">Input data specifications.</div>
+        <div class="sdesc">The workspace <em>is</em> the input-data spec. Every evidence item carries SHA-256 hash, ingestion timestamp, source path, and corpus version. Provenance is intact across the lifecycle.</div>
+        <div class="scite">code · src/orc/ingest/pipeline.py · src/orc/storage/schema.sql:evidence</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+  </div>
+</article>
+</div>
+
+<!-- ═══ Article 14 ═════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>article_14</b> · human oversight · one item open</div>
+
+<article class="claim" id="claim-art14" data-claim="art14" data-verdict="warn" data-score="0.80">
+  <header class="claim-head">
+    <span class="claim-id">claim_art14</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Single-approver human oversight is shipped. Multi-approver for Article 14 §5 is open.</h2>
+  <p class="claim-body">
+    Article 14 requires effective oversight by natural persons. For some Annex III systems (notably
+    biometric ID under §1(a)) it requires <em>two</em> natural persons to verify identifications.
+    The single-approver case is satisfied today by the approval queue. The two-approver workflow is
+    on the Phase 2 roadmap and is honestly marked <em>open</em> below.
+  </p>
+
+  <div class="subclaim-list">
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art14_§4d<br><b>override</b></div>
+      <div class="sbody">
+        <div class="stitle">Decide not to use, or override, the output.</div>
+        <div class="sdesc"><code>orc approve reject &lt;id&gt; --note "..."</code> records the override decision with timestamp and free-text reason. The rejection is preserved in the queue and the trace.</div>
+        <div class="scite">code · src/orc/queue/approval.py:reject · src/orc/cli_commands/approve.py</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art14_§4e<br><b>intervene</b></div>
+      <div class="sbody">
+        <div class="stitle">Intervene or interrupt.</div>
+        <div class="sdesc">The approval queue is structurally between Orc's analysis and any external action. Action-taking outputs land in the queue; nothing leaves Orc until a human accepts. Compromised or malfunctioning runs cannot bypass this — there is no path that doesn't pass through the queue.</div>
+        <div class="scite">architecture · approval queue is the only sanctioned write path</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="bad">
+      <div class="sid">art14_§5<br><b>two-person</b></div>
+      <div class="sbody">
+        <div class="stitle">Two natural persons verify (open · Phase 2).</div>
+        <div class="sdesc"><strong>Not yet shipped.</strong> Article 14 §5 requires that for some Annex III systems, no action is taken unless verified by two natural persons. The approval table currently accepts one decision. Phase 2 adds an <code>approvers_required</code> field plus a per-approver decision log. Tracked at github.com/Thormatt/orc.</div>
+        <div class="scite">roadmap · Phase 2 · task #23 in the public tracker</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+  </div>
+</article>
+</div>
+
+<!-- ═══ Articles 9, 10, 11, 15, 72 — adjacent ═══════════════ -->
+<div class="section">
+<div class="section-title"><b>adjacent</b> · articles 9 / 10 / 11 / 15 / 72</div>
+
+<article class="claim" id="claim-adj" data-claim="adj" data-verdict="ok" data-score="0.81">
+  <header class="claim-head">
+    <span class="claim-id">claim_adj</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Adjacent articles — partial coverage today, mapped roadmap for the rest.</h2>
+  <p class="claim-body">
+    A short status pass on the articles around the core 12/13/14. Some are satisfied substantively by
+    today's runtime; others depend on roadmap features (eval suite, audit export, conformity-helper
+    directive). Each is honestly marked.
+  </p>
+
+  <div class="subclaim-list">
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art9<br><b>risk mgmt</b></div>
+      <div class="sbody">
+        <div class="stitle">Risk management substrate.</div>
+        <div class="sdesc">Incident reconstruction via <code>orc trace show</code>. Corpus-version and cache-metric drift detection via replay. The <em>not_found</em> verdict is the runtime's first-line risk mitigation.</div>
+        <div class="scite">runtime · trace + replay</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art10<br><b>data gov</b></div>
+      <div class="sbody">
+        <div class="stitle">Data governance basics.</div>
+        <div class="sdesc">Every evidence item carries SHA-256 + ingestion metadata. <code>orc ingest</code> is the single audited entry point. Bias/fairness analysis of the corpus remains the deployer's responsibility.</div>
+        <div class="scite">code · src/orc/ingest/pipeline.py</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art11<br><b>tech docs</b></div>
+      <div class="sbody">
+        <div class="stitle">Technical documentation scaffolding.</div>
+        <div class="sdesc">README + CHANGELOG cover the general description and lifecycle. The <em>conformity-assessment-helper</em> directive (Phase 3) will generate Annex IV scaffolding from a system spec.</div>
+        <div class="scite">file · README.md, CHANGELOG.md · roadmap · Phase 3</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="warn">
+      <div class="sid">art15<br><b>robustness</b></div>
+      <div class="sbody">
+        <div class="stitle">Accuracy, robustness, cybersecurity (partial).</div>
+        <div class="sdesc">Accuracy via per-run confidence + golden tests against a fixed corpus. Robustness instrumentation (<code>orc eval consistency / perturb / regression</code>) is on the Phase 3 roadmap. Cybersecurity: dependencies pinned, local-first, no telemetry, approval queue. SOC 2 / ISO 42001 in Phase 4.</div>
+        <div class="scite">tests/golden/ · roadmap · Phases 3-4</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art26<br><b>deployer</b></div>
+      <div class="sbody">
+        <div class="stitle">Deployer obligations.</div>
+        <div class="sdesc">§5 monitoring → <code>orc trace list</code> + replay. §6 retention → append-only by default. <code>orc audit export</code> (Phase 2) bundles all artifacts for regulator handoff.</div>
+        <div class="scite">runtime · trace + replay · roadmap · Phase 2 (audit export)</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art72<br><b>post-market</b></div>
+      <div class="sbody">
+        <div class="stitle">Post-market monitoring substrate.</div>
+        <div class="sdesc">The trace database <em>is</em> the post-market monitoring substrate. Every call writes to it. Phase 3 eval commands produce drift metrics against a baseline.</div>
+        <div class="scite">runtime · trace database · roadmap · Phase 3 (eval suite)</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+  </div>
+</article>
+</div>
+
+<!-- ═══ what orc isn't ═══════════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>scope</b> · what orc is not · honest framing</div>
+
+<article class="claim" id="claim-scope" data-claim="scope" data-verdict="ok" data-score="0.95">
+  <header class="claim-head">
+    <span class="claim-id">claim_scope</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Orc is a tool that helps deployers meet obligations. It does not absolve them.</h2>
+  <p class="claim-body">
+    Orc itself is <strong>not</strong> a "high-risk AI system" per Annex III. It is a tool used by
+    deployers and providers of high-risk systems. Article 12/13/14 obligations strictly fall on the
+    deployer; Orc supplies the machinery to meet them. Buyer-side legal counsel should always confirm
+    your specific obligations.
+  </p>
+
+  <div class="reasoning">
+    <span class="k">also out of scope, marked honestly</span>
+    <span class="v">Conformity assessment under Article 43 is a procedural obligation, not a tool output. SOC 2 Type II and ISO/IEC 42001 attestations are on the Phase 4 roadmap; Orc v0.1.0 is open-source, MIT-licensed, fully inspectable code — a different (and arguably stronger) form of trust than a certificate, but not equivalent. General-purpose AI obligations under Articles 51–56 apply to the underlying LLM provider (Anthropic, OpenAI via OpenRouter), not to Orc itself.</span>
+  </div>
+</article>
+</div>
+
+<!-- ═══ next ═══════════════════════════════════════════════ -->
+<section class="install-block" id="next">
+  <div class="section-title"><b>next</b> · pilot path · 11 weeks to enforcement</div>
+
+  <h2 class="install-title">If you're evaluating Orc for an Annex III workflow.</h2>
+  <p class="install-lede">
+    Three ways to engage, ranked by commitment level.
+  </p>
+
+  <div class="term install-term"><span class="cmt"># 1. evaluate the code — 30 minutes, no contact required</span>
+<span class="pr">$</span> <span class="cmd">uv pip install git+https://github.com/Thormatt/orc</span>
+<span class="pr">$</span> <span class="cmd">orc workspace create eu-ai-act-eval</span>
+<span class="pr">$</span> <span class="cmd">orc verify "your test claim" -w eu-ai-act-eval</span>
+
+<span class="cmt"># 2. read the source — github.com/Thormatt/orc</span>
+<span class="cmt">#    src/orc/runs/runner.py            ← article 12 §1, §2</span>
+<span class="cmt">#    src/orc/queue/approval.py         ← article 14 §4d, §4e</span>
+<span class="cmt">#    src/orc/directives/research/.../verify_claim.py  ← article 13 §1, §3biii</span>
+
+<span class="cmt"># 3. pilot — thormatt@gmail.com · subject "Orc - EU AI Act compliance pilot"</span>
+<span class="cmt">#    we'll scope to one specific Annex III use case + propose a 30-day evaluation</span></div>
+
+  <p class="install-meta">Source: <a href="https://github.com/Thormatt/orc">github.com/Thormatt/orc</a> · Mapping doc: <a href="https://github.com/Thormatt/orc/blob/main/docs/compliance/eu-ai-act.md">docs/compliance/eu-ai-act.md</a> · MIT-licensed</p>
+</section>
+
+<!-- ═══ trace footer ═══════════════════════════════════════ -->
+<footer class="tfoot">
+  <div class="tfoot-rule">━━━ end of compliance trace ━━━</div>
+  <dl class="tfoot-grid">
+    <dt>verified by</dt> <dd>orc v0.1.0 against eu-ai-act-mapping.md <span class="dim">· signed 2026-05-17T13:00:00Z</span></dd>
+    <dt>regulation</dt>  <dd>Regulation (EU) 2024/1689 <span class="dim">· articles 9, 10, 11, 12, 13, 14, 15, 26, 72</span></dd>
+    <dt>deadline</dt>    <dd>2026-08-02 <span class="dim">· Annex III enforcement starts · ~11 weeks from this trace</span></dd>
+    <dt>open items</dt>  <dd>1 partial (art14 §5 two-approver) <span class="dim">· tracked at github.com/Thormatt/orc</span></dd>
+    <dt>contact</dt>     <dd><a href="mailto:thormatt@gmail.com?subject=Orc%20-%20EU%20AI%20Act%20compliance%20pilot">thormatt@gmail.com</a> <span class="dim">· subject "Orc — EU AI Act compliance pilot"</span></dd>
+  </dl>
+  <div class="tfoot-mark">
+    <span><b>orc.</b> &nbsp;&copy; 2026 · the verification runtime · short for orchestration</span>
+    <span class="tfoot-meta">— this page is itself an Article 12 audit artifact —</span>
+  </div>
+</footer>
+
+<script src="../trace.js"></script>
+</main>
+
+<aside class="ledger-wrap">
+  <div class="ledger" id="ledger">
+    <div class="ledger-head">
+      <span>article ledger</span>
+      <span class="progress"><span id="led-progress">0</span>/<span id="led-total">0</span></span>
+    </div>
+    <ul id="ledger-list"></ul>
+    <div class="ledger-foot">click row to jump · open items preserved per audit</div>
+  </div>
+</aside>
+
+</div>
+
+</body>
+</html>
