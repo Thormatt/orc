@@ -126,15 +126,6 @@
       <span class="verdict pending"><span class="vt">verifying</span></span>
     </div>
 
-    <div class="subclaim" data-sub="ok">
-      <div class="sid">art26_§6<br><b>retention</b></div>
-      <div class="sbody">
-        <div class="stitle">Six-month minimum retention.</div>
-        <div class="sdesc">Trace JSON files are append-only by default; SQLite <code>run</code> rows are never deleted by Orc. The deployer is responsible for backing the workspace volume up beyond 6 months for their jurisdiction.</div>
-        <div class="scite">filesystem · ~/.orc/workspaces/&lt;name&gt;/traces/ + run table</div>
-      </div>
-      <span class="verdict pending"><span class="vt">verifying</span></span>
-    </div>
   </div>
 </article>
 </div>
@@ -252,6 +243,60 @@
 </article>
 </div>
 
+<!-- ═══ Article 26 ═════════════════════════════════════════ -->
+<div class="section">
+<div class="section-title"><b>article_26</b> · deployer obligations</div>
+
+<article class="claim" id="claim-art26" data-claim="art26" data-verdict="ok" data-score="0.92">
+  <header class="claim-head">
+    <span class="claim-id">claim_art26</span>
+    <span class="claim-rule"></span>
+    <span class="verdict pending"><span class="vt">verifying</span></span>
+  </header>
+  <h2 class="claim-title">Deployer obligations are satisfied end-to-end, with a single command for regulator handoff.</h2>
+  <p class="claim-body">
+    Article 26 places the day-to-day obligations on the deployer: monitor the
+    system in operation, keep logs for at least six months, and be able to
+    produce them on request. Orc's trace database is the substrate; <code>orc audit export</code>
+    is the handoff. A regulator gets a single hashed tar.gz containing every
+    run, every trace, the evidence manifest, the approval queue, and the
+    runtime version metadata — readable without access to the live system.
+  </p>
+
+  <div class="subclaim-list">
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art26_§5<br><b>monitor</b></div>
+      <div class="sbody">
+        <div class="stitle">Monitor the operation of the system.</div>
+        <div class="sdesc">Every CLI or MCP invocation writes a Run row to SQLite and a full trace JSON to disk. <code>orc trace list</code> + <code>orc trace show</code> surface the live view. <code>orc replay &lt;run_id&gt;</code> reconstructs any individual decision deterministically against the corpus snapshot it ran against.</div>
+        <div class="scite">code · src/orc/runs/runner.py · src/orc/runs/replay.py</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art26_§6<br><b>retention</b></div>
+      <div class="sbody">
+        <div class="stitle">Six-month minimum retention.</div>
+        <div class="sdesc">Trace JSON files are append-only by default; SQLite <code>run</code> rows are never deleted by Orc. The deployer is responsible for backing the workspace volume up beyond 6 months for their jurisdiction. The retention guarantee is structural, not configurable.</div>
+        <div class="scite">filesystem · ~/.orc/workspaces/&lt;name&gt;/traces/ + run table</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+
+    <div class="subclaim" data-sub="ok">
+      <div class="sid">art26_handoff<br><b>audit export</b></div>
+      <div class="sbody">
+        <div class="stitle">Regulator handoff in one command (shipped v0.1.2).</div>
+        <div class="sdesc"><code>orc audit export -w &lt;workspace&gt;</code> writes a hashed tar.gz containing run rows, every trace JSON (schema-validated on the way out), the evidence manifest with sha256, the approval queue with per-approver decisions, workspace metadata, and orc/python/platform versions. <code>manifest.json</code> carries sha256 for every file in the bundle so the assessor can verify integrity independently — <code>sha256sum -c</code> against the manifest. Range filters via <code>--from</code> / <code>--to</code> on <code>started_at</code>. An unsupported trace schema version aborts the export rather than ship a half-bundle.</div>
+        <div class="scite">code · src/orc/audit/export.py · src/orc/cli_commands/audit.py</div>
+      </div>
+      <span class="verdict pending"><span class="vt">verifying</span></span>
+    </div>
+  </div>
+</article>
+</div>
+
 <!-- ═══ Articles 9, 10, 11, 15, 72 — adjacent ═══════════════ -->
 <div class="section">
 <div class="section-title"><b>adjacent</b> · articles 9 / 10 / 11 / 15 / 72</div>
@@ -307,16 +352,6 @@
         <div class="stitle">Accuracy, robustness, cybersecurity (partial).</div>
         <div class="sdesc">Accuracy via per-run confidence + golden tests against a fixed corpus. Robustness instrumentation (<code>orc eval consistency / perturb / regression</code>) is on the Phase 3 roadmap. Cybersecurity: dependencies pinned, local-first, no telemetry, approval queue. SOC 2 / ISO 42001 in Phase 4.</div>
         <div class="scite">tests/golden/ · roadmap · Phases 3-4</div>
-      </div>
-      <span class="verdict pending"><span class="vt">verifying</span></span>
-    </div>
-
-    <div class="subclaim" data-sub="ok">
-      <div class="sid">art26<br><b>deployer</b></div>
-      <div class="sbody">
-        <div class="stitle">Deployer obligations.</div>
-        <div class="sdesc">§5 monitoring → <code>orc trace list</code> + replay. §6 retention → append-only by default. <code>orc audit export</code> (Phase 2) bundles all artifacts for regulator handoff.</div>
-        <div class="scite">runtime · trace + replay · roadmap · Phase 2 (audit export)</div>
       </div>
       <span class="verdict pending"><span class="vt">verifying</span></span>
     </div>
