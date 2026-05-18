@@ -46,3 +46,6 @@ Thumbs.db
 # Debug screenshots from local dev / playwright runs
 /*.png
 /dist/
+
+# Per-run benchmark output (bundles, results.json, etc.)
+benchmarks/*/results/
