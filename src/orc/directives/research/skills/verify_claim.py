@@ -71,8 +71,66 @@ VERDICT_TOOL_SCHEMA: dict[str, Any] = {
 }
 
 
-def _load_system_prompt() -> str:
-    return files("orc.llm.prompts").joinpath("verify_claim.md").read_text(encoding="utf-8")
+def _load_system_prompt(mode: str = "evidence") -> str:
+    filename = "verify_claim_judgment.md" if mode == "judgment" else "verify_claim.md"
+    return files("orc.llm.prompts").joinpath(filename).read_text(encoding="utf-8")
+
+
+def _select_all_chunks(
+    conn: Any,
+    *,
+    corpus_version: int | None,
+    evidence_id: str | None,
+    limit: int,
+) -> list[Any]:
+    """Judgment-mode retrieval: return chunks without running a BM25 match.
+
+    Returns chunks in deterministic order (evidence_id, seq) so the corpus block
+    is byte-stable across calls — same property prompt-caching relies on for the
+    evidence-mode path.
+
+    `evidence_id` restricts to a single evidence record (the common case for
+    judgment-mode callers who staged a specific passage). `None` returns all
+    workspace chunks at or before `corpus_version`, bounded by `limit`.
+    """
+    from orc.retrieval.bm25 import RetrievedChunk
+
+    sql = (
+        "SELECT chunk.chunk_id AS chunk_id, chunk.evidence_id AS evidence_id, "
+        "chunk.seq AS seq, chunk.text AS text, chunk.headings_path AS headings_path, "
+        "chunk.token_count AS token_count, evidence.title AS evidence_title, "
+        "evidence.source_path AS evidence_source_path "
+        "FROM chunk JOIN evidence ON evidence.evidence_id = chunk.evidence_id "
+    )
+    clauses: list[str] = []
+    params: list[Any] = []
+    if corpus_version is not None:
+        clauses.append("evidence.corpus_version <= ?")
+        params.append(corpus_version)
+    if evidence_id is not None:
+        clauses.append("chunk.evidence_id = ?")
+        params.append(evidence_id)
+    if clauses:
+        sql += "WHERE " + " AND ".join(clauses) + " "
+    sql += "ORDER BY chunk.evidence_id ASC, chunk.seq ASC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(sql, params).fetchall()
+    return [
+        RetrievedChunk(
+            chunk_id=row["chunk_id"],
+            evidence_id=row["evidence_id"],
+            seq=row["seq"],
+            text=row["text"],
+            headings_path=row["headings_path"],
+            token_count=row["token_count"],
+            rank=i,
+            bm25_score=0.0,  # No BM25 score in judgment mode.
+            evidence_title=row["evidence_title"],
+            evidence_source_path=row["evidence_source_path"],
+        )
+        for i, row in enumerate(rows)
+    ]
 
 
 class _VerifyClaim:
@@ -90,25 +148,52 @@ class _VerifyClaim:
         max_tokens: int = 2048,
         client: Any = None,
         corpus_version: int | None = None,
+        mode: str = "evidence",
+        evidence_id: str | None = None,
         **_unused: Any,
     ) -> dict[str, Any]:
+        """Verify a claim against the workspace's corpus.
+
+        Modes:
+          - "evidence" (default): BM25 retrieval over the workspace + structured
+            4-label adjudication. The right call when the claim must be verified
+            against a curated corpus and chunk-level citations matter.
+          - "judgment": skip BM25 — use all workspace chunks (or chunks for a
+            single `evidence_id` if provided) and a lighter binary-leaning
+            prompt. The right call when the caller has pre-staged the relevant
+            passage and the question is "is this internally consistent."
+            Citation enforcement, structured output, traces all unchanged.
+        """
         if not claim or not claim.strip():
             raise ValueError("claim must be a non-empty string")
+        if mode not in {"evidence", "judgment"}:
+            raise ValueError(f"unknown verify mode: {mode!r}")
 
         resolved_model = resolve_verify_model(model)
 
         # 1. Retrieve. corpus_version pins the snapshot used by `orc replay` (frozen mode).
-        pool = bm25_search(
-            run.conn, claim, limit=retrieval_pool, corpus_version=corpus_version
-        )
-        candidates = pool[:k]
-        run.record_retrieval(candidates, method="bm25", candidates_considered=len(pool))
+        if mode == "judgment":
+            candidates = _select_all_chunks(
+                run.conn,
+                corpus_version=corpus_version,
+                evidence_id=evidence_id,
+                limit=max(k, retrieval_pool),
+            )
+            run.record_retrieval(
+                candidates, method="judgment_all", candidates_considered=len(candidates)
+            )
+        else:
+            pool = bm25_search(
+                run.conn, claim, limit=retrieval_pool, corpus_version=corpus_version
+            )
+            candidates = pool[:k]
+            run.record_retrieval(candidates, method="bm25", candidates_considered=len(pool))
 
         if not candidates:
             return _make_not_found(claim=claim, model=resolved_model, run=run)
 
         # 2. Build prompt with cache discipline.
-        system_prompt = _load_system_prompt()
+        system_prompt = _load_system_prompt(mode=mode)
         corpus_block = format_corpus(candidates)
         payload = build_verify_messages(
             system_prompt=system_prompt, corpus_block=corpus_block, claim=claim

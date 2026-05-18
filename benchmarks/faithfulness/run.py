@@ -178,6 +178,53 @@ def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     return res
 
 
+def _run_judgment_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Variant: Orc's `verify_claim` skill in `mode="judgment"`.
+
+    Production path — preserves chunk-id validation, structured 4-label output,
+    trace + replay + audit-export. Skips BM25 and uses all workspace chunks
+    with the lighter judgment-mode system prompt. Measures whether the F1 lift
+    that `lynx_style` shows is recoverable inside the architectural moat.
+    """
+    from orc import directives
+    from orc.ingest.pipeline import ingest as do_ingest
+    from orc.runs import open_run
+    from orc.storage import workspace as ws_module
+
+    res = ItemResult(
+        id=item["id"],
+        source_ds=item["source_ds"],
+        ground_truth=item["label"],
+    )
+
+    ws_name = f"halu-{item['id'].replace('-', '')[:24]}"
+    corpus_dir = orc_home / "corpora" / ws_name
+    corpus_dir.mkdir(parents=True, exist_ok=True)
+    (corpus_dir / "passage.md").write_text(item["passage"])
+
+    try:
+        ws = ws_module.create(ws_name)
+        do_ingest(ws, str(corpus_dir))
+        claim = f"Q: {item['question']}\nA: {item['answer']}"
+        skill = directives.get("research").skills["verify_claim"]
+        with open_run(
+            ws, directive="research", skill="verify_claim", inputs={"claim": claim, "mode": "judgment"}
+        ) as run:
+            run.record_effective_kwargs(
+                {"claim": claim, "model": "halubench", "mode": "judgment"}
+            )
+            out = skill.run(workspace=ws, run=run, claim=claim, mode="judgment")
+            run.close(output=out)
+        res.run_id = run.run_id
+        res.orc_verdict = out["label"]
+        res.orc_confidence = out["confidence"]
+        res.orc_binary = DEFAULT_LABEL_MAPPING[out["label"]]
+        res.orc_correct = res.orc_binary == res.ground_truth
+    except Exception as exc:
+        res.orc_error = f"{type(exc).__name__}: {exc}"
+    return res
+
+
 def _run_orc_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     """Spin up a per-item workspace, ingest the passage, run verify_claim."""
     from orc import directives
@@ -383,12 +430,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hhem", action="store_true", help="Also score with self-hosted HHEM")
     parser.add_argument(
         "--variant",
-        choices=["default", "lynx_style"],
+        choices=["default", "lynx_style", "judgment"],
         default="default",
         help=(
-            "Verification variant. `default` = Orc verify_claim (BM25 + 4-label). "
-            "`lynx_style` = direct Sonnet call with Lynx's binary prompt, no "
-            "Orc pipeline (measures judge ceiling, no fine-tuning)."
+            "Verification variant. "
+            "`default` = Orc verify_claim, mode=evidence (BM25 + 4-label). "
+            "`lynx_style` = direct Sonnet call with Lynx's binary prompt, no Orc pipeline. "
+            "`judgment` = Orc verify_claim, mode=judgment (no BM25, lighter prompt, full moat preserved)."
         ),
     )
     parser.add_argument("--out", type=Path, default=None)
@@ -454,7 +502,12 @@ def main(argv: list[str] | None = None) -> int:
         (out_dir / "README.md").write_text(_readme(agg, len(items)))
         return agg
 
-    runner = _run_lynx_style_one if args.variant == "lynx_style" else _run_orc_one
+    runners = {
+        "default": _run_orc_one,
+        "lynx_style": _run_lynx_style_one,
+        "judgment": _run_judgment_one,
+    }
+    runner = runners[args.variant]
     print(f"variant: {args.variant}")
 
     item_results: list[ItemResult] = []
