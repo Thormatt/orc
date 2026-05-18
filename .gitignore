@@ -42,3 +42,7 @@ Thumbs.db
 *.db-shm
 *.db-wal
 .vercel/
+
+# Debug screenshots from local dev / playwright runs
+/*.png
+/dist/

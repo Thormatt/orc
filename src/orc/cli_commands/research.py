@@ -43,6 +43,7 @@ def research_command(
         kwargs["k"] = k
 
     with open_run(ws, directive="research", skill="research_topic", inputs=dict(kwargs)) as run:
+        run.record_effective_kwargs(kwargs)
         result = skill.run(workspace=ws, run=run, **kwargs)
         run.close(output=result)
 

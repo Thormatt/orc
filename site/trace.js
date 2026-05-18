@@ -112,13 +112,28 @@ function trackActive(claims) {
   document.querySelectorAll('.claim[data-claim]').forEach((c) => io.observe(c));
 }
 
-/* ─── replay button: subtle ack, no theatre ─────────────── */
+/* ─── replay button: copy the real command, don't fake a result ──
+ * Earlier versions of this button toggled to "✓ identical (31.4s)"
+ * after a setTimeout — i.e. faked a verification result in a tool
+ * whose point is that you don't fake verification results. The
+ * honest behavior: hand the visitor the command they would run
+ * themselves, since the page header already states the run_id. */
 function wireReplay() {
   const btn = document.getElementById('replay-btn');
   if (!btn) return;
-  btn.addEventListener('click', () => {
+  const RUN_ID = '01KR1NHTQR8B';
+  const CMD = `orc replay ${RUN_ID} --workspace public`;
+  btn.title = `copy: ${CMD}`;
+  btn.addEventListener('click', async () => {
     const orig = btn.textContent;
-    btn.textContent = '✓ identical (31.4s)';
+    let ok = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(CMD);
+        ok = true;
+      }
+    } catch (_) { /* clipboard blocked — fall back to visible ack only */ }
+    btn.textContent = ok ? '✓ command copied' : '↻ ' + CMD;
     btn.style.background = 'var(--ink)';
     btn.style.color = 'var(--paper)';
     setTimeout(() => {

@@ -165,3 +165,159 @@ def test_replay_records_lineage_in_inputs(
     new_trace = load_trace(out["new_run_id"])
     assert new_trace["inputs"]["_replay_of"] == original
     assert new_trace["inputs"]["_replay_mode"] == "frozen"
+
+
+def test_cli_verify_records_effective_kwargs(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The CLI verify path must pin the full effective kwargs (manifest defaults +
+    caller overrides) into the trace so replay reproduces the original execution
+    rather than re-reading the current manifest."""
+    from click.testing import CliRunner
+
+    from orc.cli import main
+
+    name = _seed_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["verify", "skills api", "--workspace", name, "--k", "7"]
+    )
+    assert result.exit_code == 0, result.output
+
+    from orc.storage.trace_store import list_runs
+
+    rows = list_runs(name, skill="verify_claim", limit=1)
+    trace = load_trace(rows[0]["run_id"])
+    ek = trace.get("effective_kwargs")
+    assert ek is not None
+    assert ek["claim"] == "skills api"
+    assert ek["k"] == 7  # caller override survived into the pin
+    # manifest defaults must be present too — replay needs the full picture
+    assert "max_tokens" in ek
+
+
+def test_replay_uses_pinned_kwargs_over_current_manifest(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: if manifest defaults shift between original and replay, the
+    replay must still execute with the original kwargs. Without pinning, a
+    deployer who edits the manifest could silently invalidate every prior
+    trace's reproducibility."""
+    from orc import directives
+    from orc.directives.base import DirectiveSpec
+
+    name = _seed_corpus(orc_home, tmp_path)
+
+    captured: dict[str, object] = {}
+
+    class _RecordingSkill:
+        name = "record"
+
+        def run(self, *, workspace, run, **kwargs):
+            captured.update(kwargs)
+            return {"got": list(kwargs.keys())}
+
+    spec_v1 = DirectiveSpec(
+        name="__replay_pin_test__",
+        version="0.0.1",
+        description="t",
+        skills={"record": _RecordingSkill()},
+        skill_defaults={"record": {"model": "model-v1", "max_tokens": 1024, "k": 10}},
+    )
+    directives.register(spec_v1)
+    try:
+        ws = ws_module.resolve(name)
+        spec = directives.get("__replay_pin_test__")
+        kwargs = {**spec.kwargs_for("record"), "query": "hello"}
+        with open_run(
+            ws,
+            directive="__replay_pin_test__",
+            skill="record",
+            inputs=dict(kwargs),
+        ) as run:
+            run.record_effective_kwargs(kwargs)
+            result = spec.skills["record"].run(workspace=ws, run=run, **kwargs)
+            run.close(output=result)
+        original_id = run.run_id
+
+        # Now swap in a v2 spec with different defaults. Replay must IGNORE these.
+        directives._REGISTRY["__replay_pin_test__"] = DirectiveSpec(
+            name="__replay_pin_test__",
+            version="0.0.2",
+            description="t",
+            skills={"record": _RecordingSkill()},
+            skill_defaults={"record": {"model": "model-v2", "max_tokens": 8192, "k": 99}},
+        )
+
+        captured.clear()
+        out = replay(original_id)
+        assert out["kwargs_source"] == "effective_kwargs"
+        # The replay must have run with v1 values, not v2.
+        assert captured["model"] == "model-v1"
+        assert captured["max_tokens"] == 1024
+        assert captured["k"] == 10
+        assert captured["query"] == "hello"
+    finally:
+        del directives._REGISTRY["__replay_pin_test__"]
+
+
+def test_replay_legacy_trace_without_effective_kwargs_falls_back(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Older traces (written before effective_kwargs existed) must still replay.
+    They reconstruct kwargs from current manifest + recorded inputs, stripping
+    internal `_*` metadata so it isn't passed to the skill."""
+    from orc import directives
+    from orc.directives.base import DirectiveSpec
+
+    name = _seed_corpus(orc_home, tmp_path)
+
+    captured: dict[str, object] = {}
+
+    class _Skill:
+        name = "echo"
+
+        def run(self, *, workspace, run, **kwargs):
+            captured.update(kwargs)
+            return {"ok": True}
+
+    spec = DirectiveSpec(
+        name="__replay_legacy_test__",
+        version="0.0.1",
+        description="t",
+        skills={"echo": _Skill()},
+        skill_defaults={"echo": {"model": "fallback-default"}},
+    )
+    directives.register(spec)
+    try:
+        ws = ws_module.resolve(name)
+        with open_run(
+            ws,
+            directive="__replay_legacy_test__",
+            skill="echo",
+            # Mimic an old trace: inputs include both real args AND an internal
+            # _parent_run marker. effective_kwargs is intentionally NOT recorded.
+            inputs={"query": "test", "_parent_run": "rn_old", "_step_index": 3},
+        ) as run:
+            spec.skills["echo"].run(workspace=ws, run=run, query="test")
+            run.close(output={"ok": True})
+        original_id = run.run_id
+
+        # Sanity: trace has no effective_kwargs
+        assert load_trace(original_id).get("effective_kwargs") is None
+
+        captured.clear()
+        out = replay(original_id)
+        assert out["kwargs_source"] == "legacy_inputs"
+        assert captured["query"] == "test"
+        # Manifest default merged in (legacy path)
+        assert captured["model"] == "fallback-default"
+        # Internal _* markers must NOT be passed to the skill
+        assert "_parent_run" not in captured
+        assert "_step_index" not in captured
+    finally:
+        del directives._REGISTRY["__replay_legacy_test__"]

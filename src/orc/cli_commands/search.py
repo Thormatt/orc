@@ -37,6 +37,7 @@ def search_command(query: str, workspace: str | None, k: int, as_json: bool) -> 
         skill="search_evidence",
         inputs={"query": query, "k": k},
     ) as run:
+        run.record_effective_kwargs(skill_kwargs)
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
 

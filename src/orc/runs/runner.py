@@ -19,6 +19,7 @@ from orc.core.clock import now_iso
 from orc.core.ids import new_run_id
 from orc.paths import workspace_db_path
 from orc.retrieval import RetrievedChunk
+from orc.runs.trace_schema import LATEST_TRACE_SCHEMA_VERSION
 from orc.storage.db import open_connection, transaction
 from orc.storage.trace_store import (
     finalize_run_row,
@@ -28,7 +29,7 @@ from orc.storage.trace_store import (
 )
 from orc.storage.workspace import Workspace
 
-TRACE_SCHEMA_VERSION = 1
+TRACE_SCHEMA_VERSION = LATEST_TRACE_SCHEMA_VERSION
 
 
 @dataclass
@@ -58,10 +59,28 @@ class Run:
     llm_calls: list[_LLMCallSummary] = field(default_factory=list)
     retrieval: dict[str, Any] | None = None
     model: str | None = None
+    effective_kwargs: dict[str, Any] | None = None
     _ended: bool = False
 
     def record(self, key: str, value: Any) -> None:
         self.events.append({"at": now_iso(), "key": key, "value": value})
+
+    def record_effective_kwargs(self, kwargs: dict[str, Any]) -> None:
+        """Pin the skill kwargs that were actually used (manifest defaults merged with
+        caller overrides). Replay reads this so a manifest change between original and
+        replay does not silently re-run with new defaults.
+
+        Stores a JSON-safe shallow copy: non-serializable values (e.g. an injected LLM
+        client) are stringified so the trace remains loadable.
+        """
+        safe: dict[str, Any] = {}
+        for k, v in kwargs.items():
+            try:
+                json.dumps(v)
+                safe[k] = v
+            except (TypeError, ValueError):
+                safe[k] = f"<non-serializable {type(v).__name__}>"
+        self.effective_kwargs = safe
 
     def record_retrieval(
         self,
@@ -200,6 +219,7 @@ class Run:
             "status": status,
             "model": self.model,
             "inputs": self.inputs,
+            "effective_kwargs": self.effective_kwargs,
             "events": self.events,
             "retrieval": self.retrieval,
             "llm_calls": [vars(c) for c in self.llm_calls],

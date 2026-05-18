@@ -169,6 +169,24 @@ def test_failure_recorded_as_error_result(test_directive, parent) -> None:
     assert ev["status"] == "error"
 
 
+def test_failure_preserves_child_run_id_linkage(test_directive, parent) -> None:
+    """Regression: a failed step records the child run_id so the parent trace
+    points at the error trace open_run wrote on the way out. Without eager
+    capture of sub_run.run_id inside the `with` block, this linkage is lost
+    when the skill raises (the `as` name is unbound after the exception)."""
+    ws, parent_run = parent
+    wf = Workflow(parent_run=parent_run, workspace=ws)
+    result = wf.run_step(Step(skill="boom", directive="__orchestrate_test__"))
+    assert not result.ok
+    assert result.run_id, "child run_id must survive the exception for audit linkage"
+    trace = load_trace(result.run_id)
+    assert trace["status"] == "error"
+    assert "kaboom" in (trace.get("error_message") or "")
+    # parent's workflow_step event must point at the same child trace
+    ev = [e for e in parent_run.events if e["key"] == "workflow_step"][-1]["value"]
+    assert ev["child_run_id"] == result.run_id
+
+
 def test_fail_fast_raises_on_step_error(test_directive, parent) -> None:
     ws, parent_run = parent
     wf = Workflow(parent_run=parent_run, workspace=ws)
@@ -185,6 +203,45 @@ def test_fail_fast_on_fanout(test_directive, parent) -> None:
     ]
     with pytest.raises(WorkflowError):
         wf.fanout(steps, fail_fast=True)
+
+
+def test_fanout_children_have_distinct_step_indexes(test_directive, parent) -> None:
+    """Regression: fanout pre-allocates indices so each parallel child writes a
+    distinct `_step_index` into its trace. Without pre-allocation each worker
+    read the same `len(self.results)` (zero) before any had appended, and every
+    child trace recorded `_step_index=0`."""
+    ws, parent_run = parent
+    wf = Workflow(parent_run=parent_run, workspace=ws)
+    steps = [
+        Step(skill="echo", directive="__orchestrate_test__", inputs={"value": i})
+        for i in range(4)
+    ]
+    results = wf.fanout(steps, max_workers=4)
+    assert all(r.ok for r in results)
+    indices = sorted(load_trace(r.run_id)["inputs"]["_step_index"] for r in results)
+    assert indices == [0, 1, 2, 3]
+    # parent's event log must also use the distinct indices
+    fanout_events = [e["value"] for e in parent_run.events if e["key"] == "workflow_step"]
+    assert sorted(e["step_index"] for e in fanout_events[-4:]) == [0, 1, 2, 3]
+
+
+def test_fanout_step_indexes_continue_after_prior_steps(test_directive, parent) -> None:
+    """A fanout that happens after some prior steps should pick up from where
+    self.results left off, so step_index remains globally monotonic across
+    sequential + parallel mixes."""
+    ws, parent_run = parent
+    wf = Workflow(parent_run=parent_run, workspace=ws)
+    wf.run_step(Step(skill="echo", directive="__orchestrate_test__", inputs={"value": "a"}))
+    wf.run_step(Step(skill="echo", directive="__orchestrate_test__", inputs={"value": "b"}))
+    parallel = wf.fanout(
+        [
+            Step(skill="echo", directive="__orchestrate_test__", inputs={"value": "c"}),
+            Step(skill="echo", directive="__orchestrate_test__", inputs={"value": "d"}),
+        ],
+        max_workers=2,
+    )
+    indices = sorted(load_trace(r.run_id)["inputs"]["_step_index"] for r in parallel)
+    assert indices == [2, 3]
 
 
 def test_unknown_skill_returns_error_result(test_directive, parent) -> None:

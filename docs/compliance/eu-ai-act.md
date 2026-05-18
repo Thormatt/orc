@@ -195,8 +195,13 @@ their lifecycle.
 **Relevant clauses:**
 
 - §5 — monitor operation: `orc trace list` + `orc replay`.
-- §6 — retain logs ≥ 6 months: append-only by default; `orc audit export` planned
-  for regulator handoff.
+- §6 — retain logs ≥ 6 months: traces are append-only on disk by default. For
+  point-in-time handoff, `orc audit export -w <workspace>` bundles every Run
+  row, full trace JSON, evidence manifest with sha256, approval queue with
+  per-approver decisions, workspace metadata, and runtime version info into a
+  single tar.gz. Each file is hashed in a top-level `manifest.json`; trace
+  schema versions are validated on the way out so the bundle cannot mix
+  supported and unsupported formats.
 - §7 — inform workers using the system: deployer's responsibility; this doc is for
   procurement evaluation.
 
@@ -213,7 +218,8 @@ during use.
   call writes to it.
 - Planned eval commands (`orc eval consistency`, `orc eval perturb`) will produce
   drift metrics against a baseline.
-- `orc audit export` (Phase 2) packages this for regulators.
+- `orc audit export` packages the trace database, evidence manifest, and
+  approval log into a hashed, schema-validated tarball for regulators.
 
 ---
 
@@ -284,25 +290,27 @@ use Orc to meet your Article 12/13/14 obligations:
 5. **Retain traces.** Default behavior already satisfies Article 26(6). Back up
    `$ORC_HOME` to durable storage. Retention longer than 6 months is your call.
 
-6. **Hand the audit packet to your assessor.** Phase 2 ships `orc audit export`
-   for this; until then, `tar -czf audit.tgz ~/.orc/workspaces/<name>` is enough.
+6. **Hand the audit packet to your assessor.** Run `orc audit export -w <name>`
+   to produce a single hashed tar.gz containing the workspace's full audit
+   trail. The bundle includes `manifest.json` with sha256 for every file so the
+   assessor can verify integrity independently.
 
 ---
 
 ## Mapping at a glance
 
 ```
-ARTICLE                   ORC v0.1.0                 v0.2 (Phase 2)      v0.3+ (Phase 3-4)
+ARTICLE                   ORC v0.1.x                 v0.2 (Phase 2)      v0.3+ (Phase 3-4)
 ─────────                 ───────────                ───────────────     ───────────────────
 Art. 9  Risk management   trace + replay             —                   anomaly detection
 Art. 10 Data governance   evidence sha256, ver       —                   bias / fairness skills
 Art. 11 Technical docs    README + CHANGELOG          —                   conformity helper directive
-Art. 12 Record-keeping    ✓ DEFAULT                  audit export        —
+Art. 12 Record-keeping    ✓ trace + audit export     —                   —
 Art. 13 Transparency      structured outputs         —                   accuracy metrics doc
-Art. 14 Human oversight   approval queue             multi-approver      —
-Art. 15 Robustness        golden tests               trace schema vers.  eval consistency/perturb
-Art. 26 Deployer obs.     trace retention            audit export        —
-Art. 72 Post-market mon.  trace database             audit export        eval regression
+Art. 14 Human oversight   ✓ multi-approver queue     —                   —
+Art. 15 Robustness        golden + schema vers.      replay-safety         eval consistency/perturb
+Art. 26 Deployer obs.     ✓ trace + audit export     —                   —
+Art. 72 Post-market mon.  trace + audit export       —                   eval regression
 ```
 
 **Cert / posture (Phase 4):** SOC 2 Type II · ISO/IEC 42001 · independent security audit · cyber/E&O insurance.

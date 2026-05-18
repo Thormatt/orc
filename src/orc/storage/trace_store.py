@@ -1,6 +1,7 @@
 """Trace persistence: index in the run table, full payload as JSON files.
 
-Trace JSON layout is the contract — see schema_version=1 in `Run.build_trace_payload`.
+Trace JSON layout is the contract — see `orc.runs.trace_schema` for the
+current version, the supported version set, and the version history.
 """
 
 from __future__ import annotations

@@ -34,10 +34,23 @@ def replay_command(run_id: str, live: bool, as_json: bool) -> None:
 
     mode = out["mode"]
     console.print(f"[bold]replay mode:[/bold] {mode}")
-    console.print(f"  original_run_id        = {out['original_run_id']}")
-    console.print(f"  new_run_id             = {out['new_run_id']}")
+    console.print(f"  original_run_id         = {out['original_run_id']}")
+    console.print(f"  new_run_id              = {out['new_run_id']}")
     console.print(f"  original_corpus_version = {out['original_corpus_version']}")
     console.print(f"  current_corpus_version  = {out['current_corpus_version']}")
+    if "original_schema_version" in out:
+        console.print(f"  original_schema_version = {out['original_schema_version']}")
+    source = out.get("kwargs_source")
+    if source == "effective_kwargs":
+        console.print(
+            "  kwargs_source           = [green]effective_kwargs[/green] "
+            "[dim](pinned snapshot — true reproduction)[/dim]"
+        )
+    elif source == "legacy_inputs":
+        console.print(
+            "  kwargs_source           = [yellow]legacy_inputs[/yellow] "
+            "[dim](best-effort — manifest defaults read from current spec)[/dim]"
+        )
     result = out["result"]
     if "label" in result:
         console.print(f"\n  result.label      = [bold]{result['label']}[/bold]")

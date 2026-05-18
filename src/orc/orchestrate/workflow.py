@@ -122,14 +122,20 @@ class Workflow:
         """
         if not steps:
             return []
+        # Pre-allocate indices for the batch so each parallel child writes a distinct
+        # _step_index into its own trace, instead of all reading the same len(self.results).
+        base_index = len(self.results)
+        indexed = [(base_index + i, step) for i, step in enumerate(steps)]
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            results = list(ex.map(self._execute, steps))
+            results = list(
+                ex.map(lambda pair: self._execute(pair[1], step_index=pair[0]), indexed)
+            )
         for i, (step, result) in enumerate(zip(steps, results, strict=True)):
             self.results.append(result)
             self.parent_run.record(
                 "workflow_step",
                 {
-                    "step_index": len(self.results) - len(steps) + i,
+                    "step_index": base_index + i,
                     "skill": step.skill,
                     "directive": step.directive,
                     "child_run_id": result.run_id,
@@ -148,7 +154,7 @@ class Workflow:
                 )
         return results
 
-    def _execute(self, step: Step) -> StepResult:
+    def _execute(self, step: Step, *, step_index: int | None = None) -> StepResult:
         spec = directives.get(step.directive)
         if step.skill not in spec.skills:
             return StepResult(
@@ -163,14 +169,22 @@ class Workflow:
         if step.budget_tokens is not None:
             skill_kwargs.setdefault("max_tokens", step.budget_tokens)
 
+        # Sequential run_step uses len(self.results); fanout pre-allocates per child so
+        # parallel children get distinct indexes even when called before any has appended.
+        effective_index = step_index if step_index is not None else len(self.results)
         recorded_inputs: dict[str, Any] = {
             **step.inputs,
             "_parent_run": self.parent_run.run_id,
-            "_step_index": len(self.results),
+            "_step_index": effective_index,
         }
         if step.description:
             recorded_inputs["_description"] = step.description
 
+        # Capture the child run_id eagerly so we preserve the audit-chain pointer
+        # even when skill.run() raises. open_run() writes an error trace on the
+        # failed run before re-raising; without this capture the parent would
+        # record run_id="" and the linkage to that error trace would be lost.
+        sub_run_id = ""
         try:
             with open_run(
                 self.workspace,
@@ -178,15 +192,17 @@ class Workflow:
                 skill=step.skill,
                 inputs=recorded_inputs,
             ) as sub_run:
+                sub_run_id = sub_run.run_id
+                sub_run.record_effective_kwargs(skill_kwargs)
                 output = skill.run(workspace=self.workspace, run=sub_run, **skill_kwargs)
                 sub_run.close(output=output)
                 return StepResult(
-                    step=step, run_id=sub_run.run_id, status="ok", output=output
+                    step=step, run_id=sub_run_id, status="ok", output=output
                 )
         except Exception as exc:
             return StepResult(
                 step=step,
-                run_id="",
+                run_id=sub_run_id,  # preserves linkage to the error trace if open_run got far enough
                 status="error",
                 output={},
                 error=f"{type(exc).__name__}: {exc}",

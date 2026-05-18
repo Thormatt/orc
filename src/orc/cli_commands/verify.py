@@ -92,6 +92,7 @@ def _verify_one(
         kwargs["k"] = k
 
     with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
+        run.record_effective_kwargs(kwargs)
         result = skill.run(workspace=ws, run=run, **kwargs)
         run.close(output=result)
 
@@ -132,6 +133,7 @@ def _verify_from_document(
             "document": loaded.text,
         },
     ) as run:
+        run.record_effective_kwargs(extract_kwargs)
         extract_result = extract_skill.run(workspace=ws, run=run, **extract_kwargs)
         run.close(output=extract_result)
     raw_claims = list(extract_result.get("claims", []))
@@ -158,6 +160,7 @@ def _verify_from_document(
         if k is not None:
             kwargs["k"] = k
         with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
+            run.record_effective_kwargs(kwargs)
             result = verify_skill.run(workspace=ws, run=run, **kwargs)
             run.close(output=result)
         results.append({**result, "_run_id": run.run_id})

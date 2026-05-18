@@ -38,7 +38,9 @@ def test_run_writes_trace_json_and_run_row(orc_home: Path) -> None:
     traces = list(workspace_traces_dir("demo").rglob(f"{run.run_id}.json"))
     assert len(traces) == 1
     trace = json.loads(traces[0].read_text())
-    assert trace["schema_version"] == 1
+    from orc.runs.trace_schema import LATEST_TRACE_SCHEMA_VERSION
+
+    assert trace["schema_version"] == LATEST_TRACE_SCHEMA_VERSION
     assert trace["run_id"] == run.run_id
     assert trace["status"] == "ok"
     assert trace["events"][0]["key"] == "note"

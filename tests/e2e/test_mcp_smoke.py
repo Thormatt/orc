@@ -1,15 +1,19 @@
 """MCP server smoke tests.
 
-The MCP wire protocol is heavy to spin up in a unit test. Instead we exercise:
-- the server's tool registry (the four expected tools are registered)
-- each tool's underlying core function (which is what the MCP layer routes to)
+Two layers of coverage:
+- Core-function tests exercise the Python functions the MCP tool decorators wrap.
+  Fast, cover most regressions, no protocol overhead.
+- Wire-protocol tests at the bottom of the file run an in-memory MCP client/server
+  pair and exchange real JSON-RPC. They catch breaks in tool-schema generation,
+  tool registration, and result encoding that core-function tests can't see.
 
-End-to-end stdio testing happens manually via `claude mcp add` / Claude Code.
+True stdio (process-spawned) smoke still happens manually via `claude mcp add`.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -130,3 +134,115 @@ def test_omitted_workspace_without_env_uses_literal_default(
     ws_module.create("default")
     result = _search_evidence_core("anything", k=3)  # workspace omitted
     assert "run_id" in result, result
+
+
+# ───────────── wire-protocol smoke tests ─────────────────────
+#
+# These exercise the FastMCP server through the real JSON-RPC client session,
+# catching breaks in tool-schema generation / registration / result encoding
+# that the core-function tests above cannot see.
+
+
+def _extract_text_payload(call_result) -> dict:
+    """Pull the JSON dict out of an MCP CallToolResult.
+
+    FastMCP returns tool results as a list of content blocks; the JSON body
+    is encoded as a TextContent block whose `.text` is the JSON string."""
+    blocks = call_result.content
+    assert blocks, "tool result had no content blocks"
+    for b in blocks:
+        text = getattr(b, "text", None)
+        if text:
+            return json.loads(text)
+    raise AssertionError(f"no text block in result: {blocks!r}")
+
+
+async def test_wire_protocol_lists_tools_with_schemas(
+    orc_home: Path, tmp_path: Path
+) -> None:
+    """Connect a real ClientSession to the FastMCP server and confirm tools are
+    discoverable with proper schemas. Regression: a broken @mcp.tool decorator
+    or rename would silently disappear here, but pass the registry test above."""
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    _setup_corpus(orc_home, tmp_path)
+    server = build_server()
+    async with create_connected_server_and_client_session(server) as client:
+        listed = await client.list_tools()
+        names = {t.name for t in listed.tools}
+        assert names == {
+            "orc_verify_claim",
+            "orc_search_evidence",
+            "orc_research_topic",
+            "orc_get_trace",
+        }
+        # Each tool must publish an input schema the client can introspect.
+        for t in listed.tools:
+            assert t.inputSchema is not None
+            assert t.description, f"tool {t.name} missing description"
+
+
+async def test_wire_protocol_call_search_evidence(
+    orc_home: Path, tmp_path: Path
+) -> None:
+    """Call orc_search_evidence over the wire and parse the JSON result. No LLM
+    needed — pure retrieval — so this stays fast and deterministic."""
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    name = _setup_corpus(orc_home, tmp_path)
+    server = build_server()
+    async with create_connected_server_and_client_session(server) as client:
+        result = await client.call_tool(
+            "orc_search_evidence",
+            {"query": "skills api", "workspace": name, "k": 3},
+        )
+        assert result.isError is False, result
+        payload = _extract_text_payload(result)
+        assert "run_id" in payload
+        assert payload["chunks"], "expected at least one chunk for 'skills api'"
+        assert payload["chunks"][0]["evidence_title"] == "Skills API"
+
+
+async def test_wire_protocol_get_trace_roundtrip(
+    orc_home: Path, tmp_path: Path
+) -> None:
+    """Two tool calls: first search creates a trace, second tool retrieves it
+    by run_id. Exercises the full JSON-RPC request/response/serialization path
+    for both args and large structured results."""
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    name = _setup_corpus(orc_home, tmp_path)
+    server = build_server()
+    async with create_connected_server_and_client_session(server) as client:
+        search = await client.call_tool(
+            "orc_search_evidence",
+            {"query": "skills api", "workspace": name, "k": 2},
+        )
+        search_payload = _extract_text_payload(search)
+        run_id = search_payload["run_id"]
+
+        trace = await client.call_tool("orc_get_trace", {"run_id": run_id})
+        trace_payload = _extract_text_payload(trace)
+        assert trace_payload["run_id"] == run_id
+        assert trace_payload["skill"] == "search_evidence"
+        # Wire path must preserve the freshly-added effective_kwargs field.
+        assert trace_payload.get("effective_kwargs") is not None
+        assert trace_payload["effective_kwargs"]["query"] == "skills api"
+
+
+async def test_wire_protocol_unknown_workspace_returns_error_payload(
+    orc_home: Path,
+) -> None:
+    """Application-level errors come back as JSON payloads with an `error` key,
+    not protocol-level exceptions. The MCP client should still see isError=False
+    (the tool ran successfully) and the error string lives inside the result."""
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    ws_module.create("placeholder")  # so workspaces dir exists
+    server = build_server()
+    async with create_connected_server_and_client_session(server) as client:
+        result = await client.call_tool(
+            "orc_search_evidence", {"query": "x", "workspace": "does-not-exist"}
+        )
+        payload = _extract_text_payload(result)
+        assert "error" in payload

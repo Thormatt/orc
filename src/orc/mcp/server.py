@@ -44,6 +44,7 @@ def _verify_claim_core(claim: str, workspace: str | None = None) -> dict[str, An
         skill="verify_claim",
         inputs={"claim": claim, "workspace": ws.name},
     ) as run:
+        run.record_effective_kwargs(skill_kwargs)
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
     return {"run_id": run.run_id, **result}
@@ -68,6 +69,7 @@ def _search_evidence_core(
         skill="search_evidence",
         inputs={"query": query, "workspace": ws.name, "k": k},
     ) as run:
+        run.record_effective_kwargs(skill_kwargs)
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
     return {"run_id": run.run_id, **result}
@@ -90,6 +92,7 @@ def _research_topic_core(topic: str, workspace: str | None = None) -> dict[str, 
         skill="research_topic",
         inputs={"topic": topic, "workspace": ws.name},
     ) as run:
+        run.record_effective_kwargs(skill_kwargs)
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
     return {"run_id": run.run_id, **result}
