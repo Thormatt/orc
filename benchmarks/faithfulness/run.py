@@ -150,6 +150,34 @@ def _scores(cm: dict[str, int]) -> dict[str, float]:
 # ───────────── Orc scoring ────────────────────────────────────
 
 
+def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Variant: direct Sonnet call with Lynx's literal binary prompt.
+
+    No Orc pipeline involvement — measures the underlying judge capability
+    when given the optimal prompt. The reference point for "ceiling without
+    fine-tuning."
+    """
+    from benchmarks.faithfulness.variants import run_lynx_style
+
+    res = ItemResult(
+        id=item["id"],
+        source_ds=item["source_ds"],
+        ground_truth=item["label"],
+    )
+    label, raw, _elapsed, err = run_lynx_style(item)
+    if err is not None:
+        res.orc_error = err
+        return res
+    if label == "":
+        res.orc_error = f"unparseable response: {raw!r}"
+        return res
+    res.orc_verdict = "supported" if label == "PASS" else "contradicted"
+    res.orc_confidence = 1.0  # Lynx-style prompt does not emit confidence.
+    res.orc_binary = label
+    res.orc_correct = label == res.ground_truth
+    return res
+
+
 def _run_orc_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     """Spin up a per-item workspace, ingest the passage, run verify_claim."""
     from orc import directives
@@ -353,6 +381,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Restrict to one source_ds (DROP, FinanceBench, RAGTruth, covidQA, halueval, pubmedQA)",
     )
     parser.add_argument("--hhem", action="store_true", help="Also score with self-hosted HHEM")
+    parser.add_argument(
+        "--variant",
+        choices=["default", "lynx_style"],
+        default="default",
+        help=(
+            "Verification variant. `default` = Orc verify_claim (BM25 + 4-label). "
+            "`lynx_style` = direct Sonnet call with Lynx's binary prompt, no "
+            "Orc pipeline (measures judge ceiling, no fine-tuning)."
+        ),
+    )
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
 
@@ -406,6 +444,7 @@ def main(argv: list[str] | None = None) -> int:
             json.dumps(
                 {
                     "stage": stage,
+                    "variant": args.variant,
                     "aggregate": asdict(agg),
                     "items": [asdict(r) for r in item_results],
                 },
@@ -415,12 +454,15 @@ def main(argv: list[str] | None = None) -> int:
         (out_dir / "README.md").write_text(_readme(agg, len(items)))
         return agg
 
+    runner = _run_lynx_style_one if args.variant == "lynx_style" else _run_orc_one
+    print(f"variant: {args.variant}")
+
     item_results: list[ItemResult] = []
     try:
         for i, item in enumerate(items, 1):
             if i % 10 == 0 or i == len(items) or i == 1:
-                print(f"  orc {i}/{len(items)}  ({item['source_ds']})")
-            r = _run_orc_one(item, tmp_home)
+                print(f"  {args.variant} {i}/{len(items)}  ({item['source_ds']})")
+            r = runner(item, tmp_home)
             item_results.append(r)
             # Checkpoint every 25 items so a mid-run crash never throws away
             # the API calls that have already been paid for.
