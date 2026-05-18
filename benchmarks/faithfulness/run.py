@@ -74,6 +74,27 @@ class Aggregate:
     label_mapping: dict[str, str]
     orc: dict[str, Any] = field(default_factory=dict)
     hhem: dict[str, Any] = field(default_factory=dict)
+    per_source: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+def _per_source_breakdown(
+    item_results: list[ItemResult], binary_attr: str
+) -> dict[str, dict[str, Any]]:
+    """Compute confusion + scores per source_ds so a reviewer can see where the
+    model strong-performs vs. struggles. Distinguishes natural-language Q+A
+    from tabular / numeric tasks."""
+    from collections import defaultdict
+
+    by_src: dict[str, list[ItemResult]] = defaultdict(list)
+    for r in item_results:
+        if getattr(r, binary_attr) is None:
+            continue
+        by_src[r.source_ds].append(r)
+    out: dict[str, dict[str, Any]] = {}
+    for src, rows in sorted(by_src.items()):
+        cm = _confusion(rows, binary_attr)
+        out[src] = {"confusion": cm, "scores": _scores(cm), "n": len(rows)}
+    return out
 
 
 def _load_dataset(n: int, source_filter: str | None) -> list[dict[str, Any]]:
@@ -233,7 +254,7 @@ def _readme(agg: Aggregate, total: int) -> str:
         "Stratified subsample: 504 items, 84 each from DROP, FinanceBench, RAGTruth,",
         "covidQA, halueval, pubmedQA. 252 PASS / 252 FAIL ground truth.",
         "",
-        f"## Run scope",
+        "## Run scope",
         f"- items evaluated: **{agg.n_evaluated}** / requested {total}",
         f"- items skipped:   **{agg.n_skipped}**",
         "",
@@ -259,6 +280,25 @@ def _readme(agg: Aggregate, total: int) -> str:
                 f"TN={cm.get('tn',0)} FN={cm.get('fn',0)}",
             ]
         )
+    # Per-source breakdown — surfaces strong/weak performance by task type.
+    per_src_orc = (agg.per_source or {}).get("orc") or {}
+    if per_src_orc:
+        lines.extend(
+            [
+                "",
+                "## Orc — per source_ds",
+                "",
+                "| source | n | accuracy | precision | recall | F1 |",
+                "|---|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for src, info in per_src_orc.items():
+            s = info["scores"]
+            lines.append(
+                f"| `{src}` | {info['n']} | {s['accuracy']:.3f} | "
+                f"{s['precision_pass']:.3f} | {s['recall_pass']:.3f} | "
+                f"{s['f1_pass']:.3f} |"
+            )
     if hhem_scores:
         cm = agg.hhem.get("confusion", {})
         lines.extend(
@@ -337,34 +377,35 @@ def main(argv: list[str] | None = None) -> int:
     tmp_home = Path(tempfile.mkdtemp(prefix="orc-bench-faith-"))
     os.environ["ORC_HOME"] = str(tmp_home)
 
-    item_results: list[ItemResult] = []
-    try:
-        for i, item in enumerate(items, 1):
-            if i % 10 == 0 or i == len(items) or i == 1:
-                print(f"  orc {i}/{len(items)}  ({item['source_ds']})")
-            r = _run_orc_one(item, tmp_home)
-            item_results.append(r)
-
-        if args.hhem:
-            results_by_id = {r.id: r for r in item_results}
-            _run_hhem_pass(items, results_by_id)
-
+    def _write_artifacts(item_results: list[ItemResult], stage: str) -> None:
+        """Save results.json and README at every checkpoint so a partial run
+        never loses the work that's already been paid for. The latest call
+        wins; earlier writes are overwritten with the more-complete picture."""
         orc_cm = _confusion(item_results, "orc_binary")
         orc_scores = _scores(orc_cm)
         hhem_cm = _confusion(item_results, "hhem_binary")
-        hhem_scores = _scores(hhem_cm) if any(r.hhem_binary for r in item_results) else None
-
+        hhem_scores = (
+            _scores(hhem_cm) if any(r.hhem_binary for r in item_results) else None
+        )
         agg = Aggregate(
             n_evaluated=sum(1 for r in item_results if r.orc_binary is not None),
             n_skipped=sum(1 for r in item_results if r.orc_error or r.skipped_reason),
             label_mapping=DEFAULT_LABEL_MAPPING,
             orc={"confusion": orc_cm, "scores": orc_scores},
             hhem={"confusion": hhem_cm, "scores": hhem_scores} if hhem_scores else {},
+            per_source={
+                "orc": _per_source_breakdown(item_results, "orc_binary"),
+                **(
+                    {"hhem": _per_source_breakdown(item_results, "hhem_binary")}
+                    if hhem_scores
+                    else {}
+                ),
+            },
         )
-
         (out_dir / "results.json").write_text(
             json.dumps(
                 {
+                    "stage": stage,
                     "aggregate": asdict(agg),
                     "items": [asdict(r) for r in item_results],
                 },
@@ -372,7 +413,40 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         (out_dir / "README.md").write_text(_readme(agg, len(items)))
+        return agg
 
+    item_results: list[ItemResult] = []
+    try:
+        for i, item in enumerate(items, 1):
+            if i % 10 == 0 or i == len(items) or i == 1:
+                print(f"  orc {i}/{len(items)}  ({item['source_ds']})")
+            r = _run_orc_one(item, tmp_home)
+            item_results.append(r)
+            # Checkpoint every 25 items so a mid-run crash never throws away
+            # the API calls that have already been paid for.
+            if i % 25 == 0 or i == len(items):
+                _write_artifacts(item_results, stage=f"orc-partial-{i}/{len(items)}")
+
+        # Orc pass complete. Persist a clean orc-only snapshot before HHEM —
+        # if HHEM fails, the Orc numbers are still on disk.
+        _write_artifacts(item_results, stage="orc-complete")
+        print(f"  orc pass complete; results.json checkpointed at {out_dir}")
+
+        if args.hhem:
+            try:
+                results_by_id = {r.id: r for r in item_results}
+                _run_hhem_pass(items, results_by_id)
+            except Exception as exc:
+                print(f"HHEM pass failed: {type(exc).__name__}: {exc}")
+                print("Orc results remain on disk; re-run HHEM later if desired.")
+
+        agg = _write_artifacts(
+            item_results,
+            stage="orc-and-hhem-complete" if args.hhem else "orc-complete",
+        )
+
+        orc_scores = agg.orc.get("scores") or {}
+        hhem_scores = (agg.hhem or {}).get("scores") or {}
         print("\n== faithfulness ==")
         print(f"  evaluated  : {agg.n_evaluated}")
         print(f"  skipped    : {agg.n_skipped}")
@@ -394,6 +468,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     finally:
         # Workspaces are large (one SQLite + one passage.md per item). Clean up.
+        # results.json + README.md live under `out_dir`, not `tmp_home`.
         with contextlib.suppress(Exception):
             shutil.rmtree(tmp_home, ignore_errors=True)
 

@@ -43,7 +43,7 @@ def main() -> None:
         buckets[(r["source_ds"], r["label"])].append(r)
 
     out = []
-    for (src, lbl), rows in sorted(buckets.items()):
+    for _key, rows in sorted(buckets.items()):
         chosen = random.sample(rows, min(PER_CELL, len(rows)))
         out.extend(chosen)
     random.shuffle(out)
