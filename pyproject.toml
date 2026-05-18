@@ -54,6 +54,14 @@ dev = [
     "pytest-asyncio>=0.23",
     "ruff>=0.5",
 ]
+# Heavyweight, optional. Required only by `benchmarks/faithfulness/` which
+# downloads the HaluBench subsample and self-hosts HHEM-2.1-Open for the
+# comparable head-to-head. Install with `uv sync --extra benchmarks`.
+benchmarks = [
+    "datasets>=2.16",
+    "transformers>=4.40",
+    "torch>=2.2",
+]
 
 [project.scripts]
 orc = "orc.cli:main"
