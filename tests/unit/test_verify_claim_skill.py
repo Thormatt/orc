@@ -16,7 +16,35 @@ from orc.paths import workspace_db_path, workspace_traces_dir
 from orc.runs import open_run
 from orc.storage import workspace as ws_module
 from orc.storage.db import open_connection
-from tests._fake_llm import FakeAnthropic, make_verdict_response
+from tests._fake_llm import FakeAnthropic, FakeContentBlock, FakeResponse, make_verdict_response
+
+
+def _make_binary_response(*, faithful: bool, confidence: float, reasoning: str = "ok") -> FakeResponse:
+    return FakeResponse(
+        content=[
+            FakeContentBlock(
+                type="tool_use",
+                name="record_binary_verdict",
+                input={
+                    "faithful": faithful,
+                    "confidence": confidence,
+                    "reasoning": reasoning,
+                },
+            )
+        ],
+    )
+
+
+def _make_decomposition_response(atoms: list[str]) -> FakeResponse:
+    return FakeResponse(
+        content=[
+            FakeContentBlock(
+                type="tool_use",
+                name="record_decomposition",
+                input={"atoms": atoms},
+            )
+        ],
+    )
 
 
 def _setup_corpus(orc_home: Path, tmp_path: Path) -> str:
@@ -261,3 +289,62 @@ def test_verify_request_includes_cache_control(
     assert sent["tool_choice"] == {"type": "tool", "name": "record_verdict"}
     assert sent["system"][1]["cache_control"] == {"type": "ephemeral"}
     assert "<chunk id=" in sent["system"][1]["text"]
+
+
+def test_verify_decomposed_mode_aggregates_atoms(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Decomposed mode: Haiku decomposes → N binary verdicts → weighted majority."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            _make_decomposition_response(["Skills shipped in October", "Skills are versioned"]),
+            _make_binary_response(faithful=True, confidence=0.9),
+            _make_binary_response(faithful=True, confidence=0.8),
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(
+            workspace=ws,
+            run=run,
+            claim="Anthropic shipped versioned Skills in October 2025",
+            mode="decomposed",
+        )
+        run.close(output=result)
+
+    assert result["label"] == "supported"
+    assert result["confidence"] == pytest.approx(0.85, abs=0.01)  # mean(0.9, 0.8)
+    assert len(result["atoms"]) == 2
+    assert all(a["label"] == "supported" for a in result["atoms"])
+    # 1 decomposition call + 2 binary atom calls
+    assert len(fake.calls) == 3
+    assert fake.calls[0]["tool_choice"] == {"type": "tool", "name": "record_decomposition"}
+    assert fake.calls[1]["tool_choice"] == {"type": "tool", "name": "record_binary_verdict"}
+
+
+def test_verify_decomposed_mode_confidence_weighted_majority(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One high-confidence supported + one low-confidence contradicted → supported."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            _make_decomposition_response(["A", "B"]),
+            _make_binary_response(faithful=True, confidence=0.9),   # +0.9
+            _make_binary_response(faithful=False, confidence=0.3),  # -0.3
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="x", mode="decomposed")
+        run.close(output=result)
+
+    # Net score = +0.9 − 0.3 = +0.6 → supported
+    assert result["label"] == "supported"

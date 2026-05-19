@@ -245,6 +245,11 @@ def _run_binary_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     return _run_with_mode(item, orc_home, "binary")
 
 
+def _run_decomposed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Production path in `mode="decomposed"` — decompose then verify each atom in binary mode."""
+    return _run_with_mode(item, orc_home, "decomposed")
+
+
 def _run_source_routed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     """Source-aware routing: picks the mode that's empirically best for the
     item's source_ds (per the per-source breakdowns from the earlier runs).
@@ -460,15 +465,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hhem", action="store_true", help="Also score with self-hosted HHEM")
     parser.add_argument(
         "--variant",
-        choices=["default", "lynx_style", "judgment", "binary", "source_routed"],
+        choices=["default", "lynx_style", "judgment", "binary", "decomposed", "source_routed"],
         default="default",
         help=(
             "Verification variant. "
             "`default` = Orc verify_claim, mode=evidence (BM25 + 4-label). "
             "`lynx_style` = direct Sonnet call with Lynx's binary prompt, no Orc pipeline. "
-            "`judgment` = Orc verify_claim, mode=judgment (no BM25, lighter prompt, full moat). "
-            "`binary` = Orc verify_claim, mode=binary (no BM25, binary tool schema, full trace+replay+audit). "
-            "`source_routed` = pick best mode per item's source_ds (uses caller-provided domain hint in production)."
+            "`judgment` = mode=judgment (no BM25, lighter prompt, full moat). "
+            "`binary` = mode=binary (no BM25, binary tool schema, full trace+replay+audit). "
+            "`decomposed` = mode=decomposed (Haiku decompose → binary atoms → confidence-weighted aggregate). "
+            "`source_routed` = pick best mode per item's source_ds (caller-provided domain hint in production)."
         ),
     )
     parser.add_argument("--out", type=Path, default=None)
@@ -539,6 +545,7 @@ def main(argv: list[str] | None = None) -> int:
         "lynx_style": _run_lynx_style_one,
         "judgment": _run_judgment_one,
         "binary": _run_binary_one,
+        "decomposed": _run_decomposed_one,
         "source_routed": _run_source_routed_one,
     }
     runner = runners[args.variant]

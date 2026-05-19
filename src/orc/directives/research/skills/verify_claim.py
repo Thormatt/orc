@@ -21,6 +21,28 @@ from orc.retrieval import bm25_search
 from orc.runs.runner import Run
 from orc.storage.workspace import Workspace
 
+DECOMPOSE_TOOL_SCHEMA: dict[str, Any] = {
+    "name": "record_decomposition",
+    "description": (
+        "Decompose a verification claim into 1-4 atomic, independently verifiable "
+        "sub-claims."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "atoms": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Atomic sub-claims, each a single declarative factual assertion.",
+                "minItems": 1,
+                "maxItems": 4,
+            },
+        },
+        "required": ["atoms"],
+    },
+}
+
+
 BINARY_VERDICT_TOOL_SCHEMA: dict[str, Any] = {
     "name": "record_binary_verdict",
     "description": (
@@ -108,8 +130,50 @@ _PROMPT_FILE = {
 
 
 def _load_system_prompt(mode: str = "evidence") -> str:
+    # Decomposed mode runs each atomic sub-claim through binary mode, so the
+    # *adjudication* prompt it uses is the binary one.
+    if mode == "decomposed":
+        mode = "binary"
     filename = _PROMPT_FILE.get(mode, "verify_claim.md")
     return files("orc.llm.prompts").joinpath(filename).read_text(encoding="utf-8")
+
+
+def _decompose_claim(claim: str, *, client: Any) -> list[str]:
+    """Break a verification claim into atomic sub-claims via Haiku.
+
+    Decomposed mode uses this to turn a multi-part answer like
+    "scholars, 1772" into separately-verifiable atoms. Each atom is then
+    judged against the same staged passage in binary mode and the results
+    are aggregated by confidence-weighted majority vote (see `_run_decomposed`).
+    """
+    from orc.llm.models import resolve_extract_model
+
+    resolved = resolve_extract_model(None)  # Haiku default
+    provider_model = resolve_model_for_provider(resolved)
+    system_prompt = files("orc.llm.prompts").joinpath("decompose_claim.md").read_text(encoding="utf-8")
+    response = messages_create(
+        client,
+        model=provider_model,
+        max_tokens=512,
+        system=system_prompt,
+        tools=[DECOMPOSE_TOOL_SCHEMA],
+        tool_choice={"type": "tool", "name": "record_decomposition"},
+        messages=[{"role": "user", "content": f"<claim>{claim}</claim>"}],
+    )
+    tool_use = next(
+        (
+            b
+            for b in response.content
+            if getattr(b, "type", None) == "tool_use"
+            and getattr(b, "name", None) == "record_decomposition"
+        ),
+        None,
+    )
+    if tool_use is None:
+        # Fallback: treat the whole claim as one atom.
+        return [claim]
+    atoms = list(tool_use.input.get("atoms") or [])
+    return atoms if atoms else [claim]
 
 
 def _select_all_chunks(
@@ -204,11 +268,37 @@ class _VerifyClaim:
             the per-claim level (the audit trail still records every input
             chunk via `record_retrieval`). Best F1 on tabular/numeric tasks
             where the 4-label structure adds noise.
+          - "decomposed": decompose the claim into 1-4 atomic sub-claims via
+            Haiku, then verify each atom in binary mode against the same
+            staged passage. Aggregates by confidence-weighted majority vote:
+            sum signed confidences (supported = +c, contradicted = −c) and
+            take the sign. The trace records the decomposition + each atom's
+            verdict so an auditor can re-check the reasoning. Available for
+            multi-part answers; not the default route in production (binary
+            mode wins on HaluBench DROP at full N).
         """
         if not claim or not claim.strip():
             raise ValueError("claim must be a non-empty string")
-        if mode not in {"evidence", "judgment", "binary"}:
+        if mode not in {"evidence", "judgment", "binary", "decomposed"}:
             raise ValueError(f"unknown verify mode: {mode!r}")
+
+        # Decomposed mode is a meta-strategy: it decomposes the claim then
+        # delegates each atom to a binary verify. Handle it before the regular
+        # retrieval/LLM path.
+        if mode == "decomposed":
+            return _run_decomposed(
+                self=self,
+                workspace=workspace,
+                run=run,
+                claim=claim,
+                model=model,
+                k=k,
+                retrieval_pool=retrieval_pool,
+                max_tokens=max_tokens,
+                client=client,
+                corpus_version=corpus_version,
+                evidence_id=evidence_id,
+            )
 
         resolved_model = resolve_verify_model(model)
 
@@ -337,6 +427,96 @@ class _VerifyClaim:
             "model": resolved_model,
             "retrieval_chunk_ids": [c.chunk_id for c in candidates],
         }
+
+
+def _run_decomposed(
+    *,
+    self: Any,
+    workspace: Workspace,
+    run: Run,
+    claim: str,
+    model: str | None,
+    k: int,
+    retrieval_pool: int,
+    max_tokens: int,
+    client: Any,
+    corpus_version: int | None,
+    evidence_id: str | None,
+) -> dict[str, Any]:
+    """Decompose the claim, run each atom through binary mode against the same
+    staged passage, aggregate by confidence-weighted majority. Returns the same
+    shape as other modes so downstream callers don't need to branch on `mode`."""
+    decompose_client = client or get_client()
+    atoms = _decompose_claim(claim, client=decompose_client)
+    run.record("decomposition", {"claim": claim, "atoms": atoms, "n_atoms": len(atoms)})
+
+    atom_results: list[dict[str, Any]] = []
+    for i, atom in enumerate(atoms):
+        # Re-enter verify_claim in binary mode for each atom against the SAME
+        # workspace + same retrieved chunks. Each atom's verdict is recorded
+        # in the parent run via record_llm_call.
+        sub_result = self.run(
+            workspace=workspace,
+            run=run,
+            claim=atom,
+            model=model,
+            k=k,
+            retrieval_pool=retrieval_pool,
+            max_tokens=max_tokens,
+            client=client,
+            corpus_version=corpus_version,
+            mode="binary",
+            evidence_id=evidence_id,
+        )
+        atom_results.append(
+            {
+                "atom": atom,
+                "label": sub_result["label"],
+                "confidence": sub_result["confidence"],
+                "reasoning": sub_result.get("reasoning") or "",
+            }
+        )
+        run.record(f"decomposed_atom_{i}", atom_results[-1])
+
+    # Majority aggregation, confidence-weighted. Sum signed confidences:
+    # supported atoms contribute +confidence, contradicted contribute
+    # -confidence, partial/not_found contribute 0. If net > 0, faithful.
+    # Strict-aggregation over-penalized cases where the decomposer split
+    # one fact into several atoms and one was judged wrong with low
+    # confidence; the substantive claim was still right.
+    score = 0.0
+    for a in atom_results:
+        c = a["confidence"] or 0.5
+        if a["label"] == "supported":
+            score += c
+        elif a["label"] == "contradicted":
+            score -= c
+    if score > 0:
+        label = "supported"
+    elif score < 0:
+        label = "contradicted"
+    else:
+        label = "partial"
+    # Confidence: mean of the atoms' confidences.
+    confidences = [a["confidence"] for a in atom_results if a["confidence"] is not None]
+    overall_confidence = sum(confidences) / len(confidences) if confidences else 0.5
+    reasoning = (
+        f"Decomposed into {len(atom_results)} atoms: "
+        + "; ".join(f"{a['atom']!r} → {a['label']}" for a in atom_results)
+    )
+
+    return {
+        "claim": claim,
+        "label": label,
+        "confidence": float(overall_confidence),
+        "reasoning": reasoning,
+        "supporting_chunks": [],
+        "contradicting_chunks": [],
+        "missing_information": None,
+        "model": resolve_verify_model(model),
+        "retrieval_chunk_ids": [],
+        "atoms": atom_results,
+    }
 
 
 def _make_not_found(*, claim: str, model: str, run: Run) -> dict[str, Any]:
