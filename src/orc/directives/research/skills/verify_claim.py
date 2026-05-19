@@ -14,6 +14,7 @@ from importlib.resources import files
 from typing import Any
 
 from orc.core.ids import new_id
+from orc.directives.research.routing import route_to_mode
 from orc.llm.cache import build_verify_messages, format_corpus
 from orc.llm.client import get_client, messages_create, resolve_model_for_provider
 from orc.llm.models import resolve_verify_model
@@ -248,11 +249,17 @@ class _VerifyClaim:
         max_tokens: int = 2048,
         client: Any = None,
         corpus_version: int | None = None,
-        mode: str = "evidence",
+        mode: str | None = None,
+        domain: str | None = None,
         evidence_id: str | None = None,
         **_unused: Any,
     ) -> dict[str, Any]:
         """Verify a claim against the workspace's corpus.
+
+        Mode selection:
+          - explicit `mode=` always wins
+          - else `domain=` (e.g. "pubmedQA", "DROP") routes via DOMAIN_TO_MODE
+          - else default = "evidence"
 
         Modes:
           - "evidence" (default): BM25 retrieval over the workspace + structured
@@ -279,6 +286,8 @@ class _VerifyClaim:
         """
         if not claim or not claim.strip():
             raise ValueError("claim must be a non-empty string")
+        if mode is None:
+            mode = route_to_mode(domain) or "evidence"
         if mode not in {"evidence", "judgment", "binary", "decomposed"}:
             raise ValueError(f"unknown verify mode: {mode!r}")
 

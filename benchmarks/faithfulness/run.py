@@ -178,19 +178,13 @@ def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     return res
 
 
-# Optimal mode per source_ds, derived from the per-source benchmark
-# breakdowns (default, judgment, lynx_style) on the 504-item stratified
-# HaluBench subsample. Prose-heavy sources where corpus citations help →
-# evidence mode. Single-passage numeric/extraction tasks → binary mode.
-# Mixed natural-language Q+A → judgment mode.
-SOURCE_TO_MODE = {
-    "covidQA": "evidence",
-    "RAGTruth": "evidence",
-    "halueval": "judgment",
-    "pubmedQA": "binary",
-    "FinanceBench": "binary",
-    "DROP": "binary",
-}
+# Routing lives in the runtime (src/orc/directives/research/routing.py) so the
+# benchmark and the production verify_claim never drift. The mapping was
+# derived from per-source-ds breakdowns on the 504-item stratified HaluBench
+# subsample. Prose-heavy sources where corpus citations help → evidence mode.
+# Single-passage numeric/extraction tasks → binary mode. Mixed natural-language
+# Q+A → judgment mode.
+from orc.directives.research.routing import DOMAIN_TO_MODE as SOURCE_TO_MODE  # noqa: E402
 
 
 def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResult:

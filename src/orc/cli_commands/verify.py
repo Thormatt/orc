@@ -39,6 +39,11 @@ _LABEL_STYLE = {
     help="Extract and verify all claims from a file",
 )
 @click.option("--url", "from_url", default=None, help="Fetch URL and verify all claims in it")
+@click.option(
+    "--domain",
+    default=None,
+    help="Route mode by domain hint (e.g. 'pubmedQA', 'DROP', 'FinanceBench')",
+)
 @click.option("--yes", "-y", is_flag=True, help="Skip the confirmation prompt for batch verify")
 @click.option("--json", "as_json", is_flag=True, help="Emit raw JSON instead of formatted output")
 def verify_command(
@@ -48,6 +53,7 @@ def verify_command(
     k: int | None,
     from_file: str | None,
     from_url: str | None,
+    domain: str | None,
     yes: bool,
     as_json: bool,
 ) -> None:
@@ -67,12 +73,13 @@ def verify_command(
             url=from_url,
             model=model,
             k=k,
+            domain=domain,
             yes=yes,
             as_json=as_json,
         )
         return
 
-    _verify_one(ws, claim=claim, model=model, k=k, as_json=as_json)
+    _verify_one(ws, claim=claim, model=model, k=k, domain=domain, as_json=as_json)
 
 
 def _verify_one(
@@ -81,6 +88,7 @@ def _verify_one(
     claim: str,
     model: str | None,
     k: int | None,
+    domain: str | None,
     as_json: bool,
 ) -> None:
     spec = directives.get("research")
@@ -90,6 +98,8 @@ def _verify_one(
         kwargs["model"] = model
     if k is not None:
         kwargs["k"] = k
+    if domain is not None:
+        kwargs["domain"] = domain
 
     with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
         run.record_effective_kwargs(kwargs)
@@ -109,6 +119,7 @@ def _verify_from_document(
     url: str | None,
     model: str | None,
     k: int | None,
+    domain: str | None,
     yes: bool,
     as_json: bool,
 ) -> None:
@@ -159,6 +170,8 @@ def _verify_from_document(
             kwargs["model"] = model
         if k is not None:
             kwargs["k"] = k
+        if domain is not None:
+            kwargs["domain"] = domain
         with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
             run.record_effective_kwargs(kwargs)
             result = verify_skill.run(workspace=ws, run=run, **kwargs)

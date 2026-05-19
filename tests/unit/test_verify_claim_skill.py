@@ -282,6 +282,104 @@ def test_cli_verify_json_output(
     assert payload["model"] == "claude-sonnet-4-6"
 
 
+def test_verify_domain_routes_to_binary_mode(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """domain='pubmedQA' must route to binary mode — same tool schema the
+    benchmark uses for source-aware routing."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            FakeResponse(
+                content=[
+                    FakeContentBlock(
+                        type="tool_use",
+                        name="record_binary_verdict",
+                        input={"faithful": True, "confidence": 0.9, "reasoning": "ok"},
+                    )
+                ]
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api", domain="pubmedQA")
+        run.close(output=result)
+
+    assert result["label"] == "supported"
+    assert fake.calls[0]["tool_choice"] == {"type": "tool", "name": "record_binary_verdict"}
+
+
+def test_verify_explicit_mode_wins_over_domain(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If both mode and domain are passed, explicit mode wins. Otherwise
+    upgrade-path tooling can't override the router in edge cases."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        skill.run(
+            workspace=ws, run=run, claim="skills api", mode="evidence", domain="DROP"
+        )
+        run.close(output={})
+
+    # DROP routes to binary in DOMAIN_TO_MODE; explicit mode="evidence"
+    # must override that, so the record_verdict (evidence) tool was used.
+    assert fake.calls[0]["tool_choice"] == {"type": "tool", "name": "record_verdict"}
+
+
+def test_verify_unknown_domain_raises(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orc.directives.research.routing import UnknownDomainError
+
+    name = _setup_corpus(orc_home, tmp_path)
+    _install_fake_client(monkeypatch, FakeAnthropic())
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with (
+        open_run(ws, directive="research", skill="verify_claim", inputs={}) as run,
+        pytest.raises(UnknownDomainError),
+    ):
+        skill.run(workspace=ws, run=run, claim="x", domain="NotARealDomain")
+
+
+def test_cli_verify_domain_flag_routes_to_binary(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """--domain pubmedQA on the CLI must invoke the binary tool schema."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            FakeResponse(
+                content=[
+                    FakeContentBlock(
+                        type="tool_use",
+                        name="record_binary_verdict",
+                        input={"faithful": True, "confidence": 0.95, "reasoning": "ok"},
+                    )
+                ]
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["verify", "skills api claim", "--workspace", name, "--domain", "pubmedQA"],
+    )
+    assert result.exit_code == 0, result.output
+    assert fake.calls[0]["tool_choice"] == {"type": "tool", "name": "record_binary_verdict"}
+
+
 def test_verify_request_includes_cache_control(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
