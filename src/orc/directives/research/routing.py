@@ -28,7 +28,7 @@ DOMAIN_TO_MODE: dict[str, str] = {
     "RAGTruth": "evidence",
     "halueval": "judgment",
     "pubmedQA": "binary",
-    "FinanceBench": "binary",
+    "FinanceBench": "arithmetic",
     "DROP": "binary",
 }
 

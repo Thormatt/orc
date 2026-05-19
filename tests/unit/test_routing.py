@@ -19,10 +19,10 @@ def test_route_to_mode_returns_expected_modes_for_each_domain() -> None:
     assert DOMAIN_TO_MODE["RAGTruth"] == "evidence"
     assert DOMAIN_TO_MODE["halueval"] == "judgment"
     assert DOMAIN_TO_MODE["pubmedQA"] == "binary"
-    assert DOMAIN_TO_MODE["FinanceBench"] == "binary"
+    assert DOMAIN_TO_MODE["FinanceBench"] == "arithmetic"
     assert DOMAIN_TO_MODE["DROP"] == "binary"
     # Every value must be one of the modes verify_claim accepts.
-    valid_modes = {"evidence", "judgment", "binary", "decomposed"}
+    valid_modes = {"evidence", "judgment", "binary", "decomposed", "arithmetic"}
     assert set(DOMAIN_TO_MODE.values()) <= valid_modes
 
 
