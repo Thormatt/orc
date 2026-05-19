@@ -21,6 +21,35 @@ from orc.retrieval import bm25_search
 from orc.runs.runner import Run
 from orc.storage.workspace import Workspace
 
+BINARY_VERDICT_TOOL_SCHEMA: dict[str, Any] = {
+    "name": "record_binary_verdict",
+    "description": (
+        "Record a binary faithfulness verdict for the claim. Use this when the "
+        "caller has staged a single passage and asks whether the answer follows."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "faithful": {
+                "type": "boolean",
+                "description": "True if the answer follows from the context, false otherwise.",
+            },
+            "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Confidence in the verdict, 0..1.",
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "Brief reasoning (≤ 3 sentences).",
+            },
+        },
+        "required": ["faithful", "confidence", "reasoning"],
+    },
+}
+
+
 VERDICT_TOOL_SCHEMA: dict[str, Any] = {
     "name": "record_verdict",
     "description": (
@@ -71,8 +100,15 @@ VERDICT_TOOL_SCHEMA: dict[str, Any] = {
 }
 
 
+_PROMPT_FILE = {
+    "evidence": "verify_claim.md",
+    "judgment": "verify_claim_judgment.md",
+    "binary": "verify_claim_binary.md",
+}
+
+
 def _load_system_prompt(mode: str = "evidence") -> str:
-    filename = "verify_claim_judgment.md" if mode == "judgment" else "verify_claim.md"
+    filename = _PROMPT_FILE.get(mode, "verify_claim.md")
     return files("orc.llm.prompts").joinpath(filename).read_text(encoding="utf-8")
 
 
@@ -160,19 +196,24 @@ class _VerifyClaim:
             against a curated corpus and chunk-level citations matter.
           - "judgment": skip BM25 — use all workspace chunks (or chunks for a
             single `evidence_id` if provided) and a lighter binary-leaning
-            prompt. The right call when the caller has pre-staged the relevant
-            passage and the question is "is this internally consistent."
-            Citation enforcement, structured output, traces all unchanged.
+            prompt. Still produces a 4-label structured verdict with chunk
+            citations. The right call when the caller has pre-staged the
+            relevant passage and the question is "is this internally consistent."
+          - "binary": skip BM25 and emit a simple faithful/unfaithful verdict
+            via the `record_binary_verdict` tool. Citations not enforced at
+            the per-claim level (the audit trail still records every input
+            chunk via `record_retrieval`). Best F1 on tabular/numeric tasks
+            where the 4-label structure adds noise.
         """
         if not claim or not claim.strip():
             raise ValueError("claim must be a non-empty string")
-        if mode not in {"evidence", "judgment"}:
+        if mode not in {"evidence", "judgment", "binary"}:
             raise ValueError(f"unknown verify mode: {mode!r}")
 
         resolved_model = resolve_verify_model(model)
 
         # 1. Retrieve. corpus_version pins the snapshot used by `orc replay` (frozen mode).
-        if mode == "judgment":
+        if mode in {"judgment", "binary"}:
             candidates = _select_all_chunks(
                 run.conn,
                 corpus_version=corpus_version,
@@ -180,7 +221,7 @@ class _VerifyClaim:
                 limit=max(k, retrieval_pool),
             )
             run.record_retrieval(
-                candidates, method="judgment_all", candidates_considered=len(candidates)
+                candidates, method=f"{mode}_all", candidates_considered=len(candidates)
             )
         else:
             pool = bm25_search(
@@ -199,7 +240,9 @@ class _VerifyClaim:
             system_prompt=system_prompt, corpus_block=corpus_block, claim=claim
         )
 
-        # 3. LLM call.
+        # 3. LLM call. Binary mode uses a different tool schema.
+        tool_schema = BINARY_VERDICT_TOOL_SCHEMA if mode == "binary" else VERDICT_TOOL_SCHEMA
+        tool_name = tool_schema["name"]
         anthropic_client = client or get_client()
         provider_model = resolve_model_for_provider(resolved_model)
         start = time.monotonic()
@@ -207,8 +250,8 @@ class _VerifyClaim:
             anthropic_client,
             model=provider_model,
             max_tokens=max_tokens,
-            tools=[VERDICT_TOOL_SCHEMA],
-            tool_choice={"type": "tool", "name": "record_verdict"},
+            tools=[tool_schema],
+            tool_choice={"type": "tool", "name": tool_name},
             **payload,
         )
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -219,17 +262,30 @@ class _VerifyClaim:
                 b
                 for b in response.content
                 if getattr(b, "type", None) == "tool_use"
-                and getattr(b, "name", None) == "record_verdict"
+                and getattr(b, "name", None) == tool_name
             ),
             None,
         )
         if tool_use is None:
             raise RuntimeError(
-                "LLM did not call record_verdict; "
+                f"LLM did not call {tool_name}; "
                 f"stop_reason={getattr(response, 'stop_reason', None)!r}"
             )
         verdict_input = dict(tool_use.input)
         candidate_ids = {c.chunk_id for c in candidates}
+
+        if mode == "binary":
+            # Map the boolean back into the 4-label vocabulary so downstream
+            # callers and the trace format stay uniform. Citations not enforced.
+            faithful = bool(verdict_input.get("faithful"))
+            verdict_input = {
+                "label": "supported" if faithful else "contradicted",
+                "confidence": float(verdict_input.get("confidence", 1.0)),
+                "reasoning": verdict_input.get("reasoning", ""),
+                "supporting_chunk_ids": [],
+                "contradicting_chunk_ids": [],
+                "missing_information": "",
+            }
 
         supporting = [
             cid for cid in verdict_input.get("supporting_chunk_ids", []) if cid in candidate_ids
@@ -245,7 +301,8 @@ class _VerifyClaim:
             call_id=new_id(),
             model=resolved_model,
             request={
-                "tool_name": "record_verdict",
+                "tool_name": tool_name,
+                "mode": mode,
                 "max_tokens": max_tokens,
                 "system_blocks": 2,
                 "claim_chars": len(claim),

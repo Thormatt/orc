@@ -178,14 +178,24 @@ def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     return res
 
 
-def _run_judgment_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
-    """Variant: Orc's `verify_claim` skill in `mode="judgment"`.
+# Optimal mode per source_ds, derived from the per-source benchmark
+# breakdowns (default, judgment, lynx_style) on the 504-item stratified
+# HaluBench subsample. Prose-heavy sources where corpus citations help →
+# evidence mode. Single-passage numeric/extraction tasks → binary mode.
+# Mixed natural-language Q+A → judgment mode.
+SOURCE_TO_MODE = {
+    "covidQA": "evidence",
+    "RAGTruth": "evidence",
+    "halueval": "judgment",
+    "pubmedQA": "binary",
+    "FinanceBench": "binary",
+    "DROP": "binary",
+}
 
-    Production path — preserves chunk-id validation, structured 4-label output,
-    trace + replay + audit-export. Skips BM25 and uses all workspace chunks
-    with the lighter judgment-mode system prompt. Measures whether the F1 lift
-    that `lynx_style` shows is recoverable inside the architectural moat.
-    """
+
+def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResult:
+    """Run verify_claim against the item with the requested mode. Shared
+    plumbing for the judgment / binary / source-routed variants."""
     from orc import directives
     from orc.ingest.pipeline import ingest as do_ingest
     from orc.runs import open_run
@@ -208,12 +218,12 @@ def _run_judgment_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
         claim = f"Q: {item['question']}\nA: {item['answer']}"
         skill = directives.get("research").skills["verify_claim"]
         with open_run(
-            ws, directive="research", skill="verify_claim", inputs={"claim": claim, "mode": "judgment"}
+            ws, directive="research", skill="verify_claim", inputs={"claim": claim, "mode": mode}
         ) as run:
             run.record_effective_kwargs(
-                {"claim": claim, "model": "halubench", "mode": "judgment"}
+                {"claim": claim, "model": "halubench", "mode": mode}
             )
-            out = skill.run(workspace=ws, run=run, claim=claim, mode="judgment")
+            out = skill.run(workspace=ws, run=run, claim=claim, mode=mode)
             run.close(output=out)
         res.run_id = run.run_id
         res.orc_verdict = out["label"]
@@ -223,6 +233,26 @@ def _run_judgment_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     except Exception as exc:
         res.orc_error = f"{type(exc).__name__}: {exc}"
     return res
+
+
+def _run_judgment_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Production path in `mode="judgment"`."""
+    return _run_with_mode(item, orc_home, "judgment")
+
+
+def _run_binary_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Production path in `mode="binary"` — uses the simpler binary tool schema."""
+    return _run_with_mode(item, orc_home, "binary")
+
+
+def _run_source_routed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Source-aware routing: picks the mode that's empirically best for the
+    item's source_ds (per the per-source breakdowns from the earlier runs).
+
+    The router takes a SIGNAL the workflow caller would provide in production
+    — domain/source hint — and picks the right verification strategy."""
+    mode = SOURCE_TO_MODE.get(item.get("source_ds", ""), "judgment")
+    return _run_with_mode(item, orc_home, mode)
 
 
 def _run_orc_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
@@ -430,13 +460,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hhem", action="store_true", help="Also score with self-hosted HHEM")
     parser.add_argument(
         "--variant",
-        choices=["default", "lynx_style", "judgment"],
+        choices=["default", "lynx_style", "judgment", "binary", "source_routed"],
         default="default",
         help=(
             "Verification variant. "
             "`default` = Orc verify_claim, mode=evidence (BM25 + 4-label). "
             "`lynx_style` = direct Sonnet call with Lynx's binary prompt, no Orc pipeline. "
-            "`judgment` = Orc verify_claim, mode=judgment (no BM25, lighter prompt, full moat preserved)."
+            "`judgment` = Orc verify_claim, mode=judgment (no BM25, lighter prompt, full moat). "
+            "`binary` = Orc verify_claim, mode=binary (no BM25, binary tool schema, full trace+replay+audit). "
+            "`source_routed` = pick best mode per item's source_ds (uses caller-provided domain hint in production)."
         ),
     )
     parser.add_argument("--out", type=Path, default=None)
@@ -506,6 +538,8 @@ def main(argv: list[str] | None = None) -> int:
         "default": _run_orc_one,
         "lynx_style": _run_lynx_style_one,
         "judgment": _run_judgment_one,
+        "binary": _run_binary_one,
+        "source_routed": _run_source_routed_one,
     }
     runner = runners[args.variant]
     print(f"variant: {args.variant}")
