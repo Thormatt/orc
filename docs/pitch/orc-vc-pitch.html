@@ -8,54 +8,44 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
 <style>
   :root {
-    --ink:        #0c0c10;
-    --ink-2:      #131319;
-    --ink-3:      #1a1a22;
-    --cream:      #f3eddf;
-    --cream-dim:  #c8c1b3;
-    --cream-mid:  #8c8678;
-    --cream-faint:#5b554a;
-    --amber:      #d4a85a;
-    --amber-dim:  #8d7236;
-    --rust:       #b85c3c;
-    --rule:       #232229;
-    --rule-warm:  #2d2922;
+    --paper:      #efe5cf;
+    --paper-2:    #e6dcc4;
+    --paper-3:    #dccfb2;
+    --ink:        #1d1611;
+    --ink-2:      #3a2e23;
+    --ink-mute:   #6b5d4d;
+    --ink-faint:  #a3957e;
+    --crimson:    #a8281e;
+    --crimson-dk: #7a1d16;
+    --cobalt:     #1b3a6b;
+    --cobalt-tint:#dde4f1;
+    --rule:       #c9bb9d;
+    --rule-soft:  #d8cdb1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--ink);
-    color: var(--cream);
-    font-family: 'Newsreader', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, serif;
     font-size: 19px;
     line-height: 1.55;
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* paper-grain SVG */
     background-image:
-      radial-gradient(ellipse at top, rgba(212,168,90,0.06), transparent 60%),
-      radial-gradient(ellipse at bottom, rgba(184,92,60,0.04), transparent 50%);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.085 0 0 0 0 0.065 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-attachment: fixed;
   }
 
-  /* Subtle paper noise */
-  body::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.025;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-feature-settings: 'ss01' 1, 'ss02' 1; }
-  .display { font-family: 'Fraunces', Georgia, serif; font-feature-settings: 'ss01' 1, 'liga' 1, 'dlig' 1; }
-  .serif { font-family: 'Newsreader', Georgia, serif; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'ss01' 1, 'cv02' 1; }
+  .display { font-family: 'DM Serif Display', Georgia, serif; }
+  .serif { font-family: 'Spectral', Georgia, serif; }
 
   .container {
     max-width: 760px;
@@ -67,310 +57,330 @@
 
   /* === NAV === */
   nav {
-    padding: 24px 0;
+    padding: 22px 0;
     position: sticky;
     top: 0;
-    background: rgba(12, 12, 16, 0.78);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(239, 229, 207, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     z-index: 100;
-    border-bottom: 1px solid rgba(212, 168, 90, 0.08);
+    border-bottom: 1px solid var(--rule-soft);
   }
   nav .container { display: flex; justify-content: space-between; align-items: baseline; }
   .brand {
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
+    font-family: 'DM Serif Display', serif;
     font-style: italic;
-    font-size: 22px;
-    letter-spacing: -0.02em;
-    color: var(--cream);
+    font-size: 26px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
   }
-  .brand::after { content: "·"; color: var(--amber); margin-left: 3px; font-style: normal; }
+  .brand::after {
+    content: ".";
+    color: var(--crimson);
+    font-style: normal;
+  }
   .nav-links a {
-    font-family: 'IBM Plex Mono', monospace;
-    color: var(--cream-mid);
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-mute);
     text-decoration: none;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.14em;
     margin-left: 28px;
     transition: color 0.2s;
   }
-  .nav-links a:hover { color: var(--amber); }
+  .nav-links a:hover { color: var(--crimson); }
 
   /* === HERO === */
-  .hero { padding: 120px 0 100px; position: relative; }
-  .hero .article-no {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    color: var(--cream-faint);
-    letter-spacing: 0.18em;
+  .hero {
+    padding: 140px 0 100px;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero-meta-top {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
   }
-  .hero .article-no::after {
+  .hero-meta-top::before {
     content: "";
-    flex: 1;
-    max-width: 120px;
+    width: 36px;
     height: 1px;
-    background: var(--cream-faint);
+    background: var(--crimson);
   }
   h1.hero-title {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(48px, 7vw, 88px);
-    font-weight: 350;
-    line-height: 0.98;
-    letter-spacing: -0.04em;
-    margin-bottom: 40px;
-    font-variation-settings: "SOFT" 30, "opsz" 144;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(54px, 9vw, 96px);
+    font-weight: 400;
+    line-height: 0.96;
+    letter-spacing: -0.02em;
+    margin-bottom: 48px;
+    color: var(--ink);
   }
   h1.hero-title em {
     font-style: italic;
-    color: var(--amber);
-    font-weight: 300;
-    font-variation-settings: "SOFT" 80, "opsz" 144;
+    color: var(--crimson);
   }
   h1.hero-title .break { display: block; }
 
   .hero .lede {
     font-size: 22px;
-    line-height: 1.45;
-    color: var(--cream-dim);
-    max-width: 620px;
-    margin-bottom: 48px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 600px;
+    margin-bottom: 52px;
     font-weight: 400;
   }
   .hero .lede .dropcap {
     float: left;
-    font-family: 'Fraunces', serif;
-    font-size: 78px;
-    line-height: 0.85;
-    color: var(--amber);
-    padding: 8px 12px 0 0;
-    font-weight: 300;
+    font-family: 'DM Serif Display', serif;
+    font-size: 82px;
+    line-height: 0.82;
+    color: var(--crimson);
+    padding: 6px 14px 0 0;
     font-style: italic;
   }
 
   .hero-meta {
     display: flex;
-    gap: 32px;
-    font-family: 'IBM Plex Mono', monospace;
+    gap: 36px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--cream-faint);
-    padding-top: 32px;
-    border-top: 1px solid var(--rule-warm);
+    letter-spacing: 0.18em;
+    color: var(--ink-mute);
+    padding-top: 36px;
+    border-top: 1px solid var(--rule);
+    flex-wrap: wrap;
   }
-  .hero-meta span strong { color: var(--cream-dim); font-weight: 500; }
+  .hero-meta span strong { color: var(--ink); font-weight: 600; }
 
-  /* Verified stamp graphic */
-  .stamp {
+  /* First-edition seal in corner */
+  .seal {
     position: absolute;
-    top: 140px;
-    right: -40px;
-    width: 200px;
-    height: 200px;
-    opacity: 0.15;
-    transform: rotate(-12deg);
+    top: 130px;
+    right: -30px;
+    width: 180px;
+    height: 180px;
     pointer-events: none;
-    animation: stamp-fade 1.4s ease-out;
+    opacity: 0.78;
+    transform: rotate(8deg);
   }
-  @keyframes stamp-fade {
-    0% { opacity: 0; transform: rotate(-12deg) scale(1.4); }
-    60% { opacity: 0.25; transform: rotate(-12deg) scale(0.95); }
-    100% { opacity: 0.15; transform: rotate(-12deg) scale(1); }
-  }
-  @media (max-width: 940px) { .stamp { display: none; } }
+  .seal svg { width: 100%; height: 100%; }
+  @media (max-width: 940px) { .seal { display: none; } }
 
   /* === SECTIONS === */
-  section { padding: 100px 0; position: relative; }
+  section { padding: 110px 0; position: relative; }
   section + section { border-top: 1px solid var(--rule); }
 
   .section-no {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--amber);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--crimson);
+    margin-bottom: 24px;
+    letter-spacing: 0.02em;
   }
-  .section-no::before {
-    content: "";
-    width: 24px;
-    height: 1px;
-    background: var(--amber);
+  .section-no .roman {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    font-style: normal;
+    color: var(--crimson);
+    margin-right: 14px;
+    border-bottom: 2px solid var(--crimson);
+    padding-bottom: 2px;
   }
+
   h2 {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(32px, 4.5vw, 46px);
-    font-weight: 350;
-    letter-spacing: -0.025em;
-    line-height: 1.1;
-    margin-bottom: 32px;
-    font-variation-settings: "SOFT" 40, "opsz" 96;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.08;
+    margin-bottom: 36px;
+    color: var(--ink);
   }
   h2 em {
     font-style: italic;
-    color: var(--amber);
-    font-weight: 300;
+    color: var(--crimson);
   }
   h3 {
-    font-family: 'Fraunces', serif;
+    font-family: 'Spectral', serif;
     font-size: 22px;
-    font-weight: 500;
-    margin-top: 40px;
-    margin-bottom: 12px;
-    color: var(--cream);
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    margin-top: 44px;
+    margin-bottom: 14px;
+    color: var(--ink);
+    letter-spacing: -0.005em;
   }
   p {
     margin-bottom: 22px;
-    color: var(--cream-dim);
+    color: var(--ink-2);
   }
   p:last-child { margin-bottom: 0; }
-  p strong { color: var(--cream); font-weight: 500; }
-  p em { color: var(--cream); font-style: italic; }
+  p strong { color: var(--ink); font-weight: 600; }
+  p em { color: var(--ink); font-style: italic; }
   p.large {
-    font-size: 22px;
+    font-size: 23px;
     line-height: 1.5;
-    color: var(--cream);
+    color: var(--ink);
   }
 
-  /* Pull-quote */
+  /* Pull-quote — magazine style */
   .pull {
-    font-family: 'Fraunces', serif;
-    font-size: 28px;
-    line-height: 1.25;
-    color: var(--cream);
-    font-weight: 350;
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    line-height: 1.18;
+    color: var(--ink);
+    font-weight: 400;
+    margin: 48px 0;
+    text-align: center;
+    padding: 24px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    position: relative;
     font-style: italic;
-    border-left: 2px solid var(--amber);
-    padding: 8px 0 8px 28px;
-    margin: 40px 0;
-    font-variation-settings: "SOFT" 60, "opsz" 96;
   }
-  .pull::before { content: "“"; color: var(--amber); margin-left: -8px; }
-  .pull::after { content: "”"; color: var(--amber); }
+  .pull::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 1px;
+    background: var(--crimson);
+  }
 
   /* Marginalia */
   .margin-note {
-    background: rgba(212, 168, 90, 0.04);
-    border-left: 2px solid var(--amber-dim);
-    padding: 14px 18px;
-    margin: 24px 0;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 13px;
-    color: var(--cream-mid);
-    line-height: 1.6;
+    background: var(--cobalt-tint);
+    border-left: 3px solid var(--cobalt);
+    padding: 16px 20px;
+    margin: 28px 0;
+    font-family: 'Spectral', serif;
+    font-size: 15px;
+    color: var(--ink-2);
+    line-height: 1.55;
+    font-style: italic;
   }
   .margin-note .tag {
-    color: var(--amber);
-    font-weight: 500;
+    color: var(--cobalt);
+    font-weight: 600;
     margin-right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-style: normal;
   }
 
-  /* Bullet lists */
+  /* Bullet lists — bookish */
   ul.styled {
     list-style: none;
-    margin: 28px 0;
+    margin: 32px 0;
     padding: 0;
   }
   ul.styled li {
-    color: var(--cream-dim);
-    margin-bottom: 18px;
-    padding-left: 32px;
+    color: var(--ink-2);
+    margin-bottom: 20px;
+    padding-left: 36px;
     position: relative;
     line-height: 1.55;
   }
   ul.styled li::before {
-    content: "§";
-    font-family: 'Fraunces', serif;
-    color: var(--amber);
+    content: "›";
+    font-family: 'DM Serif Display', serif;
+    color: var(--crimson);
     position: absolute;
-    left: 0;
-    font-size: 20px;
+    left: 4px;
+    font-size: 26px;
     line-height: 1;
-    top: 2px;
+    top: 0;
+    font-style: italic;
   }
-  ul.styled li strong { color: var(--cream); }
+  ul.styled li strong { color: var(--ink); }
 
-  /* === HEADLINE METRIC — huge numerals === */
+  /* === HEADLINE METRIC — print-magazine pull === */
   .metric-block {
-    margin: 40px 0;
-    padding: 48px 40px;
-    background: linear-gradient(180deg, rgba(212,168,90,0.04), rgba(184,92,60,0.02));
-    border: 1px solid var(--rule-warm);
-    border-radius: 4px;
-    text-align: center;
+    margin: 48px 0;
+    padding: 56px 40px 48px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
     position: relative;
-    overflow: hidden;
+    text-align: center;
   }
-  .metric-block::before, .metric-block::after {
-    content: "";
+  .metric-block::before {
+    content: "—";
     position: absolute;
-    width: 20px; height: 20px;
-    border: 1px solid var(--amber-dim);
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--paper);
+    color: var(--crimson);
+    padding: 0 16px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    line-height: 1;
+    top: -14px;
   }
-  .metric-block::before { top: 12px; left: 12px; border-right: none; border-bottom: none; }
-  .metric-block::after { bottom: 12px; right: 12px; border-left: none; border-top: none; }
 
   .metric-block .compare-row {
     display: flex;
     justify-content: center;
-    align-items: flex-end;
-    gap: 48px;
+    align-items: flex-start;
+    gap: 56px;
     flex-wrap: wrap;
   }
   .metric-cell .label {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: var(--cream-faint);
-    margin-bottom: 12px;
+    color: var(--ink-mute);
+    margin-bottom: 16px;
   }
   .metric-cell .numeral {
-    font-family: 'Fraunces', serif;
-    font-size: clamp(72px, 12vw, 120px);
-    font-weight: 300;
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(80px, 14vw, 130px);
+    font-weight: 400;
     letter-spacing: -0.04em;
-    line-height: 0.9;
-    color: var(--cream);
-    font-variation-settings: "SOFT" 20, "opsz" 144;
-    font-feature-settings: 'lnum' 1;
+    line-height: 0.85;
+    color: var(--ink);
+    font-feature-settings: 'lnum' 1, 'tnum' 1;
   }
-  .metric-cell.win .numeral { color: var(--amber); }
+  .metric-cell.win .numeral { color: var(--crimson); }
   .metric-cell .caption {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--cream-mid);
-    margin-top: 14px;
-    letter-spacing: 0.06em;
+    font-family: 'Spectral', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-mute);
+    margin-top: 18px;
+    line-height: 1.5;
   }
   .metric-cell .vs {
-    font-family: 'Fraunces', serif;
+    font-family: 'DM Serif Display', serif;
     font-style: italic;
-    color: var(--cream-faint);
-    font-size: 16px;
+    color: var(--ink-faint);
+    font-size: 20px;
     align-self: center;
-    padding-bottom: 30px;
+    padding-top: 60px;
   }
   .metric-block .footnote {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--cream-faint);
-    margin-top: 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 32px;
     padding-top: 24px;
-    border-top: 1px solid var(--rule-warm);
+    border-top: 1px solid var(--rule);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
   }
 
   /* === SCENARIO COMPARISON === */
@@ -385,44 +395,44 @@
   .scenario-tab {
     background: transparent;
     border: none;
-    color: var(--cream-mid);
+    color: var(--ink-mute);
     padding: 14px 22px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: color 0.2s, border-color 0.2s;
     margin-bottom: -1px;
+    font-weight: 500;
   }
-  .scenario-tab:hover { color: var(--cream); }
+  .scenario-tab:hover { color: var(--ink); }
   .scenario-tab.active {
-    color: var(--amber);
-    border-bottom-color: var(--amber);
+    color: var(--crimson);
+    border-bottom-color: var(--crimson);
   }
   .scenario-prompt {
-    background: var(--ink-2);
+    background: var(--paper-2);
     border: 1px solid var(--rule);
     border-top: none;
-    border-radius: 0 0 4px 4px;
-    padding: 22px 26px;
+    padding: 26px 30px;
     margin-bottom: 24px;
   }
   .scenario-prompt .ask {
-    font-family: 'IBM Plex Mono', monospace;
-    color: var(--cream-faint);
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-mute);
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.18em;
     margin-bottom: 10px;
   }
   .scenario-prompt #prompt-text {
-    font-family: 'Fraunces', serif;
+    font-family: 'DM Serif Display', serif;
     font-style: italic;
-    font-size: 19px;
-    color: var(--cream);
-    font-weight: 350;
+    font-size: 21px;
+    color: var(--ink);
+    line-height: 1.3;
   }
   .scenario-compare {
     display: grid;
@@ -430,218 +440,215 @@
     gap: 18px;
   }
   .compare-col {
-    background: var(--ink-2);
+    background: var(--paper-2);
     border: 1px solid var(--rule);
-    border-radius: 4px;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     position: relative;
   }
-  .compare-col.bad::before {
-    content: "REJECTED BY ORC";
-    position: absolute;
-    top: 8px;
-    right: -32px;
-    transform: rotate(35deg);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    color: var(--rust);
-    letter-spacing: 0.15em;
-    padding: 3px 36px;
-    border: 1px solid var(--rust);
-    opacity: 0.6;
-    background: var(--ink);
+  .compare-col.bad {
+    /* hand-drawn red strike-through diagonal */
+    background-image: linear-gradient(135deg, transparent 49.6%, var(--crimson) 49.6%, var(--crimson) 50.4%, transparent 50.4%);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    opacity: 0.95;
   }
-  .compare-col.good { border-color: var(--amber-dim); }
+  .compare-col.good { border-color: var(--crimson); border-width: 2px; box-shadow: 4px 4px 0 var(--crimson-dk); }
   .compare-header {
-    padding: 14px 20px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
+    padding: 14px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     border-bottom: 1px solid var(--rule);
+    background: var(--paper-3);
+    font-weight: 500;
   }
   .compare-col.bad .compare-header {
-    color: var(--rust);
-    background: rgba(184, 92, 60, 0.06);
+    color: var(--ink-mute);
   }
   .compare-col.good .compare-header {
-    color: var(--amber);
-    background: rgba(212, 168, 90, 0.06);
+    color: var(--crimson);
+    background: var(--paper);
   }
   .compare-body {
-    padding: 22px;
+    padding: 24px;
     font-size: 15px;
     line-height: 1.6;
     flex-grow: 1;
   }
   .compare-body .answer {
-    color: var(--cream);
+    color: var(--ink);
     margin-bottom: 16px;
-    font-family: 'Newsreader', serif;
+    font-family: 'Spectral', serif;
+    font-size: 15.5px;
   }
   .compare-body .meta-row {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    margin-top: 14px;
-    padding-top: 14px;
+    margin-top: 16px;
+    padding-top: 16px;
     border-top: 1px dashed var(--rule);
-    line-height: 1.8;
+    line-height: 1.9;
   }
   .compare-body .meta-row .missing {
-    color: var(--rust);
+    color: var(--crimson);
     opacity: 0.7;
     display: block;
+    font-weight: 500;
   }
   .compare-body .meta-row .missing::before {
     content: "× ";
-    font-weight: bold;
+    font-weight: 700;
   }
   .compare-body .tag {
     display: inline-block;
-    background: rgba(212, 168, 90, 0.08);
-    border: 1px solid var(--amber-dim);
-    color: var(--amber);
-    padding: 3px 8px;
+    background: var(--paper);
+    border: 1px solid var(--crimson-dk);
+    color: var(--crimson);
+    padding: 3px 9px;
     margin: 3px 4px 3px 0;
     font-size: 10px;
-    border-radius: 2px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-  }
-  .compare-body .tag.muted { color: var(--cream-mid); border-color: var(--cream-faint); background: transparent; }
-  .compare-body .verdict {
-    display: inline-block;
-    background: var(--amber);
-    color: var(--ink);
-    padding: 5px 12px;
-    border-radius: 2px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    margin-bottom: 14px;
-    letter-spacing: 0.12em;
     font-weight: 600;
   }
+  .compare-body .tag.muted {
+    color: var(--ink-mute);
+    border-color: var(--rule);
+    background: transparent;
+  }
+  .compare-body .verdict {
+    display: inline-block;
+    background: var(--crimson);
+    color: var(--paper);
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-bottom: 16px;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+  }
   .source-quote {
-    background: var(--ink);
-    border-left: 2px solid var(--amber);
-    padding: 12px 16px;
-    margin: 14px 0;
-    font-family: 'Newsreader', serif;
+    background: var(--paper);
+    border-left: 3px solid var(--crimson);
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-family: 'Spectral', serif;
     font-style: italic;
     font-size: 14px;
-    color: var(--cream-dim);
+    color: var(--ink-2);
     line-height: 1.6;
   }
   .source-quote .ref {
     display: block;
-    margin-top: 8px;
-    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
     font-style: normal;
     font-size: 10px;
-    color: var(--cream-faint);
-    letter-spacing: 0.08em;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
   /* === FLOW DIAGRAM === */
   .flow-diagram {
-    margin: 40px 0;
-    padding: 36px 24px;
-    background: var(--ink-2);
+    margin: 44px 0;
+    padding: 40px 26px;
+    background: var(--paper-2);
     border: 1px solid var(--rule);
-    border-radius: 4px;
     overflow-x: auto;
   }
   .flow-row {
     display: flex;
     align-items: stretch;
     justify-content: center;
-    gap: 6px;
-    min-width: 640px;
+    gap: 8px;
+    min-width: 660px;
   }
   .flow-node {
-    background: var(--ink);
+    background: var(--paper);
     border: 1px solid var(--rule);
-    border-radius: 3px;
-    padding: 14px 16px;
-    font-family: 'IBM Plex Mono', monospace;
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    color: var(--cream-mid);
+    color: var(--ink);
     text-align: center;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     display: flex;
     align-items: center;
-    min-width: 96px;
+    min-width: 100px;
     justify-content: center;
+    font-weight: 500;
   }
   .flow-node.orc {
-    border-color: var(--amber);
-    background: rgba(212, 168, 90, 0.06);
-    color: var(--amber);
-    padding: 18px 22px;
+    border-color: var(--crimson);
+    border-width: 2px;
+    background: var(--paper);
+    color: var(--crimson);
+    padding: 20px 24px;
     flex-direction: column;
-    gap: 6px;
-    min-width: 200px;
-    position: relative;
+    gap: 8px;
+    min-width: 220px;
+    box-shadow: 3px 3px 0 var(--crimson-dk);
   }
   .flow-node.orc .label {
-    font-family: 'Fraunces', serif;
+    font-family: 'DM Serif Display', serif;
     font-style: italic;
-    font-size: 14px;
-    text-transform: lowercase;
-    color: var(--amber);
+    font-size: 17px;
+    color: var(--crimson);
     letter-spacing: 0;
     font-weight: 400;
+    text-transform: lowercase;
   }
   .flow-node.orc .sub {
-    color: var(--cream-mid);
+    color: var(--ink-2);
     font-size: 10px;
-    letter-spacing: 0.1em;
-    line-height: 1.7;
+    letter-spacing: 0.12em;
+    line-height: 1.8;
     text-align: center;
   }
   .flow-arrow {
-    color: var(--cream-faint);
-    font-size: 18px;
+    color: var(--crimson);
+    font-size: 22px;
     flex-shrink: 0;
     align-self: center;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'DM Serif Display', serif;
   }
 
   /* === CODE === */
   pre {
-    background: var(--ink-2);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 24px 28px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 0;
+    padding: 28px 30px;
     overflow-x: auto;
-    margin: 32px 0;
+    margin: 36px 0;
     font-size: 13.5px;
-    line-height: 1.7;
+    line-height: 1.75;
     position: relative;
+    box-shadow: 4px 4px 0 var(--ink-2);
   }
   pre::before {
-    content: "TERMINAL · ZSH";
+    content: "TERMINAL";
     position: absolute;
-    top: 8px;
-    right: 16px;
-    font-family: 'IBM Plex Mono', monospace;
+    top: 10px;
+    right: 18px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--cream-faint);
-    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    letter-spacing: 0.2em;
   }
-  pre code { color: var(--cream); font-family: 'IBM Plex Mono', monospace; }
-  .c { color: var(--cream-mid); font-style: italic; }
-  .s { color: var(--amber); }
-  .k { color: var(--rust); }
+  pre code { color: var(--paper); font-family: 'JetBrains Mono', monospace; }
+  .c { color: var(--ink-faint); font-style: italic; }
+  .s { color: #e8b46a; }
+  .k { color: var(--crimson); font-weight: 600; }
 
-  /* === USE-CASE LIST === */
+  /* === USE-CASE LIST — bibliographic === */
   .usecases {
-    margin: 32px 0;
-    border-top: 1px solid var(--rule);
+    margin: 36px 0;
+    border-top: 2px solid var(--ink);
   }
   .usecase {
     padding: 28px 0;
@@ -651,138 +658,150 @@
     gap: 32px;
     align-items: baseline;
   }
+  .usecase:last-child { border-bottom: 2px solid var(--ink); }
   .usecase .who {
-    font-family: 'IBM Plex Mono', monospace;
-    color: var(--amber);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    color: var(--crimson);
+    font-size: 17px;
+    line-height: 1.3;
   }
-  .usecase h3 { margin: 0 0 6px 0; font-size: 19px; }
+  .usecase h3 { margin: 0 0 6px 0; font-size: 20px; font-weight: 600; }
   .usecase p { font-size: 16px; margin: 0; line-height: 1.55; }
   @media (max-width: 640px) {
     .usecase { grid-template-columns: 1fr; gap: 8px; }
+    .usecase .who { font-size: 15px; }
   }
 
-  /* === REGULATORY TIMELINE === */
+  /* === TIMELINE — film/tape-style === */
   .timeline {
-    margin: 40px 0;
-    padding-left: 24px;
-    border-left: 2px solid var(--amber-dim);
+    margin: 44px 0;
+    padding-left: 28px;
+    border-left: 2px solid var(--ink);
+    position: relative;
   }
   .timeline-item {
-    padding: 16px 0 16px 20px;
+    padding: 18px 0 18px 24px;
     position: relative;
   }
   .timeline-item::before {
     content: "";
     position: absolute;
-    left: -31px;
-    top: 22px;
-    width: 8px;
-    height: 8px;
-    background: var(--amber);
-    border-radius: 50%;
-    box-shadow: 0 0 0 4px var(--ink), 0 0 0 5px var(--amber-dim);
+    left: -34px;
+    top: 26px;
+    width: 12px;
+    height: 12px;
+    background: var(--crimson);
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 2px var(--crimson);
   }
   .timeline-date {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--amber);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--crimson);
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    margin-bottom: 4px;
+    letter-spacing: 0.18em;
+    margin-bottom: 6px;
+    font-weight: 600;
   }
   .timeline-headline {
-    font-family: 'Fraunces', serif;
-    font-size: 18px;
-    color: var(--cream);
-    margin-bottom: 6px;
-    font-weight: 500;
+    font-family: 'DM Serif Display', serif;
+    font-size: 21px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.2;
   }
   .timeline-body {
-    font-size: 15px;
-    color: var(--cream-dim);
-    line-height: 1.5;
+    font-size: 15.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
   }
 
   /* === CTA === */
-  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 40px; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 44px; }
   .btn {
     display: inline-flex;
     align-items: center;
-    padding: 16px 28px;
-    border-radius: 3px;
-    font-family: 'IBM Plex Mono', monospace;
+    padding: 16px 30px;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     transition: all 0.2s;
   }
   .btn-primary {
-    background: var(--amber);
+    background: var(--crimson);
+    color: var(--paper);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .btn-primary:hover {
+    background: var(--ink);
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--crimson);
+  }
+  .btn-secondary {
+    border: 2px solid var(--ink);
     color: var(--ink);
   }
-  .btn-primary:hover { background: var(--cream); }
-  .btn-secondary {
-    border: 1px solid var(--cream-faint);
-    color: var(--cream);
+  .btn-secondary:hover {
+    background: var(--ink);
+    color: var(--paper);
   }
-  .btn-secondary:hover { border-color: var(--amber); color: var(--amber); }
 
-  a { color: var(--amber); text-decoration-color: var(--amber-dim); text-underline-offset: 3px; }
-  a:hover { color: var(--cream); }
+  a { color: var(--crimson); text-decoration-color: var(--crimson-dk); text-underline-offset: 3px; }
+  a:hover { color: var(--cobalt); }
 
   /* === FOOTER === */
   footer {
-    padding: 60px 0 100px;
-    border-top: 1px solid var(--rule);
-    font-family: 'IBM Plex Mono', monospace;
+    padding: 64px 0 100px;
+    border-top: 2px solid var(--ink);
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    color: var(--cream-faint);
-    letter-spacing: 0.08em;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
   }
   footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-  footer .seal {
+  footer .colophon {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    color: var(--cream-mid);
+    gap: 12px;
+    color: var(--ink);
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 16px;
+    text-transform: none;
+    letter-spacing: 0;
   }
-  footer .seal::before {
-    content: "❀";
-    color: var(--amber);
-    font-size: 14px;
+  footer .colophon::before {
+    content: "❦";
+    color: var(--crimson);
+    font-size: 18px;
   }
 
-  /* Reveal animations */
+  /* Reveal */
   .reveal {
     opacity: 0;
     transform: translateY(20px);
     transition: opacity 1s ease, transform 1s ease;
   }
-  .reveal.visible {
-    opacity: 1;
-    transform: none;
-  }
+  .reveal.visible { opacity: 1; transform: none; }
 
   /* Mobile */
   @media (max-width: 640px) {
     body { font-size: 17px; }
-    h1.hero-title { font-size: 44px; }
-    .hero { padding: 80px 0 60px; }
+    h1.hero-title { font-size: 46px; }
+    .hero { padding: 100px 0 60px; }
     .scenario-compare { grid-template-columns: 1fr; }
-    .scenario-tab { padding: 12px 14px; font-size: 11px; letter-spacing: 0.08em; }
-    .compare-col.bad::before { display: none; }
-    .nav-links a { margin-left: 16px; font-size: 10px; }
-    .metric-block { padding: 32px 20px; }
+    .scenario-tab { padding: 12px 14px; font-size: 10px; letter-spacing: 0.08em; }
+    .nav-links a { margin-left: 14px; font-size: 10px; }
+    .metric-block { padding: 40px 20px; }
     .metric-block .compare-row { gap: 24px; }
     .metric-cell .vs { display: none; }
-    .hero-meta { gap: 18px; flex-wrap: wrap; }
-    .pull { font-size: 22px; padding-left: 18px; }
+    .pull { font-size: 24px; }
+    .hero-meta { gap: 20px; }
   }
 </style>
 </head>
@@ -801,7 +820,7 @@
 
 <header class="hero">
   <div class="container">
-    <div class="article-no">PREAMBLE · v0.1.4 · open source</div>
+    <div class="hero-meta-top">A field paper · v0.1.4 · open source</div>
     <h1 class="hero-title">
       AI is now making decisions <span class="break">you can't take back.</span>
       <span class="break"><em>Orc makes them defensible.</em></span>
@@ -812,30 +831,33 @@
     <div class="hero-meta">
       <span><strong>F1 0.864</strong> on HaluBench</span>
       <span>Above <strong>Lynx-70B</strong> home-court</span>
-      <span><strong>MIT</strong> · No fine-tuning</span>
+      <span><strong>MIT</strong> · no fine-tuning</span>
     </div>
 
-    <svg class="stamp" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <path id="circle-path" d="M 100, 100 m -75, 0 a 75,75 0 1,1 150,0 a 75,75 0 1,1 -150,0" />
-      </defs>
-      <circle cx="100" cy="100" r="95" fill="none" stroke="#d4a85a" stroke-width="2" />
-      <circle cx="100" cy="100" r="86" fill="none" stroke="#d4a85a" stroke-width="0.5" />
-      <text font-family="IBM Plex Mono" font-size="9" fill="#d4a85a" letter-spacing="3">
-        <textPath href="#circle-path">VERIFIED · CITED · REPLAYABLE · AUDIT-READY · </textPath>
-      </text>
-      <text x="100" y="92" font-family="Fraunces" font-size="22" fill="#d4a85a" text-anchor="middle" font-style="italic">orc</text>
-      <text x="100" y="115" font-family="IBM Plex Mono" font-size="10" fill="#d4a85a" text-anchor="middle" letter-spacing="3">v0.1.4</text>
-      <line x1="40" y1="125" x2="160" y2="125" stroke="#d4a85a" stroke-width="0.5" />
-    </svg>
+    <div class="seal">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <path id="circle-path" d="M 100, 100 m -76, 0 a 76,76 0 1,1 152,0 a 76,76 0 1,1 -152,0" />
+        </defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#a8281e" stroke-width="2.5" />
+        <circle cx="100" cy="100" r="83" fill="none" stroke="#a8281e" stroke-width="0.7" />
+        <text font-family="JetBrains Mono" font-size="9" fill="#a8281e" letter-spacing="3.4" font-weight="600">
+          <textPath href="#circle-path">CITED · REPLAYABLE · AUDIT-READY · VERIFIED · </textPath>
+        </text>
+        <text x="100" y="88" font-family="DM Serif Display" font-size="28" fill="#a8281e" text-anchor="middle" font-style="italic">orc</text>
+        <text x="100" y="108" font-family="DM Serif Display" font-size="11" fill="#a8281e" text-anchor="middle" font-style="italic">first edition</text>
+        <line x1="44" y1="118" x2="156" y2="118" stroke="#a8281e" stroke-width="0.7" />
+        <text x="100" y="135" font-family="JetBrains Mono" font-size="9" fill="#a8281e" text-anchor="middle" letter-spacing="2.4" font-weight="600">MMXXVI</text>
+      </svg>
+    </div>
   </div>
 </header>
 
-<!-- ACT 1: THE SHIFT -->
+<!-- I. THE SHIFT -->
 <section id="problem">
   <div class="container">
-    <div class="section-no">§01 · The shift</div>
-    <h2>The first generation of AI was about producing answers. The next is about <em>defending them</em>.</h2>
+    <div class="section-no"><span class="roman">I</span>The shift</div>
+    <h2>The first generation of AI was about producing answers.<br>The next is about <em>defending them.</em></h2>
 
     <p class="large">For three years the question was: <em>can I get the model to give me a useful answer?</em> Companies wired up ChatGPT, Claude, Copilot. The wins were obvious and the stakes were low.</p>
 
@@ -847,10 +869,10 @@
   </div>
 </section>
 
-<!-- ACT 2: THE GAP -->
+<!-- II. THE GAP -->
 <section>
   <div class="container">
-    <div class="section-no">§02 · Why current tools fail this test</div>
+    <div class="section-no"><span class="roman">II</span>Why current tools fail this test</div>
     <h2>The AI you're using today wasn't built to be defensible.</h2>
 
     <p>Every existing tool was built to solve a different problem:</p>
@@ -865,7 +887,7 @@
     <p>Each of these is good at what it was built for. None of them, on its own, gives the bank compliance officer or the EU AI Act auditor what they actually need: <strong>a single artifact, produced at decision time, that proves what the AI was told, what it concluded, and what evidence it used — that a third party can verify independently months later.</strong></p>
 
     <div class="margin-note">
-      <span class="tag">DOCUMENTED</span>
+      <span class="tag">Documented</span>
       LangChain GitHub Issue #35357 (2025) explicitly requests EU AI Act Article 12-compliant logging. MCP's 2026 roadmap names enterprise audit as a known gap. This isn't speculation — the gap is acknowledged industry-wide.
     </div>
 
@@ -873,10 +895,10 @@
   </div>
 </section>
 
-<!-- ACT 2.5: VISUAL -->
+<!-- III. VISUAL DIFF -->
 <section>
   <div class="container">
-    <div class="section-no">§03 · See the difference</div>
+    <div class="section-no"><span class="roman">III</span>See the difference</div>
     <h2>The same AI claim, with and without a <em>verification runtime</em>.</h2>
 
     <p>Pick a scenario. The left column shows what your AI gives you today. The right column shows the Orc-verified output — the artifact a regulator or auditor needs.</p>
@@ -895,7 +917,7 @@
 
       <div class="scenario-compare">
         <div class="compare-col bad">
-          <div class="compare-header">Without verification — today's AI</div>
+          <div class="compare-header">Without verification</div>
           <div class="compare-body">
             <div class="answer" id="bad-answer">
               "Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."
@@ -904,7 +926,7 @@
               <span class="missing">no source citation</span>
               <span class="missing">no way to replay this</span>
               <span class="missing">no audit trail</span>
-              <span class="missing">no way to verify it tomorrow</span>
+              <span class="missing">no way to verify tomorrow</span>
             </div>
           </div>
         </div>
@@ -953,10 +975,10 @@
   </div>
 </section>
 
-<!-- ACT 3: HOW IT WORKS -->
+<!-- IV. HOW -->
 <section>
   <div class="container">
-    <div class="section-no">§04 · What it looks like</div>
+    <div class="section-no"><span class="roman">IV</span>What it looks like</div>
     <h2>One command. <em>Every artifact.</em></h2>
 
     <pre><code><span class="c"># 1. Create a workspace and ingest evidence you own</span>
@@ -974,18 +996,18 @@
 <span class="c"># 3. Months later, hand a regulator a self-contained tarball</span>
 <span class="k">$</span> orc audit export -w credit-memos --include-evidence
 <span class="c"># → audit-credit-memos-20260519.tar.gz</span>
-<span class="c">#   contains every decision · every retrieval · every prompt</span>
+<span class="c">#   every decision · every retrieval · every prompt</span>
 <span class="c">#   every approval — all hashed, all reproducible.</span></code></pre>
 
     <p>That's the whole loop. Workspace, ingest, verify, audit. Also exposed as a Claude Code / Codex MCP server for teams already in those workflows.</p>
   </div>
 </section>
 
-<!-- ACT 4: PROOF — big numerals -->
+<!-- V. PROOF -->
 <section id="proof">
   <div class="container">
-    <div class="section-no">§05 · Does the verification work?</div>
-    <h2>On the benchmark commercial faithfulness models compete on, <em>Orc just beat the leader</em>.</h2>
+    <div class="section-no"><span class="roman">V</span>Does the verification work?</div>
+    <h2>On the benchmark commercial faithfulness models compete on,<br><em>Orc just beat the leader.</em></h2>
 
     <p>HaluBench is the public benchmark Patronus AI built to evaluate their Lynx-70B faithfulness classifier — the current open-source SOTA. On a 504-item stratified subsample:</p>
 
@@ -1003,7 +1025,7 @@
           <div class="caption">dedicated 70B<br>fine-tuned classifier</div>
         </div>
       </div>
-      <div class="footnote">HaluBench · N=503 evaluated · 2026-05-19 · reproducible: <span class="mono">uv run python -m benchmarks.faithfulness.run --n 504 --variant source_routed</span></div>
+      <div class="footnote">HaluBench · N=503 evaluated · 2026-05-19 · reproducible · <span class="mono">uv run python -m benchmarks.faithfulness.run --variant source_routed</span></div>
     </div>
 
     <p>Orc lands above the dedicated fine-tuned model — with a general-purpose Claude call plus a 200-line safe arithmetic evaluator the model can invoke when a claim requires computation. The benchmark is fully reproducible (one command, ~$7 of API spend) and the per-source breakdown is public.</p>
@@ -1012,10 +1034,10 @@
   </div>
 </section>
 
-<!-- ACT 5: USE CASES -->
+<!-- VI. WHO -->
 <section>
   <div class="container">
-    <div class="section-no">§06 · Who needs this</div>
+    <div class="section-no"><span class="roman">VI</span>Who needs this</div>
     <h2>Anyone whose AI work has to survive <em>a second reviewer</em>.</h2>
 
     <div class="usecases">
@@ -1062,10 +1084,10 @@
   </div>
 </section>
 
-<!-- ACT 6: WHY NOW — timeline -->
+<!-- VII. WHY NOW -->
 <section>
   <div class="container">
-    <div class="section-no">§07 · Why now</div>
+    <div class="section-no"><span class="roman">VII</span>Why now</div>
     <h2>The regulatory window <em>just opened</em>.</h2>
 
     <div class="timeline">
@@ -1082,7 +1104,7 @@
       <div class="timeline-item">
         <div class="timeline-date">2025–2026</div>
         <div class="timeline-headline">The AI stack matured past chatbots</div>
-        <div class="timeline-body">Agents, tool use, MCP. Every framework treats verification as a downstream add-on. None of them produces the regulator handoff.</div>
+        <div class="timeline-body">Agents, tool use, MCP. Every framework treats verification as a downstream add-on. None produces the regulator handoff.</div>
       </div>
       <div class="timeline-item">
         <div class="timeline-date">Now</div>
@@ -1093,10 +1115,10 @@
   </div>
 </section>
 
-<!-- ACT 7: STATUS -->
+<!-- VIII. STATUS -->
 <section>
   <div class="container">
-    <div class="section-no">§08 · Where it is today</div>
+    <div class="section-no"><span class="roman">VIII</span>Where it is today</div>
     <h2>Shipped. Open-source. In production locally.</h2>
 
     <p><strong>v0.1.4</strong> · May 2026. CLI + MCP server. <strong>188 tests passing</strong>, deterministic replay, hashed audit export, multi-approver workflow. MIT licensed. The full benchmark, every line of the runtime, and the compliance mapping live in public.</p>
@@ -1111,10 +1133,10 @@
   </div>
 </section>
 
-<!-- ACT 8: CONTACT -->
+<!-- IX. CONTACT -->
 <section id="contact">
   <div class="container">
-    <div class="section-no">§09 · Get in touch</div>
+    <div class="section-no"><span class="roman">IX</span>Get in touch</div>
     <h2>If any of this matches <em>a problem you have</em>.</h2>
 
     <p><strong>Design partners</strong> — a bank, a hospital system, a law firm, an EU-deployed AI team — I'd rather hear what you're verifying today and how it gets reviewed than send you a deck. Email me with the shape of the problem; I'll respond with a 15-minute call.</p>
@@ -1132,14 +1154,12 @@
 
 <footer>
   <div class="container">
-    <div class="seal">orc · built by Thor Matthíasson</div>
-    <div>MIT · v0.1.4 · 2026</div>
+    <div class="colophon">orc · set in DM Serif Display & Spectral · built by Thor Matthíasson</div>
+    <div>MIT · v0.1.4 · MMXXVI</div>
   </div>
 </footer>
 
 <script>
-  // Scenario tab switcher — three concrete examples that ground "what does Orc
-  // give you that you don't have today" in a story a buyer recognizes.
   const SCENARIOS = {
     bank: {
       prompt: '"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."',
@@ -1196,7 +1216,7 @@
     });
   });
 
-  // Animated count-up on the headline metric numerals.
+  // Animated count-up on the headline numerals.
   function animateNumeral(el, target, duration) {
     const start = 0;
     const startTime = performance.now();
@@ -1222,7 +1242,7 @@
   }, { threshold: 0.5 });
   numerals.forEach(n => { n.textContent = "0.000"; numeralObs.observe(n); });
 
-  // Scroll reveal — pretty subtle, one per section.
+  // Section reveal.
   const revealObs = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
