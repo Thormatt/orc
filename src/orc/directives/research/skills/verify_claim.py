@@ -127,6 +127,7 @@ _PROMPT_FILE = {
     "evidence": "verify_claim.md",
     "judgment": "verify_claim_judgment.md",
     "binary": "verify_claim_binary.md",
+    "arithmetic": "verify_claim_arithmetic.md",
 }
 
 
@@ -283,12 +284,19 @@ class _VerifyClaim:
             verdict so an auditor can re-check the reasoning. Available for
             multi-part answers; not the default route in production (binary
             mode wins on HaluBench DROP at full N).
+          - "arithmetic": binary mode + a calculator tool the model can call
+            mid-verification (multi-turn loop, max 6 turns). Each calculator
+            invocation and its result is recorded in the trace so an auditor
+            can spot-check the math. Targets FinanceBench-style claims where
+            the answer is a derived number that must follow arithmetically
+            from values in the passage. Faithful → supported; unfaithful →
+            not_found (same conservative mapping as binary).
         """
         if not claim or not claim.strip():
             raise ValueError("claim must be a non-empty string")
         if mode is None:
             mode = route_to_mode(domain) or "evidence"
-        if mode not in {"evidence", "judgment", "binary", "decomposed"}:
+        if mode not in {"evidence", "judgment", "binary", "decomposed", "arithmetic"}:
             raise ValueError(f"unknown verify mode: {mode!r}")
 
         # Decomposed mode is a meta-strategy: it decomposes the claim then
@@ -297,6 +305,22 @@ class _VerifyClaim:
         if mode == "decomposed":
             return _run_decomposed(
                 self=self,
+                workspace=workspace,
+                run=run,
+                claim=claim,
+                model=model,
+                k=k,
+                retrieval_pool=retrieval_pool,
+                max_tokens=max_tokens,
+                client=client,
+                corpus_version=corpus_version,
+                evidence_id=evidence_id,
+            )
+
+        # Arithmetic mode wraps binary mode with a calculator tool the LLM
+        # can call mid-verification. Multi-turn loop, separate code path.
+        if mode == "arithmetic":
+            return _run_arithmetic(
                 workspace=workspace,
                 run=run,
                 claim=claim,
@@ -548,6 +572,166 @@ def _run_decomposed(
         "model": resolve_verify_model(model),
         "retrieval_chunk_ids": [],
         "atoms": atom_results,
+    }
+
+
+def _run_arithmetic(
+    *,
+    workspace: Workspace,
+    run: Run,
+    claim: str,
+    model: str | None,
+    k: int,
+    retrieval_pool: int,
+    max_tokens: int,
+    client: Any,
+    corpus_version: int | None,
+    evidence_id: str | None,
+) -> dict[str, Any]:
+    """Verify with a calculator tool available mid-loop. Same retrieval as
+    binary mode (full passage, no BM25), same terminal tool, but the model
+    can call `calculate` before committing a verdict. Each calculator
+    invocation is recorded in the trace so an auditor can spot-check the math.
+    """
+    from orc.llm.agentic import AgenticLoopError, run_tool_loop
+    from orc.llm.tools.calculate import (
+        CALCULATE_TOOL_SCHEMA,
+    )
+    from orc.llm.tools.calculate import (
+        execute as execute_calculate,
+    )
+
+    resolved_model = resolve_verify_model(model)
+    candidates = _select_all_chunks(
+        run.conn,
+        corpus_version=corpus_version,
+        evidence_id=evidence_id,
+        limit=max(k, retrieval_pool),
+    )
+    run.record_retrieval(
+        candidates, method="arithmetic_all", candidates_considered=len(candidates)
+    )
+
+    if not candidates:
+        return _make_not_found(claim=claim, model=resolved_model, run=run)
+
+    system_prompt = _load_system_prompt(mode="arithmetic")
+    corpus_block = format_corpus(candidates)
+    payload = build_verify_messages(
+        system_prompt=system_prompt, corpus_block=corpus_block, claim=claim
+    )
+
+    anthropic_client = client or get_client()
+    provider_model = resolve_model_for_provider(resolved_model)
+    tool_calls_recorded: list[dict[str, Any]] = []
+
+    def _on_tool_call(name: str, input_data: dict[str, Any], result_str: str, elapsed_ms: int) -> None:
+        entry = {
+            "tool": name,
+            "input": input_data,
+            "result": result_str,
+            "elapsed_ms": elapsed_ms,
+        }
+        tool_calls_recorded.append(entry)
+        run.record(f"tool_call_{len(tool_calls_recorded) - 1}", entry)
+
+    def _on_llm_call(response: Any, turn_idx: int, elapsed_ms: int) -> None:
+        usage = response.usage
+        run.record_llm_call(
+            call_id=new_id(),
+            model=resolved_model,
+            request={
+                "tool_name": "record_binary_verdict|calculate",
+                "mode": "arithmetic",
+                "max_tokens": max_tokens,
+                "turn_idx": turn_idx,
+                "claim_chars": len(claim),
+                "corpus_chunks": len(candidates),
+            },
+            response={
+                "stop_reason": getattr(response, "stop_reason", None),
+                "tool_use_names": sorted(
+                    {
+                        b.name
+                        for b in response.content
+                        if getattr(b, "type", None) == "tool_use"
+                    }
+                ),
+            },
+            input_tokens=getattr(usage, "input_tokens", 0) or 0,
+            output_tokens=getattr(usage, "output_tokens", 0) or 0,
+            cache_read_input_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+            cache_creation_input_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
+            elapsed_ms=elapsed_ms,
+        )
+
+    try:
+        final_response, _convo, _all = run_tool_loop(
+            anthropic_client,
+            model=provider_model,
+            system=payload["system"],
+            messages=payload["messages"],
+            tools=[CALCULATE_TOOL_SCHEMA, BINARY_VERDICT_TOOL_SCHEMA],
+            executors={"calculate": execute_calculate},
+            terminal_tool="record_binary_verdict",
+            max_tokens=max_tokens,
+            max_turns=6,
+            on_tool_call=_on_tool_call,
+            on_llm_call=_on_llm_call,
+        )
+    except AgenticLoopError as exc:
+        run.record("arithmetic_loop_exhausted", {"error": str(exc)})
+        return {
+            "claim": claim,
+            "label": "not_found",
+            "confidence": 0.5,
+            "reasoning": "Arithmetic loop exhausted without committing a verdict.",
+            "supporting_chunks": [],
+            "contradicting_chunks": [],
+            "missing_information": "Verdict not produced.",
+            "model": resolved_model,
+            "retrieval_chunk_ids": [c.chunk_id for c in candidates],
+            "tool_calls": tool_calls_recorded,
+        }
+
+    verdict_use = next(
+        (
+            b
+            for b in final_response.content
+            if getattr(b, "type", None) == "tool_use"
+            and getattr(b, "name", None) == "record_binary_verdict"
+        ),
+        None,
+    )
+    if verdict_use is None:
+        return {
+            "claim": claim,
+            "label": "not_found",
+            "confidence": 0.5,
+            "reasoning": "Model returned without emitting a verdict.",
+            "supporting_chunks": [],
+            "contradicting_chunks": [],
+            "missing_information": "Verdict not produced.",
+            "model": resolved_model,
+            "retrieval_chunk_ids": [c.chunk_id for c in candidates],
+            "tool_calls": tool_calls_recorded,
+        }
+
+    verdict = dict(verdict_use.input)
+    faithful = bool(verdict.get("faithful"))
+    label = "supported" if faithful else "not_found"
+
+    return {
+        "claim": claim,
+        "label": label,
+        "confidence": float(verdict.get("confidence", 1.0)),
+        "reasoning": verdict.get("reasoning", ""),
+        "supporting_chunks": [],
+        "contradicting_chunks": [],
+        "missing_information": None,
+        "model": resolved_model,
+        "retrieval_chunk_ids": [c.chunk_id for c in candidates],
+        "tool_calls": tool_calls_recorded,
     }
 
 

@@ -380,6 +380,103 @@ def test_cli_verify_domain_flag_routes_to_binary(
     assert fake.calls[0]["tool_choice"] == {"type": "tool", "name": "record_binary_verdict"}
 
 
+def test_verify_arithmetic_mode_chains_calculator_then_verdict(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Arithmetic mode: model calls calculate, runtime executes safely, model
+    sees the result, then commits a verdict. Each calculator call is in the
+    trace so an auditor can spot-check the math."""
+    name = _setup_corpus(orc_home, tmp_path)
+
+    def _tu(name_: str, tid: str, input_data: dict[str, object]) -> FakeContentBlock:
+        b = FakeContentBlock(type="tool_use", name=name_, input=input_data)
+        b.id = tid  # type: ignore[attr-defined]
+        return b
+
+    fake = FakeAnthropic(
+        responses=[
+            # Turn 0: model decides to compute
+            FakeResponse(
+                content=[_tu("calculate", "c1", {"expression": "1234.5 / 8000 * 100"})],
+                stop_reason="tool_use",
+            ),
+            # Turn 1: model emits verdict
+            FakeResponse(
+                content=[
+                    _tu(
+                        "record_binary_verdict",
+                        "v1",
+                        {
+                            "faithful": True,
+                            "confidence": 0.88,
+                            "reasoning": "Computed 15.43, matches claim within tolerance.",
+                        },
+                    )
+                ],
+                stop_reason="tool_use",
+            ),
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api", mode="arithmetic")
+        run.close(output=result)
+
+    assert result["label"] == "supported"
+    assert result["confidence"] == pytest.approx(0.88)
+    assert len(result["tool_calls"]) == 1
+    tc = result["tool_calls"][0]
+    assert tc["tool"] == "calculate"
+    assert tc["input"]["expression"] == "1234.5 / 8000 * 100"
+    assert tc["result"].startswith("15.4")  # 1234.5 / 8000 * 100 ≈ 15.43125
+
+    # Trace JSON records both LLM turns + the tool_call.
+    traces = list(workspace_traces_dir(name).rglob(f"{run.run_id}.json"))
+    trace = json.loads(traces[0].read_text())
+    assert len(trace["llm_calls"]) == 2  # two turns in the loop
+
+
+def test_verify_arithmetic_mode_unfaithful_maps_to_not_found(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Same conservative mapping as binary mode: faithful=false → not_found,
+    never 'contradicted' (we can't tell silent from contradiction in this mode)."""
+    name = _setup_corpus(orc_home, tmp_path)
+
+    def _tu(name_: str, tid: str, input_data: dict[str, object]) -> FakeContentBlock:
+        b = FakeContentBlock(type="tool_use", name=name_, input=input_data)
+        b.id = tid  # type: ignore[attr-defined]
+        return b
+
+    fake = FakeAnthropic(
+        responses=[
+            FakeResponse(
+                content=[
+                    _tu(
+                        "record_binary_verdict",
+                        "v1",
+                        {"faithful": False, "confidence": 0.7, "reasoning": "no support"},
+                    )
+                ],
+                stop_reason="tool_use",
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api", mode="arithmetic")
+        run.close(output=result)
+
+    assert result["label"] == "not_found"
+    assert result["tool_calls"] == []
+
+
 def test_verify_request_includes_cache_control(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
