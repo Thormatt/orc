@@ -153,6 +153,9 @@ def test_verify_not_found_when_corpus_empty(
 def test_verify_drops_hallucinated_chunk_ids(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """When every cited chunk is hallucinated, the label must downgrade to
+    not_found — shipping `supported` with empty citations is the bug this
+    test guards against."""
     name = _setup_corpus(orc_home, tmp_path)
     fake = FakeAnthropic(
         responses=[
@@ -171,7 +174,15 @@ def test_verify_drops_hallucinated_chunk_ids(
         result = skill.run(workspace=ws, run=run, claim="skills api")
         run.close(output=result)
 
-    assert result["supporting_chunks"] == []  # all dropped
+    assert result["supporting_chunks"] == []
+    assert result["label"] == "not_found"  # downgraded from supported
+
+    # Trace should record both the dropped IDs and the downgrade flag.
+    traces = list(workspace_traces_dir(name).rglob(f"{run.run_id}.json"))
+    trace = json.loads(traces[0].read_text())
+    response_meta = trace["llm_calls"][0]["response"]
+    assert set(response_meta["dropped_chunk_ids"]) == {"FAKEID12345", "ANOTHERFAKE"}
+    assert response_meta["label_downgraded"] is True
 
 
 def test_verify_records_token_usage_and_cache_metrics(
@@ -289,6 +300,38 @@ def test_verify_request_includes_cache_control(
     assert sent["tool_choice"] == {"type": "tool", "name": "record_verdict"}
     assert sent["system"][1]["cache_control"] == {"type": "ephemeral"}
     assert "<chunk id=" in sent["system"][1]["text"]
+
+
+def test_verify_binary_mode_maps_unfaithful_to_not_found(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Binary's `faithful=false` covers both contradiction *and* corpus silence.
+    Mapping it to `contradicted` would be wrong (and dangerous for audit use)
+    — we map to `not_found` instead. Use evidence mode if you need the two
+    distinguished."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            FakeResponse(
+                content=[
+                    FakeContentBlock(
+                        type="tool_use",
+                        name="record_binary_verdict",
+                        input={"faithful": False, "confidence": 0.8, "reasoning": "no support"},
+                    )
+                ]
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api", mode="binary")
+        run.close(output=result)
+
+    assert result["label"] == "not_found"
 
 
 def test_verify_decomposed_mode_aggregates_atoms(

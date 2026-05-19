@@ -148,7 +148,12 @@ def export_workspace(
     for path, data in sorted(files.items()):
         manifest.files[path] = hashlib.sha256(data).hexdigest()
 
+    # README is rendered last and depends on the manifest, but the readme
+    # bytes themselves still need a hash so the integrity claim covers every
+    # file in the tarball except manifest.json (which can't hash itself).
     readme = _render_readme(manifest)
+    readme_bytes = readme.encode("utf-8")
+    manifest.files["README.md"] = hashlib.sha256(readme_bytes).hexdigest()
     manifest_bytes = manifest.to_json().encode("utf-8")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -156,7 +161,7 @@ def export_workspace(
         output_path,
         entries=[
             ("manifest.json", manifest_bytes),
-            ("README.md", readme.encode("utf-8")),
+            ("README.md", readme_bytes),
             *sorted(files.items()),
         ],
     )
@@ -386,14 +391,18 @@ def _render_readme(m: ExportManifest) -> str:
         "included Run.\n"
         "\n"
         "## Reproducing a Run\n"
-        "Any included Run can be re-executed with `orc replay <run_id>`. The\n"
-        "trace records the corpus_version it ran against; replay defaults to\n"
-        "that frozen snapshot. `effective_kwargs` (v2 traces) pin the manifest\n"
-        "defaults that were in force at the time of the original run, so a\n"
-        "later manifest change does not silently shift behavior.\n"
+        "This bundle is an *inspectable* handoff: every Run's full trace JSON,\n"
+        "retrieval set, LLM-call usage, and verdict is present and hashed.\n"
+        "Bit-exact `orc replay` requires the original workspace database and\n"
+        "evidence files — the bundle does not include those, so re-execution\n"
+        "happens against the workspace that produced the trace. `effective_kwargs`\n"
+        "(v2 traces) pin the manifest defaults in force at the time of the\n"
+        "original run, so a later manifest change does not silently shift\n"
+        "behavior on replay.\n"
         "\n"
         "## Integrity\n"
-        "Every file is hashed in `manifest.json`. Verify with:\n"
+        "Every file in this tarball except `manifest.json` is hashed in\n"
+        "`manifest.json` (manifest.json cannot hash itself). Verify with:\n"
         "    sha256sum -c <(jq -r '.files | to_entries[] | "
         "\"\\(.value)  \\(.key)\"' manifest.json)\n"
     )

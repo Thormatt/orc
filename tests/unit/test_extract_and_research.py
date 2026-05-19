@@ -174,6 +174,15 @@ def test_cli_verify_from_file_extracts_and_verifies(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     name = _seed(orc_home, tmp_path)
+    # supported claims need a real chunk id, otherwise the citation guard
+    # downgrades the label to not_found (which is exactly the bug we want
+    # the guard to catch in real usage).
+    from orc.paths import workspace_db_path
+    from orc.storage.db import open_connection
+
+    with open_connection(workspace_db_path(name)) as conn:
+        chunk_id = conn.execute("SELECT chunk_id FROM chunk LIMIT 1").fetchone()["chunk_id"]
+
     plan = _Plan(
         extract_claims=[
             {"text": "Anthropic released the Skills API in October 2025", "context": ""},
@@ -184,7 +193,7 @@ def test_cli_verify_from_file_extracts_and_verifies(
                 "label": "supported",
                 "confidence": 0.92,
                 "reasoning": "Direct quote",
-                "supporting_chunk_ids": [],
+                "supporting_chunk_ids": [chunk_id],
                 "contradicting_chunk_ids": [],
             },
             "Microsoft": {

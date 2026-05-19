@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "orc"
-version = "0.1.2"
+version = "0.1.3"
 description = "The verification runtime for AI that has to be defensible. Evidence-bound claim verification, structured citations, trace + replay, MCP-ready CLI."
 readme = "README.md"
 requires-python = ">=3.11"

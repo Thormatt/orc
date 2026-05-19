@@ -366,10 +366,15 @@ class _VerifyClaim:
 
         if mode == "binary":
             # Map the boolean back into the 4-label vocabulary so downstream
-            # callers and the trace format stay uniform. Citations not enforced.
+            # callers and the trace format stay uniform. The binary prompt
+            # defines unfaithful as *either* contradicted or silent — we can't
+            # distinguish without changing the tool schema, so faithful=false
+            # maps to "not_found" (the more conservative reading: caller is
+            # told the claim isn't grounded). Use evidence mode if you need
+            # contradicted vs. not_found distinguished.
             faithful = bool(verdict_input.get("faithful"))
             verdict_input = {
-                "label": "supported" if faithful else "contradicted",
+                "label": "supported" if faithful else "not_found",
                 "confidence": float(verdict_input.get("confidence", 1.0)),
                 "reasoning": verdict_input.get("reasoning", ""),
                 "supporting_chunk_ids": [],
@@ -377,13 +382,24 @@ class _VerifyClaim:
                 "missing_information": "",
             }
 
-        supporting = [
-            cid for cid in verdict_input.get("supporting_chunk_ids", []) if cid in candidate_ids
-        ]
-        contradicting = [
-            cid for cid in verdict_input.get("contradicting_chunk_ids", []) if cid in candidate_ids
-        ]
-        # Drop hallucinated IDs silently — the run_evidence FK relies on real chunk IDs.
+        raw_supporting = verdict_input.get("supporting_chunk_ids", []) or []
+        raw_contradicting = verdict_input.get("contradicting_chunk_ids", []) or []
+        supporting = [cid for cid in raw_supporting if cid in candidate_ids]
+        contradicting = [cid for cid in raw_contradicting if cid in candidate_ids]
+        dropped_ids = sorted(
+            (set(raw_supporting) | set(raw_contradicting)) - candidate_ids
+        )
+
+        # Citation guard: in evidence mode, if the adjudicator labeled supported
+        # but every cited chunk was hallucinated, the verdict has no grounding
+        # — downgrade to not_found rather than ship "supported" with empty
+        # citations. Same for contradicted.
+        if mode == "evidence":
+            label_raw = verdict_input.get("label")
+            if (label_raw == "supported" and not supporting) or (
+                label_raw == "contradicted" and not contradicting
+            ):
+                verdict_input["label"] = "not_found"
 
         # 5. Record LLM call usage.
         usage = response.usage
@@ -401,6 +417,13 @@ class _VerifyClaim:
             response={
                 "stop_reason": getattr(response, "stop_reason", None),
                 "tool_input_keys": sorted(verdict_input.keys()),
+                "dropped_chunk_ids": dropped_ids,
+                "label_downgraded": (
+                    mode == "evidence"
+                    and label_raw != verdict_input["label"]
+                )
+                if mode == "evidence"
+                else False,
             },
             input_tokens=getattr(usage, "input_tokens", 0) or 0,
             output_tokens=getattr(usage, "output_tokens", 0) or 0,

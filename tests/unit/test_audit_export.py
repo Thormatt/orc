@@ -131,6 +131,25 @@ def test_export_manifest_hashes_match_file_contents(
         assert actual == expected_hash, f"hash mismatch for {path}"
 
 
+def test_export_manifest_hashes_cover_every_tar_member_except_manifest(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression for the audit-export README's integrity claim: every file in
+    the tarball except manifest.json (which can't hash itself) must be listed
+    in manifest.files. README.md was previously omitted."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit.tar.gz"
+    export_workspace(name, output_path=out)
+
+    members = _untar(out)
+    manifest = json.loads(members["manifest.json"])
+    hashed = set(manifest["files"].keys())
+    in_tar = set(members.keys()) - {"manifest.json"}
+    missing = in_tar - hashed
+    assert missing == set(), f"these tar members are not hashed: {missing}"
+
+
 def test_export_refuses_when_trace_schema_unsupported(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
