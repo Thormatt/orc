@@ -3,20 +3,18 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Orc — the verification runtime for AI that has to be defensible</title>
-<meta name="description" content="F1 = 0.864 on HaluBench, above Patronus Lynx-70B home-court. No fine-tuning. Chunk-level citations, deterministic replay, audit-export bundles, multi-approver gates. Built for compliance-bound AI deployments." />
+<title>Orc — make AI decisions defensible</title>
+<meta name="description" content="AI is now making decisions you can't take back. Orc makes them defensible — by binding every output to evidence you own, and producing an audit trail a regulator can replay." />
 <style>
   :root {
     --bg: #0a0a0a;
-    --bg-elev: #141414;
-    --bg-card: #161616;
-    --fg: #e9e9e9;
-    --fg-dim: #9a9a9a;
-    --fg-faint: #565656;
+    --bg-card: #141414;
+    --fg: #ededed;
+    --fg-dim: #a8a8a8;
+    --fg-faint: #6a6a6a;
     --accent: #6ee787;
     --accent-dim: #4a9a5a;
-    --rule: #232323;
-    --warn: #f0b35e;
+    --rule: #1f1f1f;
     --link: #8ab4ff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,8 +23,8 @@
     background: var(--bg);
     color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-    line-height: 1.6;
-    font-size: 16px;
+    line-height: 1.65;
+    font-size: 17px;
     -webkit-font-smoothing: antialiased;
   }
   code, .mono {
@@ -34,213 +32,112 @@
     font-size: 0.92em;
   }
   .container {
-    max-width: 880px;
+    max-width: 720px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 28px;
   }
   /* Header */
   nav {
-    border-bottom: 1px solid var(--rule);
-    padding: 18px 0;
+    padding: 24px 0;
     position: sticky;
     top: 0;
-    background: rgba(10,10,10,0.9);
-    backdrop-filter: blur(8px);
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(10px);
     z-index: 10;
   }
   nav .container { display: flex; justify-content: space-between; align-items: center; }
   .brand {
     font-family: ui-monospace, monospace;
     font-weight: 600;
-    font-size: 18px;
+    font-size: 17px;
     letter-spacing: -0.02em;
   }
   .brand::after { content: "."; color: var(--accent); }
-  .nav-links { display: flex; gap: 28px; }
   .nav-links a {
     color: var(--fg-dim);
     text-decoration: none;
     font-size: 14px;
+    margin-left: 24px;
   }
   .nav-links a:hover { color: var(--fg); }
-  /* Hero */
-  .hero { padding: 80px 0 60px; }
-  .badge {
-    display: inline-block;
-    color: var(--accent);
-    border: 1px solid var(--accent-dim);
-    border-radius: 100px;
-    padding: 4px 12px;
-    font-size: 13px;
-    font-family: ui-monospace, monospace;
-    margin-bottom: 28px;
-  }
+  /* Hero — minimal */
+  .hero { padding: 100px 0 80px; }
   h1 {
-    font-size: 52px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-    margin-bottom: 24px;
+    font-size: 56px;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    margin-bottom: 32px;
   }
-  h1 .accent { color: var(--accent); }
+  h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
   .lede {
     font-size: 20px;
     color: var(--fg-dim);
-    max-width: 720px;
-    margin-bottom: 40px;
+    max-width: 600px;
+    margin-bottom: 48px;
   }
-  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    border-radius: 6px;
-    font-size: 15px;
-    text-decoration: none;
-    font-weight: 500;
-    transition: transform 0.05s;
-  }
-  .btn-primary {
-    background: var(--accent);
-    color: #0a0a0a;
-  }
-  .btn-primary:hover { background: #82f29a; }
-  .btn-secondary {
-    border: 1px solid var(--rule);
-    color: var(--fg);
-  }
-  .btn-secondary:hover { border-color: var(--fg-faint); }
-  /* Sections */
-  section { padding: 60px 0; border-top: 1px solid var(--rule); }
-  h2 {
-    font-size: 32px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+  /* Sections — narrative-first */
+  section { padding: 64px 0; border-top: 1px solid var(--rule); }
+  .kicker {
+    font-family: ui-monospace, monospace;
+    color: var(--accent);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     margin-bottom: 16px;
   }
-  h2 .num {
-    color: var(--fg-faint);
-    font-family: ui-monospace, monospace;
-    font-size: 18px;
-    margin-right: 12px;
-    font-weight: 400;
+  h2 {
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 24px;
   }
   h3 {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 600;
     margin-top: 32px;
-    margin-bottom: 8px;
-  }
-  p { margin-bottom: 14px; color: var(--fg-dim); }
-  p strong { color: var(--fg); font-weight: 600; }
-  /* Headline metric */
-  .metric-card {
-    background: var(--bg-card);
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    padding: 32px;
-    margin: 24px 0;
-  }
-  .metric-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 20px;
-  }
-  .metric-grid .label {
-    font-family: ui-monospace, monospace;
-    color: var(--fg-faint);
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 6px;
-  }
-  .metric-grid .value {
-    font-family: ui-monospace, monospace;
-    font-size: 28px;
+    margin-bottom: 10px;
     color: var(--fg);
-    font-weight: 600;
   }
-  .metric-grid .value.headline { color: var(--accent); font-size: 36px; }
-  .metric-caption {
-    font-size: 14px;
+  p {
+    margin-bottom: 18px;
     color: var(--fg-dim);
+  }
+  p:last-child { margin-bottom: 0; }
+  p strong { color: var(--fg); font-weight: 600; }
+  p.large {
+    font-size: 19px;
+    color: var(--fg);
+  }
+  /* Pull-quote */
+  .pull {
+    font-size: 22px;
+    line-height: 1.4;
+    color: var(--fg);
+    border-left: 2px solid var(--accent);
+    padding: 4px 0 4px 24px;
+    margin: 32px 0;
+    font-weight: 400;
+  }
+  /* Metric */
+  .metric-row {
+    display: flex;
+    gap: 48px;
+    flex-wrap: wrap;
+    margin: 32px 0;
+    padding: 24px 0;
     border-top: 1px solid var(--rule);
-    padding-top: 16px;
-  }
-  /* Comparison table */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0 8px;
-    font-size: 15px;
-  }
-  th, td {
-    text-align: left;
-    padding: 12px 16px;
     border-bottom: 1px solid var(--rule);
   }
-  th {
-    color: var(--fg-faint);
-    font-family: ui-monospace, monospace;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-weight: 500;
+  .metric {
+    flex: 1;
+    min-width: 140px;
   }
-  td.num, th.num { text-align: right; font-family: ui-monospace, monospace; }
-  td.accent { color: var(--accent); font-weight: 600; }
-  /* Code block */
-  pre {
-    background: var(--bg-card);
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    padding: 20px;
-    overflow-x: auto;
-    margin: 20px 0;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-  pre code { color: var(--fg); }
-  .comment { color: var(--fg-faint); }
-  .str { color: #f5a067; }
-  /* Pillars grid */
-  .pillars {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-top: 24px;
-  }
-  .pillar {
-    background: var(--bg-card);
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    padding: 24px;
-  }
-  .pillar h3 {
-    margin-top: 0;
-    color: var(--accent);
-    font-family: ui-monospace, monospace;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .pillar p:last-child { margin-bottom: 0; }
-  /* Use cases */
-  .usecases {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-top: 24px;
-  }
-  .usecase {
-    background: var(--bg-card);
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    padding: 24px;
-  }
-  .usecase .vertical {
+  .metric .label {
     font-family: ui-monospace, monospace;
     color: var(--fg-faint);
     font-size: 12px;
@@ -248,35 +145,105 @@
     letter-spacing: 0.06em;
     margin-bottom: 6px;
   }
-  .usecase h3 { font-size: 16px; margin-top: 0; }
-  .usecase p { font-size: 14px; }
-  /* Quote */
-  blockquote {
-    border-left: 3px solid var(--accent);
-    padding: 8px 0 8px 24px;
-    margin: 24px 0;
-    font-size: 17px;
+  .metric .value {
+    font-family: ui-monospace, monospace;
+    font-size: 28px;
     color: var(--fg);
+    font-weight: 500;
   }
+  .metric .value.accent { color: var(--accent); font-size: 32px; }
+  .metric .caption {
+    font-size: 12px;
+    color: var(--fg-faint);
+    margin-top: 4px;
+  }
+  /* Code */
+  pre {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 24px 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  pre code { color: var(--fg); }
+  .c { color: var(--fg-faint); }
+  .s { color: #f5a067; }
+  /* Bullet lists — sparse */
+  ul {
+    list-style: none;
+    margin: 16px 0;
+  }
+  ul li {
+    color: var(--fg-dim);
+    margin-bottom: 10px;
+    padding-left: 20px;
+    position: relative;
+  }
+  ul li::before {
+    content: "·";
+    color: var(--accent);
+    position: absolute;
+    left: 6px;
+    font-weight: bold;
+  }
+  /* Use-case cards */
+  .usecases {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-top: 24px;
+  }
+  .usecase {
+    padding: 24px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .usecase:last-child { border-bottom: none; }
+  .usecase h3 { margin-top: 0; margin-bottom: 6px; font-size: 17px; }
+  .usecase .who {
+    font-family: ui-monospace, monospace;
+    color: var(--fg-faint);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .usecase p { font-size: 15.5px; margin-bottom: 0; }
+  /* CTA */
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 32px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px 22px;
+    border-radius: 6px;
+    font-size: 15px;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .btn-primary { background: var(--accent); color: #0a0a0a; }
+  .btn-primary:hover { background: #82f29a; }
+  .btn-secondary { border: 1px solid var(--rule); color: var(--fg); }
+  .btn-secondary:hover { border-color: var(--fg-faint); }
+  /* Links */
+  a { color: var(--link); }
   /* Footer */
   footer {
+    padding: 48px 0 80px;
     border-top: 1px solid var(--rule);
-    padding: 40px 0;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--fg-faint);
   }
+  footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
   footer a { color: var(--fg-dim); text-decoration: none; }
   footer a:hover { color: var(--fg); }
-  .footer-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-  a { color: var(--link); }
-  ul { margin: 0 0 14px 24px; color: var(--fg-dim); }
-  ul li { margin-bottom: 6px; }
   /* Mobile */
   @media (max-width: 640px) {
-    h1 { font-size: 36px; }
+    h1 { font-size: 38px; }
+    h2 { font-size: 26px; }
     .lede { font-size: 17px; }
-    .metric-grid { grid-template-columns: 1fr 1fr; }
-    .pillars, .usecases { grid-template-columns: 1fr; }
+    .pull { font-size: 18px; }
     .nav-links { display: none; }
   }
 </style>
@@ -287,9 +254,8 @@
   <div class="container">
     <div class="brand">orc</div>
     <div class="nav-links">
-      <a href="#benchmark">Benchmark</a>
-      <a href="#product">Product</a>
-      <a href="#use-cases">Use cases</a>
+      <a href="#story">Why this exists</a>
+      <a href="#orc">What it is</a>
       <a href="#contact">Contact</a>
     </div>
   </div>
@@ -297,250 +263,226 @@
 
 <header class="hero">
   <div class="container">
-    <span class="badge">v0.1.4 · open source · MIT</span>
-    <h1>The verification runtime <br>for AI that has to be <span class="accent">defensible</span>.</h1>
-    <p class="lede">
-      Orc binds every AI claim to evidence you own, enforces chunk-level citations at runtime, and produces a hashed audit bundle a regulator can replay months later. Open source. Model-agnostic. EU AI Act–aligned.
-    </p>
-    <div class="cta-row">
-      <a href="#benchmark" class="btn btn-primary">See the benchmark →</a>
-      <a href="https://github.com/Thormatt/orc" class="btn btn-secondary">GitHub</a>
-    </div>
+    <h1>AI is now making decisions <br>you can't take back.<br><em>Orc makes them defensible.</em></h1>
+    <p class="lede">A small open-source runtime that binds every AI claim to evidence you own — and produces an audit trail a regulator can replay months later.</p>
   </div>
 </header>
 
-<section id="benchmark">
+<!-- ACT 1: THE SHIFT -->
+<section id="story">
   <div class="container">
-    <h2><span class="num">01</span>The headline</h2>
-    <p>Orc scores <strong>F1 = 0.864 on HaluBench</strong> (504-item stratified subsample, source-aware routing) — <strong>above Patronus AI's Lynx-70B home-court F1 of 0.85</strong> on the same benchmark.</p>
-    <p>Achieved with a general-purpose Claude Sonnet 4.6 call <strong>plus a 200-line safe arithmetic evaluator</strong> the model can invoke for numeric claims. <strong>No fine-tuning. No 70B inference cost.</strong></p>
+    <div class="kicker">What's happening</div>
+    <h2>The first generation of AI was about producing answers. The next generation is about defending them.</h2>
 
-    <div class="metric-card">
-      <div class="metric-grid">
-        <div>
-          <div class="label">F1 (PASS)</div>
-          <div class="value headline">0.864</div>
-        </div>
-        <div>
-          <div class="label">Precision</div>
-          <div class="value">0.897</div>
-        </div>
-        <div>
-          <div class="label">Recall</div>
-          <div class="value">0.833</div>
-        </div>
-        <div>
-          <div class="label">Accuracy</div>
-          <div class="value">0.869</div>
-        </div>
-      </div>
-      <div class="metric-caption">HaluBench stratified 504-item subsample · N=503 evaluated · 2026-05-19 · reproducible: <code>uv run python -m benchmarks.faithfulness.run --n 504 --variant source_routed</code></div>
-    </div>
+    <p class="large">For three years the question was: <em>can I get the model to give me a useful answer?</em> Companies wired up ChatGPT, Claude, Copilot. The wins were obvious and the stakes were low.</p>
 
-    <h3>Per-source breakdown</h3>
-    <table>
-      <thead>
-        <tr><th>Source</th><th class="num">n</th><th class="num">F1</th><th>Mode</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>covidQA (medical literature)</td><td class="num">83</td><td class="num accent">0.951</td><td><code>evidence</code></td></tr>
-        <tr><td>FinanceBench (financial reports)</td><td class="num">84</td><td class="num accent">0.916</td><td><code>arithmetic</code></td></tr>
-        <tr><td>RAGTruth (RAG passages)</td><td class="num">84</td><td class="num">0.878</td><td><code>evidence</code></td></tr>
-        <tr><td>pubmedQA (medical research)</td><td class="num">84</td><td class="num">0.865</td><td><code>binary</code></td></tr>
-        <tr><td>halueval (Wikipedia/news)</td><td class="num">84</td><td class="num">0.814</td><td><code>judgment</code></td></tr>
-        <tr><td>DROP (tabular reasoning)</td><td class="num">84</td><td class="num">0.759</td><td><code>binary</code></td></tr>
-      </tbody>
-    </table>
-    <p style="font-size: 14px; margin-top: 16px;">Source-aware routing picks the best verification strategy per domain — a caller passes <code>domain="FinanceBench"</code> and the runtime activates the calculator-tool path. The mapping is empirical, derived from per-source F1 measurements.</p>
+    <p>Then the AI work moved from "draft an email" to "approve a loan." From "summarize this meeting" to "decide which patient gets the trial." From "explain this clause" to "flag this transaction as suspicious." The model started touching decisions that affect people's lives and money — and the people responsible for those decisions started getting asked a different question:</p>
+
+    <p class="pull">"Show me what the model said, why it said it, and prove no one can change the answer after the fact."</p>
+
+    <p>That question is being asked everywhere now. By bank examiners. By healthcare compliance officers. By EU regulators. By plaintiffs' lawyers. By the company's own auditors, six months after the decision was made. And the current AI stack has no good answer.</p>
   </div>
 </section>
 
+<!-- ACT 2: THE GAP -->
 <section>
   <div class="container">
-    <h2><span class="num">02</span>The problem</h2>
-    <p>Every regulated industry buying AI runs into the same wall: <strong>the model's output is not auditable</strong>.</p>
+    <div class="kicker">Why current tools fail this test</div>
+    <h2>The AI you're using today wasn't built to be defensible.</h2>
+
+    <p>Every existing tool was built to solve a different problem:</p>
+
     <ul>
-      <li>The generation tools (ChatGPT, Claude, Glean) produce answers but not artifacts.</li>
-      <li>The agent frameworks (LangChain, LlamaIndex, AutoGen) compose calls but treat verification as an add-on.</li>
-      <li>The observability platforms (LangSmith, Langfuse, Phoenix) record traces designed for debugging, not regulator handoff.</li>
-      <li>The faithfulness judges (Patronus, RAGAS, Vectara HHEM) score answers but don't produce the trail of <em>what</em> got verified <em>against what</em>.</li>
+      <li><strong>The generation tools</strong> (ChatGPT, Claude, Copilot) produce answers. They don't produce evidence.</li>
+      <li><strong>The agent frameworks</strong> (LangChain, LlamaIndex, AutoGen) compose calls. Verification is bolted on as an afterthought.</li>
+      <li><strong>The observability platforms</strong> (LangSmith, Langfuse, Phoenix) record traces — but for engineers debugging, not for regulators auditing.</li>
+      <li><strong>The faithfulness judges</strong> (Patronus, RAGAS, Vectara) score answers after the fact. They don't produce the trail of what was verified against what.</li>
     </ul>
-    <p><strong>The EU AI Act Articles 12, 13, 14 require automatic event logging, transparency to deployers, and human oversight with named-approver decisions.</strong> US frameworks (NIST AI RMF) and sector regulations (HIPAA, SR 11-7, EBA model-risk) are moving the same direction. Today's stack doesn't satisfy any of them out of the box.</p>
+
+    <p>Each of these is good at what it was built for. None of them, on its own, gives the bank compliance officer or the EU AI Act auditor what they actually need: <strong>a single artifact, produced at decision time, that proves what the AI was told, what it concluded, and what evidence it used — that a third party can verify independently months later.</strong></p>
+
+    <p>That artifact doesn't exist in today's stack. That's the gap Orc fills.</p>
   </div>
 </section>
 
-<section id="product">
+<!-- ACT 3: THE NEW CATEGORY -->
+<section id="orc">
   <div class="container">
-    <h2><span class="num">03</span>The product</h2>
-    <p>Orc is a CLI + MCP server that sits between "the model returned a string" and "ship it to the caller." It enforces four invariants by construction:</p>
+    <div class="kicker">A new category</div>
+    <h2>Orc is a verification runtime — the layer between "the model said something" and "ship it."</h2>
 
-    <div class="pillars">
-      <div class="pillar">
-        <h3>01 · Citations</h3>
-        <p>Every verdict cites chunk IDs that <em>exist in the retrieval set</em>. Hallucinated IDs are dropped before the verdict ships — and a <code>supported</code> label can no longer be returned with zero valid citations (downgrades to <code>not_found</code>, the dropped IDs land in the trace).</p>
-        <p style="font-size:13px; color: var(--fg-faint);">Measured: 0 fabricated IDs leaked in 300 adversarial injections.</p>
-      </div>
-      <div class="pillar">
-        <h3>02 · Replay</h3>
-        <p>Every call writes a versioned trace JSON: retrieval set, every LLM call's token + cache metrics, structured output, frozen corpus version. <code>orc replay &lt;run_id&gt;</code> re-executes the exact decision deterministically.</p>
-        <p style="font-size:13px; color: var(--fg-faint);">Schema-validated. Six structural invariants checked per run; current build passes all.</p>
-      </div>
-      <div class="pillar">
-        <h3>03 · Audit bundle</h3>
-        <p><code>orc audit export --include-evidence</code> packs traces, runs, evidence files, workspace DB, multi-approver decisions, and sha256 of every file into a single hashed tar.gz. An external auditor extracts and runs offline — no access to your infra required.</p>
-        <p style="font-size:13px; color: var(--fg-faint);">EU AI Act Article 12 + 26(6) record-keeping satisfied.</p>
-      </div>
-      <div class="pillar">
-        <h3>04 · Approval gate</h3>
-        <p>Any verdict that mutates an external system lands in an approval queue first. <code>approvers_required=2</code> enforced at the SQL level for Article 14 §5 high-risk classifications. Every decision timestamped, reasoned, and bundle-exported.</p>
-        <p style="font-size:13px; color: var(--fg-faint);">Database constraint prevents the same person voting twice.</p>
-      </div>
-    </div>
+    <p>The job is small and specific. Every time the AI is about to produce a decision, Orc:</p>
+
+    <ul>
+      <li>Pulls the relevant evidence from a corpus <strong>you control</strong> — your contracts, your policies, your filings.</li>
+      <li>Asks the model to verify the claim against that evidence — with a structured verdict, not a free-form paragraph.</li>
+      <li><strong>Refuses to cite anything that doesn't exist.</strong> Hallucinated sources get dropped before the verdict reaches you.</li>
+      <li>Writes a versioned trace: the retrieval, the prompt, the response, the corpus version. <strong>Reproducible months later, byte for byte.</strong></li>
+      <li>For decisions that touch the outside world: routes to an approval queue with named-human sign-off.</li>
+    </ul>
+
+    <p>When a regulator asks "what did the AI do on this case?", you hand them a single tarball. They extract it, they re-run the decision against the frozen evidence snapshot, and they get the same answer. That's the artifact.</p>
+
+    <p class="pull">Orc isn't a model. It isn't a framework. It isn't a dashboard. It's the contract between an LLM and the person who has to defend the work product six months later.</p>
   </div>
 </section>
 
+<!-- ACT 4: WHAT IT LOOKS LIKE -->
 <section>
   <div class="container">
-    <h2><span class="num">04</span>How it works</h2>
-    <p>One call, five lines, every artifact:</p>
-<pre><code><span class="comment"># Create a workspace and ingest evidence you own</span>
-$ orc workspace create research
-$ orc ingest ./contracts -w research
+    <div class="kicker">What it looks like</div>
+    <h2>One command. Every artifact.</h2>
 
-<span class="comment"># Verify a claim against the corpus</span>
-$ orc verify <span class="str">"FY2023 EBITDA margin was 18.4%"</span> --domain FinanceBench
+    <pre><code><span class="c"># 1. Create a workspace and ingest evidence you own</span>
+$ orc workspace create credit-memos
+$ orc ingest ./Q3-filings -w credit-memos
 
-<span class="comment"># → SUPPORTED  confidence=0.91</span>
-<span class="comment">#   reasoning: Computed 1247/6783 = 0.184 = 18.4%, matches.</span>
-<span class="comment">#   tool_calls: [{calculate: "1247/6783*100", result: "18.38"}]</span>
-<span class="comment">#   run_id: 01KS0QT1MSV3NZA8ZSJK6VKJ7H</span>
+<span class="c"># 2. Verify a claim against the corpus</span>
+$ orc verify <span class="s">"FY2023 EBITDA margin was 18.4%"</span> -w credit-memos
 
-<span class="comment"># Replay deterministically months later</span>
-$ orc replay 01KS0QT1MSV3NZA8ZSJK6VKJ7H
+<span class="c"># → SUPPORTED  confidence=0.91</span>
+<span class="c">#   reasoning: Computed 1247/6783 = 18.4%, matches the claim.</span>
+<span class="c">#   evidence: filing-2023-Q4.pdf §3 · p.12</span>
+<span class="c">#   run_id: 01KS0QT1MSV3NZA8ZSJK6VKJ7H</span>
 
-<span class="comment"># Hand a regulator a self-contained tarball</span>
-$ orc audit export -w research --include-evidence -o /handoff.tar.gz</code></pre>
-    <p>Also exposed as an MCP server for Claude Code / Codex / any MCP-compatible agent. <code>orc mcp serve</code>.</p>
+<span class="c"># 3. Months later, hand a regulator a self-contained tarball</span>
+$ orc audit export -w credit-memos --include-evidence
+<span class="c"># → audit-credit-memos-20260519.tar.gz</span>
+<span class="c">#   contains every decision, every retrieval, every prompt,</span>
+<span class="c">#   every approval — all hashed, all reproducible.</span></code></pre>
+
+    <p>That's the whole loop. Workspace, ingest, verify, audit. Also available as a Claude Code / Codex MCP server for teams already in those workflows.</p>
   </div>
 </section>
 
-<section id="use-cases">
+<!-- ACT 5: PROOF -->
+<section>
   <div class="container">
-    <h2><span class="num">05</span>Who needs this</h2>
-    <p>The buyer is anyone whose AI work product has to survive a second reviewer six months later.</p>
+    <div class="kicker">Does the verification actually work?</div>
+    <h2>Yes. On the benchmark commercial faithfulness models compete on, Orc just beat the leader.</h2>
+
+    <p>HaluBench is the public benchmark Patronus AI built to evaluate their Lynx-70B faithfulness classifier. On a 504-item stratified subsample of that benchmark:</p>
+
+    <div class="metric-row">
+      <div class="metric">
+        <div class="label">Orc (this build)</div>
+        <div class="value accent">F1 0.864</div>
+        <div class="caption">general-purpose Claude Sonnet, no fine-tuning</div>
+      </div>
+      <div class="metric">
+        <div class="label">Lynx-70B (Patronus)</div>
+        <div class="value">F1 0.850</div>
+        <div class="caption">dedicated 70B fine-tuned classifier</div>
+      </div>
+    </div>
+
+    <p>Orc lands above the dedicated fine-tuned model — with a general-purpose Claude call plus a small safe arithmetic evaluator that the model can invoke when a claim requires computation. The benchmark is fully reproducible (one command, ~$7 of API spend) and the per-source breakdown is public.</p>
+
+    <p>The point isn't the F1 number itself. It's that <strong>you can hit competitive verdict quality and produce the audit artifacts in the same call.</strong> The faithfulness judges produce a score. Orc produces a score plus the trail a regulator can verify.</p>
+  </div>
+</section>
+
+<!-- ACT 6: WHO -->
+<section>
+  <div class="container">
+    <div class="kicker">Who needs this</div>
+    <h2>Anyone whose AI work has to survive a second reviewer.</h2>
 
     <div class="usecases">
       <div class="usecase">
-        <div class="vertical">Financial services</div>
-        <h3>SR 11-7 model risk management</h3>
-        <p>Banks running LLM-assisted credit memos, transaction monitoring narratives, or earnings-call analyses need the exact prompt, retrieval set, and verdict chain reproducible on an examiner's machine. Orc produces the artifact natively.</p>
+        <div class="who">Banks and fintech</div>
+        <h3>Credit decisions, transaction monitoring, regulatory reporting</h3>
+        <p>SR 11-7 model risk management requires reproducing the exact decision a model made. With Orc, the examiner gets a tarball and runs it themselves.</p>
       </div>
 
       <div class="usecase">
-        <div class="vertical">EU enterprises</div>
-        <h3>EU AI Act Article 12, 13, 14</h3>
-        <p>High-risk AI systems deployed in the EU (HR screening, credit decisioning, biometrics) require automatic event logging, transparency to deployers, and multi-approver human oversight. Orc's runtime invariants map 1:1 to the regulatory text.</p>
+        <div class="who">Healthcare and life sciences</div>
+        <h3>Clinical evidence summaries, regulatory submissions</h3>
+        <p>Every claim about a study traces to the paragraph it came from. Pharma teams stop debating whether the AI hallucinated — they can show, byte for byte, what it read.</p>
       </div>
 
       <div class="usecase">
-        <div class="vertical">Healthcare & life sciences</div>
-        <h3>Clinical evidence retrieval, regulatory filings</h3>
-        <p>Pharma teams summarizing clinical trial data or drafting regulatory submissions need every claim traced to the underlying study. Orc's <code>covidQA F1 = 0.95</code> shows the prose-heavy verification path works on medical literature shapes.</p>
+        <div class="who">EU enterprises deploying high-risk AI</div>
+        <h3>HR screening, credit decisioning, biometric verification</h3>
+        <p>The EU AI Act requires automatic event logging, transparency to deployers, and named-human oversight for high-risk systems. Orc's runtime invariants map directly to the regulatory text.</p>
       </div>
 
       <div class="usecase">
-        <div class="vertical">Legal & professional services</div>
+        <div class="who">Legal and professional services</div>
         <h3>Contract review, e-discovery, opinion drafting</h3>
-        <p>Law firms running AI-assisted contract review or e-discovery on confidential corpora need the verification step to cite the exact paragraph, not "the document says." Orc's chunk citations + workspace isolation give them both.</p>
+        <p>An AI-assisted contract review needs to cite the exact clause, not "the document says." Orc's chunk-level citations + workspace isolation give privileged work a chain of custody.</p>
       </div>
 
       <div class="usecase">
-        <div class="vertical">Editorial & research</div>
-        <h3>Long-form journalism, intelligence briefs</h3>
-        <p>Newsrooms and intelligence shops fact-checking AI-drafted reporting need verdicts ("the AI claimed X, our archive says Y") with replayable evidence. Orc is daily-driver shaped for this.</p>
-      </div>
-
-      <div class="usecase">
-        <div class="vertical">Govtech & defense</div>
-        <h3>FOIA, accountability tooling, public records</h3>
-        <p>Agencies and oversight bodies running LLM analyses on public-records archives need an audit trail that survives FOIA requests and judicial review. Single-file, hash-verified bundles are exactly the right shape.</p>
+        <div class="who">Newsrooms and intelligence shops</div>
+        <h3>Fact-checking, source verification, long-form reporting</h3>
+        <p>When an AI-drafted story claims something, the editor can replay the verification against the archive and see exactly which sources were consulted.</p>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ACT 7: WHY NOW -->
 <section>
   <div class="container">
-    <h2><span class="num">06</span>The moat</h2>
-    <p>The judge model is a knob. <strong>The runtime is the moat.</strong></p>
-    <p>Orc's verification path uses <code>verify_claim(model=...)</code>. Swap in Llama 3.3 70B, Lynx (Patronus's own OSS judge), Qwen 2.5 72B, or any OpenAI-compatible endpoint — every artifact above (citations, replay, audit bundle, multi-approver) is unchanged.</p>
-    <p>This is the part the post-hoc judges and the observability platforms can't ship. They optimized one piece. Orc optimized the contract.</p>
+    <div class="kicker">Why now</div>
+    <h2>The regulatory window just opened.</h2>
 
-    <blockquote>
-      Orc's verification scores F1 0.86 on HaluBench — above Patronus AI's Lynx-70B home-court F1 of 0.85 on the same benchmark — using a general-purpose Claude Sonnet 4.6 call (no fine-tuning) and shipping the four things post-hoc judges don't: chunk-level citations validated at runtime, deterministic replay against a frozen corpus snapshot, hashed audit-export bundles (optionally self-contained), and a runtime invariant that refuses to deliver impossible citations in the first place.
-    </blockquote>
+    <p>Three things changed in the last twelve months:</p>
 
-    <h3>Cost structure</h3>
-    <p>Per-verification cost at Sonnet 4.6 rates with prompt caching: <strong>~$0.005–$0.015</strong>. At 10K verifications/day that's ~$36K/year; at 100K/day ~$365K/year. Crossover to self-hosted 70B (Llama / Lynx) hits at ~50K/day. Customers pick the judge based on volume and privacy posture; the runtime never changes.</p>
+    <p><strong>1. The EU AI Act is now in force.</strong> High-risk AI systems deployed in the EU must produce automatic event logs, transparency artifacts for deployers, and named-human oversight records. Articles 12, 13, 14. Penalties are real. Most enterprise AI teams don't yet have a stack that satisfies any of it.</p>
+
+    <p><strong>2. US regulators are moving the same direction.</strong> NIST AI RMF 1.0 is final. Sector regulators — Fed, OCC, CFPB, FDA, EEOC — are publishing AI-specific guidance. The phrase "model risk management" used to apply only to credit scoring; it now applies to everything an LLM touches in regulated industries.</p>
+
+    <p><strong>3. The AI stack matured past chatbots.</strong> Agents, tool use, MCP. Every framework treats verification as a downstream add-on. None of them produce the regulator handoff. There's an open issue on LangChain's GitHub from 2025 explicitly requesting EU-AI-Act-compliant logging. The gap is acknowledged industry-wide.</p>
+
+    <p>Q4 2025 forward, every CISO and chief risk officer is being asked the same question by their board. Orc is the shortest credible path to "we have an answer."</p>
   </div>
 </section>
 
+<!-- ACT 8: WHERE IT IS NOW -->
 <section>
   <div class="container">
-    <h2><span class="num">07</span>Why now</h2>
+    <div class="kicker">Status</div>
+    <h2>Shipped, open-source, in production locally.</h2>
+
+    <p><strong>v0.1.4</strong> (May 2026). CLI + MCP server. 188 tests passing, deterministic replay, hashed audit export, multi-approver workflow. MIT licensed. The full benchmark, every line of the runtime, and the compliance mapping live in public:</p>
+
     <ul>
-      <li><strong>Regulatory inflection.</strong> EU AI Act in force, NIST AI RMF 1.0 final, sector-specific deployer rules landing across financial services and healthcare. Audit-grade artifacts moved from nice-to-have to procurement requirement in 2025–2026.</li>
-      <li><strong>The agentic stack matured.</strong> MCP shipped; agent frameworks proliferated. Every framework treats verification as a downstream add-on — none of them produce the regulator handoff. Documented gap: LangChain's own GitHub has an open issue (<a href="https://github.com/langchain-ai/langchain/issues/35357">#35357</a>) requesting Article-12-compliant logging.</li>
-      <li><strong>The faithfulness benchmark ladder is decided.</strong> Lynx-70B holds the top of the leaderboard at 0.85. Orc's runtime, with a general-purpose Sonnet call and a 200-line calculator, just landed at 0.86. The remaining F1 ceiling is bounded; the artifact moat is wide open.</li>
-      <li><strong>Buyer mindset shifted.</strong> Q4 2025 forward, every CISO and risk officer is being asked the same question by their board: "show me what the model said, why it said it, and prove no one can change the answer after the fact." Orc is the shortest path to a credible answer.</li>
+      <li><a href="https://github.com/Thormatt/orc">github.com/Thormatt/orc</a> — code + benchmarks</li>
+      <li><a href="https://orc-ebon.vercel.app">orc-ebon.vercel.app</a> — live site with the compliance walkthrough</li>
+      <li>One <code>uv pip install</code> away from running on a laptop</li>
     </ul>
+
+    <p>Roadmap from here: hosted runtime for teams, additional verification modes (a calculator was the first; a comparator and a lookup are the next), and pilot deployments with one or two EU-regulated financial-services or healthcare teams. Letters of intent and design-partner conversations open.</p>
   </div>
 </section>
 
-<section>
-  <div class="container">
-    <h2><span class="num">08</span>What's shipped vs what's next</h2>
-    <h3>Shipped (v0.1.4, today)</h3>
-    <ul>
-      <li>Five verification modes (<code>evidence</code>, <code>judgment</code>, <code>binary</code>, <code>decomposed</code>, <code>arithmetic</code>) with source-aware routing.</li>
-      <li>Multi-turn tool-use loop primitive — safe arithmetic evaluator, ready for additional tools (lookup, comparison, etc.).</li>
-      <li>Audit export with optional self-contained bundles for offline regulator handoff.</li>
-      <li>Multi-approver workflow with SQL-enforced uniqueness for EU AI Act Article 14 §5.</li>
-      <li>MCP server + CLI. Drop-in compatible with Claude Code, Codex, any MCP-enabled agent.</li>
-      <li>188-test suite, deterministic replay, hashed manifests, zero-cost local development.</li>
-    </ul>
-
-    <h3>Roadmap</h3>
-    <ul>
-      <li><strong>Hosted runtime</strong> with scheduled triggers, team workspaces, and a web dashboard for non-technical reviewers.</li>
-      <li><strong><code>gads</code>, <code>legal</code>, <code>marketing</code> directives</strong> on the same runtime — each one a config + skill package, not a new product.</li>
-      <li><strong>Embedding-based retrieval</strong> (Voyage / local sentence-transformers) + hybrid RRF.</li>
-      <li><strong><code>orc eval consistency | perturb | regression</code></strong> — reliability instrumentation for production deployments.</li>
-      <li><strong>Customer pilots</strong> with EU-deployed financial-services and healthcare teams. Letters of intent welcomed; reach out.</li>
-    </ul>
-  </div>
-</section>
-
+<!-- ACT 9: CONTACT -->
 <section id="contact">
   <div class="container">
-    <h2><span class="num">09</span>Get in touch</h2>
-    <p>Orc is being built by <strong>Thor Matthíasson</strong>. Background in <em>[fill in]</em>; reachable at <a href="mailto:thormatt@gmail.com">thormatt@gmail.com</a>.</p>
-    <p>If you're a VC: I'm not actively fundraising as of this writing — the code and the benchmark are the artifact, and the next 90 days are about getting one EU regulated-industry customer in production. If that timeline aligns with your stage thesis, the conversation starts there, not at the pitch deck.</p>
-    <p>If you're a potential design partner: I'd much rather hear about your audit-trail-shaped problem than send you a deck. Email me with what you're verifying and how it gets reviewed today; I'll respond with a 15-minute call.</p>
-    <p>If you're a developer or open-source contributor: the repo is at <a href="https://github.com/Thormatt/orc">github.com/Thormatt/orc</a>. MIT licensed. PRs welcome; CI runs on every push.</p>
+    <div class="kicker">Get in touch</div>
+    <h2>If any of this matches a problem you have.</h2>
+
+    <p><strong>If you're a potential design partner</strong> — a bank, a hospital system, a law firm, an EU-deployed AI team — I'd rather hear what you're verifying today and how it gets reviewed than send you a deck. Email me with the shape of the problem; I'll respond with a 15-minute call.</p>
+
+    <p><strong>If you're a VC or strategic investor</strong> — I'm not actively running a process. The next 90 days are about getting one regulated-industry customer into production against this build. If that timeline aligns with your thesis, the conversation starts there.</p>
+
+    <p><strong>If you're a developer or open-source contributor</strong> — the repo is MIT, the tests run in two seconds, the docs are in the repo. PRs welcome.</p>
+
+    <div class="cta-row">
+      <a href="mailto:thormatt@gmail.com" class="btn btn-primary">Email →</a>
+      <a href="https://github.com/Thormatt/orc" class="btn btn-secondary">GitHub</a>
+    </div>
   </div>
 </section>
 
 <footer>
   <div class="container">
-    <div class="footer-row">
-      <div>
-        <strong style="color: var(--fg);">orc</strong> · <a href="https://github.com/Thormatt/orc">github</a> · <a href="https://orc-ebon.vercel.app">orc-ebon.vercel.app</a> · MIT
-      </div>
-      <div>
-        Built openly. Benchmarks reproducible. No marketing claims that don't survive <code>uv run python -m benchmarks.faithfulness.run</code>.
-      </div>
+    <div>
+      <strong style="color: var(--fg);">orc</strong> · built by Thor Matthíasson · <a href="https://github.com/Thormatt/orc">github</a> · <a href="https://orc-ebon.vercel.app">live site</a>
     </div>
+    <div>MIT · v0.1.4 · 2026</div>
   </div>
 </footer>
 
