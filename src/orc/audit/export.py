@@ -45,7 +45,7 @@ from typing import Any
 from orc import __version__
 from orc.core.clock import now_iso
 from orc.errors import WorkspaceNotFoundError
-from orc.paths import workspace_db_path, workspace_traces_dir
+from orc.paths import workspace_db_path, workspace_evidence_dir, workspace_traces_dir
 from orc.runs.trace_schema import (
     SUPPORTED_TRACE_SCHEMA_VERSIONS,
     assert_supported,
@@ -76,6 +76,7 @@ class ExportManifest:
     trace_schema_versions_supported: list[int]
     trace_schema_versions_seen: list[int]
     counts: dict[str, int]
+    self_contained: bool = False
     files: dict[str, str] = field(default_factory=dict)  # path -> sha256
 
     def to_json(self) -> str:
@@ -91,11 +92,19 @@ def export_workspace(
     output_path: Path,
     range_from: str | None = None,
     range_to: str | None = None,
+    include_evidence: bool = False,
 ) -> ExportManifest:
     """Bundle a workspace's audit-relevant state into a tar.gz at `output_path`.
 
     range_from / range_to filter by `run.started_at` (ISO 8601 strings,
     inclusive). They also filter approvals by `created_at`.
+
+    When include_evidence=True the bundle also contains the workspace SQLite DB
+    and every ingested evidence file (mounted under `workspace/`). The bundle
+    is then self-contained: extract `workspace/` to ~/.orc/workspaces/<name>/
+    and `orc replay <run_id>` runs without access to the original workspace.
+    Default false to keep bundles light; opt in for external auditor handoff
+    where the recipient has no access to the operator's infra.
 
     Returns the manifest written into the bundle. Raises AuditExportError
     on any problem that would make the bundle unsafe to ship.
@@ -126,6 +135,14 @@ def export_workspace(
     for rel_path, payload in trace_payloads.items():
         files[rel_path] = json.dumps(payload, indent=2).encode("utf-8")
 
+    evidence_files_count = 0
+    if include_evidence:
+        evidence_blobs = _collect_evidence_blobs(ws.name)
+        evidence_files_count = sum(
+            1 for k in evidence_blobs if k.startswith("workspace/evidence/")
+        )
+        files.update(evidence_blobs)
+
     manifest = ExportManifest(
         export_manifest_version=EXPORT_MANIFEST_VERSION,
         orc_version=__version__,
@@ -137,12 +154,14 @@ def export_workspace(
         range_to=range_to,
         trace_schema_versions_supported=list(SUPPORTED_TRACE_SCHEMA_VERSIONS),
         trace_schema_versions_seen=sorted(schema_versions_seen),
+        self_contained=include_evidence,
         counts={
             "runs": len(runs),
             "evidence": len(evidence),
             "approvals": len(approvals),
             "approval_decisions": len(decisions),
             "trace_files": len(trace_payloads),
+            "evidence_files": evidence_files_count,
         },
     )
     for path, data in sorted(files.items()):
@@ -217,6 +236,28 @@ def _collect_evidence(name: str) -> list[dict[str, Any]]:
             "FROM evidence ORDER BY ingested_at ASC, evidence_id ASC"
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def _collect_evidence_blobs(name: str) -> dict[str, bytes]:
+    """Read the workspace SQLite DB + every ingested evidence file.
+
+    Returns paths keyed under `workspace/` so an auditor can extract that
+    subtree directly into `~/.orc/workspaces/<name>/` and replay against it.
+    Skips missing files silently (warning) — the manifest's `evidence.csv`
+    still records the missing rows.
+    """
+    blobs: dict[str, bytes] = {}
+    db_path = workspace_db_path(name)
+    if db_path.exists():
+        blobs["workspace/orc.db"] = db_path.read_bytes()
+    evidence_root = workspace_evidence_dir(name)
+    if evidence_root.exists():
+        for path in sorted(evidence_root.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(evidence_root)
+            blobs[f"workspace/evidence/{rel.as_posix()}"] = path.read_bytes()
+    return blobs
 
 
 def _collect_approvals(
@@ -389,17 +430,35 @@ def _render_readme(m: ExportManifest) -> str:
         "- `approvals.csv` — approval queue + per-approver decisions.\n"
         "- `traces/<YYYY>/<MM>/<run_id>.json` — full trace JSON for every "
         "included Run.\n"
-        "\n"
+        + (
+            "- `workspace/orc.db` — workspace SQLite database (corpus state, runs, "
+            "approvals).\n"
+            "- `workspace/evidence/...` — every ingested evidence file, mounted "
+            "under the same relative path as in the original workspace.\n"
+            if m.self_contained
+            else ""
+        )
+        + "\n"
         "## Reproducing a Run\n"
-        "This bundle is an *inspectable* handoff: every Run's full trace JSON,\n"
-        "retrieval set, LLM-call usage, and verdict is present and hashed.\n"
-        "Bit-exact `orc replay` requires the original workspace database and\n"
-        "evidence files — the bundle does not include those, so re-execution\n"
-        "happens against the workspace that produced the trace. `effective_kwargs`\n"
-        "(v2 traces) pin the manifest defaults in force at the time of the\n"
-        "original run, so a later manifest change does not silently shift\n"
-        "behavior on replay.\n"
-        "\n"
+        + (
+            "This bundle is **self-contained**. Extract the `workspace/` subtree\n"
+            "to `~/.orc/workspaces/<name>/` and `orc replay <run_id> --workspace\n"
+            "<name>` runs end-to-end with no dependency on the operator's infra.\n"
+            "`effective_kwargs` (v2 traces) pin the manifest defaults in force at\n"
+            "the time of the original run, so a later manifest change does not\n"
+            "silently shift behavior on replay.\n"
+            if m.self_contained
+            else "This bundle is an *inspectable* handoff: every Run's full trace JSON,\n"
+            "retrieval set, LLM-call usage, and verdict is present and hashed.\n"
+            "Bit-exact `orc replay` requires the original workspace database and\n"
+            "evidence files — the bundle does not include those, so re-execution\n"
+            "happens against the workspace that produced the trace. (Re-export with\n"
+            "`--include-evidence` if the auditor needs offline replay.)\n"
+            "`effective_kwargs` (v2 traces) pin the manifest defaults in force at\n"
+            "the time of the original run, so a later manifest change does not\n"
+            "silently shift behavior on replay.\n"
+        )
+        + "\n"
         "## Integrity\n"
         "Every file in this tarball except `manifest.json` is hashed in\n"
         "`manifest.json` (manifest.json cannot hash itself). Verify with:\n"

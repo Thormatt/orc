@@ -131,6 +131,45 @@ def test_export_manifest_hashes_match_file_contents(
         assert actual == expected_hash, f"hash mismatch for {path}"
 
 
+def test_export_default_bundle_does_not_include_workspace_db_or_evidence(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default export must stay light — no workspace DB, no evidence files.
+    Compliance buyers opt in to self-contained bundles with --include-evidence."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit.tar.gz"
+    manifest = export_workspace(name, output_path=out)
+
+    members = _untar(out)
+    workspace_members = [m for m in members if m.startswith("workspace/")]
+    assert workspace_members == []
+    assert manifest.self_contained is False
+
+
+def test_export_include_evidence_bundles_db_and_evidence(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With --include-evidence the tarball must carry workspace/orc.db plus
+    every ingested evidence file, all hashed in manifest.files."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-full.tar.gz"
+    manifest = export_workspace(name, output_path=out, include_evidence=True)
+
+    assert manifest.self_contained is True
+    members = _untar(out)
+    assert "workspace/orc.db" in members
+    evidence_members = [m for m in members if m.startswith("workspace/evidence/")]
+    assert len(evidence_members) >= 1, f"no evidence files in bundle: {list(members)}"
+
+    # Every workspace/* file is hashed and the hashes match the actual bytes.
+    for path in [*evidence_members, "workspace/orc.db"]:
+        assert path in manifest.files, f"{path} missing from manifest.files"
+        actual = hashlib.sha256(members[path]).hexdigest()
+        assert actual == manifest.files[path], f"hash mismatch for {path}"
+
+
 def test_export_manifest_hashes_cover_every_tar_member_except_manifest(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
