@@ -211,6 +211,193 @@
     margin-bottom: 6px;
   }
   .usecase p { font-size: 15.5px; margin-bottom: 0; }
+
+  /* === SCENARIO COMPARISON === */
+  .scenario {
+    margin: 32px 0;
+  }
+  .scenario-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .scenario-tab {
+    background: transparent;
+    border: none;
+    color: var(--fg-faint);
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+  .scenario-tab:hover { color: var(--fg-dim); }
+  .scenario-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .scenario-prompt {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    color: var(--fg);
+  }
+  .scenario-prompt .ask {
+    color: var(--fg-faint);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .scenario-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .compare-col {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .compare-col.bad { border-color: #3a1f1f; }
+  .compare-col.good { border-color: var(--accent-dim); }
+  .compare-header {
+    padding: 12px 18px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .compare-col.bad .compare-header { color: #d88b8b; background: rgba(58, 31, 31, 0.3); }
+  .compare-col.good .compare-header { color: var(--accent); background: rgba(74, 154, 90, 0.08); }
+  .compare-body {
+    padding: 18px;
+    font-size: 14px;
+    line-height: 1.55;
+    flex-grow: 1;
+  }
+  .compare-body .answer {
+    color: var(--fg);
+    margin-bottom: 14px;
+  }
+  .compare-body .meta-row {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--fg-faint);
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--rule);
+  }
+  .compare-body .meta-row.has { color: var(--fg-dim); }
+  .compare-body .tag {
+    display: inline-block;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: 2px 4px 2px 0;
+    font-size: 11px;
+    color: var(--fg-dim);
+  }
+  .compare-body .tag.accent { color: var(--accent); border-color: var(--accent-dim); }
+  .compare-body .verdict {
+    display: inline-block;
+    background: rgba(110, 231, 135, 0.1);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    margin-bottom: 12px;
+    letter-spacing: 0.04em;
+  }
+  .compare-body .missing {
+    color: #d88b8b;
+    font-style: italic;
+    font-size: 13px;
+  }
+  .compare-body .source-quote {
+    background: var(--bg);
+    border-left: 2px solid var(--accent-dim);
+    padding: 8px 12px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: var(--fg-dim);
+    font-style: italic;
+  }
+  /* Diagram */
+  .flow-diagram {
+    margin: 32px 0;
+    padding: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    min-width: 580px;
+  }
+  .flow-node {
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--fg-dim);
+    text-align: center;
+    min-width: 80px;
+  }
+  .flow-node.orc {
+    border-color: var(--accent-dim);
+    background: rgba(74, 154, 90, 0.08);
+    color: var(--accent);
+    padding: 16px 18px;
+    position: relative;
+  }
+  .flow-node.orc .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .flow-node.orc .sub {
+    color: var(--fg-dim);
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .flow-arrow {
+    color: var(--fg-faint);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  @media (max-width: 640px) {
+    .scenario-compare { grid-template-columns: 1fr; }
+    .scenario-tab { padding: 10px 12px; font-size: 13px; }
+  }
+
   /* CTA */
   .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 32px; }
   .btn {
@@ -302,6 +489,88 @@
     <p>Each of these is good at what it was built for. None of them, on its own, gives the bank compliance officer or the EU AI Act auditor what they actually need: <strong>a single artifact, produced at decision time, that proves what the AI was told, what it concluded, and what evidence it used — that a third party can verify independently months later.</strong></p>
 
     <p>That artifact doesn't exist in today's stack. That's the gap Orc fills.</p>
+  </div>
+</section>
+
+<!-- ACT 2.5: VISUAL — SEE THE DIFFERENCE -->
+<section>
+  <div class="container">
+    <div class="kicker">See the difference</div>
+    <h2>The same AI claim, with and without a verification runtime.</h2>
+
+    <p>Pick a scenario. Look at what your AI gives you today versus what Orc gives you. The difference is what a regulator or auditor needs.</p>
+
+    <div class="scenario">
+      <div class="scenario-tabs" role="tablist">
+        <button class="scenario-tab active" data-scenario="bank" role="tab" aria-selected="true">🏦 Bank credit memo</button>
+        <button class="scenario-tab" data-scenario="health" role="tab">🏥 Clinical evidence</button>
+        <button class="scenario-tab" data-scenario="legal" role="tab">⚖️ Contract review</button>
+      </div>
+
+      <div class="scenario-prompt" id="scenario-prompt">
+        <div class="ask">Analyst asks the AI</div>
+        <div id="prompt-text">"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."</div>
+      </div>
+
+      <div class="scenario-compare">
+        <div class="compare-col bad">
+          <div class="compare-header">✕ Today, with a typical AI stack</div>
+          <div class="compare-body">
+            <div class="answer" id="bad-answer">
+              "Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."
+            </div>
+            <div class="meta-row">
+              <span class="missing">No source citation</span><br>
+              <span class="missing">No way to replay this decision</span><br>
+              <span class="missing">No audit trail for the examiner</span><br>
+              <span class="missing">No way to verify it tomorrow</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="compare-col good">
+          <div class="compare-header">✓ With Orc</div>
+          <div class="compare-body">
+            <div class="verdict" id="good-verdict">SUPPORTED · confidence 0.91</div>
+            <div class="answer" id="good-answer">
+              "Computed 1247 / 6783 × 100 = 18.38%. Matches the claim within rounding."
+            </div>
+            <div class="source-quote" id="good-source">
+              "Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023."
+              <br><span style="font-size:11px; color: var(--fg-faint);">— filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT...</span>
+            </div>
+            <div class="meta-row has">
+              <span class="tag accent">cited</span>
+              <span class="tag accent">replayable</span>
+              <span class="tag accent">audited</span>
+              <span class="tag">run_id 01KS0QT1...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 32px;">The left side is what you have today. The right side is the artifact a bank examiner, an EU AI Act auditor, or a court asks for. Orc's runtime invariants guarantee that a verdict <em>structurally cannot</em> exist without its evidence — so the right side is the only output the system can ship.</p>
+
+    <h3 style="margin-top: 40px;">Where Orc sits in the call</h3>
+    <p>Orc is a thin layer between the LLM and whatever consumes its output. The model still does the language work — Orc owns the retrieval, the verdict structure, and the trail.</p>
+
+    <div class="flow-diagram">
+      <div class="flow-row">
+        <div class="flow-node">Claim</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node orc">
+          <div class="label">orc</div>
+          <div class="sub">retrieve · cite<br>verify · trace<br>approve · audit</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Verdict</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-node">Citations</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-node">Audit bundle</div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -476,6 +745,66 @@ $ orc audit export -w credit-memos --include-evidence
     </div>
   </div>
 </section>
+
+<script>
+  // Scenario tab switcher — three concrete examples that ground "what does Orc
+  // give you that you don't have today" in a story a buyer recognizes.
+  const SCENARIOS = {
+    bank: {
+      prompt: '"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."',
+      badAnswer: '"Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."',
+      verdict: 'SUPPORTED · confidence 0.91',
+      goodAnswer: '"Computed 1247 / 6783 × 100 = 18.38%. Matches the claim within rounding."',
+      sourceText: '"Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023."',
+      sourceRef: '— filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT...',
+    },
+    health: {
+      prompt: '"Does the trial data show Drug X reduced LDL by more than 30% vs placebo at week 12?"',
+      badAnswer: '"Yes, the trial appears to show a significant reduction in LDL cholesterol compared to placebo at the week 12 endpoint."',
+      verdict: 'SUPPORTED · confidence 0.94',
+      goodAnswer: '"Trial reports LDL-C reduction of 38.2% (Drug X) vs 4.1% (placebo) at week 12, p<0.001. The 30% threshold is met."',
+      sourceText: '"At week 12, mean LDL-C reduction was 38.2% in the Drug X arm (n=412) vs 4.1% in the placebo arm (n=408); p < 0.001."',
+      sourceRef: '— trial-NCT04xxxxxx.pdf §Results 4.2 · chunk 01KS0QT...',
+    },
+    legal: {
+      prompt: '"Does the master service agreement contain a unilateral termination clause for the customer?"',
+      badAnswer: '"It looks like the MSA does allow the customer to terminate. There appears to be language permitting cancellation."',
+      verdict: 'SUPPORTED · confidence 0.88',
+      goodAnswer: '"Section 12.3 grants the Customer the right to terminate for convenience on 30 days written notice. The Supplier has no equivalent right — termination is unilateral."',
+      sourceText: '"Customer may terminate this Agreement for convenience at any time upon thirty (30) days prior written notice to Supplier..."',
+      sourceRef: '— msa-acme-2024.pdf §12.3 · p.18 · chunk 01KS0QT...',
+    },
+  };
+
+  const tabs = document.querySelectorAll('.scenario-tab');
+  const promptEl = document.getElementById('prompt-text');
+  const badAnswerEl = document.getElementById('bad-answer');
+  const verdictEl = document.getElementById('good-verdict');
+  const goodAnswerEl = document.getElementById('good-answer');
+  const sourceEl = document.getElementById('good-source');
+
+  function applyScenario(key) {
+    const s = SCENARIOS[key];
+    if (!s) return;
+    promptEl.textContent = s.prompt;
+    badAnswerEl.textContent = s.badAnswer;
+    verdictEl.textContent = s.verdict;
+    goodAnswerEl.textContent = s.goodAnswer;
+    sourceEl.innerHTML = s.sourceText + '<br><span style="font-size:11px; color: var(--fg-faint);">' + s.sourceRef + '</span>';
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      applyScenario(tab.dataset.scenario);
+    });
+  });
+</script>
 
 <footer>
   <div class="container">
