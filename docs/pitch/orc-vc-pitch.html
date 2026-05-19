@@ -4,434 +4,785 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Orc — make AI decisions defensible</title>
-<meta name="description" content="AI is now making decisions you can't take back. Orc makes them defensible — by binding every output to evidence you own, and producing an audit trail a regulator can replay." />
+<meta name="description" content="The verification runtime for AI that has to be defensible. F1 0.864 on HaluBench, above Lynx-70B home-court. Open source." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
 <style>
   :root {
-    --bg: #0a0a0a;
-    --bg-card: #141414;
-    --fg: #ededed;
-    --fg-dim: #a8a8a8;
-    --fg-faint: #6a6a6a;
-    --accent: #6ee787;
-    --accent-dim: #4a9a5a;
-    --rule: #1f1f1f;
-    --link: #8ab4ff;
+    --ink:        #0c0c10;
+    --ink-2:      #131319;
+    --ink-3:      #1a1a22;
+    --cream:      #f3eddf;
+    --cream-dim:  #c8c1b3;
+    --cream-mid:  #8c8678;
+    --cream-faint:#5b554a;
+    --amber:      #d4a85a;
+    --amber-dim:  #8d7236;
+    --rust:       #b85c3c;
+    --rule:       #232229;
+    --rule-warm:  #2d2922;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-    line-height: 1.65;
-    font-size: 17px;
+    background: var(--ink);
+    color: var(--cream);
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 19px;
+    line-height: 1.55;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    background-image:
+      radial-gradient(ellipse at top, rgba(212,168,90,0.06), transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(184,92,60,0.04), transparent 50%);
+    background-attachment: fixed;
   }
-  code, .mono {
-    font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
-    font-size: 0.92em;
+
+  /* Subtle paper noise */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
+
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-feature-settings: 'ss01' 1, 'ss02' 1; }
+  .display { font-family: 'Fraunces', Georgia, serif; font-feature-settings: 'ss01' 1, 'liga' 1, 'dlig' 1; }
+  .serif { font-family: 'Newsreader', Georgia, serif; }
+
   .container {
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
-    padding: 0 28px;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
   }
-  /* Header */
+
+  /* === NAV === */
   nav {
     padding: 24px 0;
     position: sticky;
     top: 0;
-    background: rgba(10,10,10,0.85);
-    backdrop-filter: blur(10px);
-    z-index: 10;
+    background: rgba(12, 12, 16, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 100;
+    border-bottom: 1px solid rgba(212, 168, 90, 0.08);
   }
-  nav .container { display: flex; justify-content: space-between; align-items: center; }
+  nav .container { display: flex; justify-content: space-between; align-items: baseline; }
   .brand {
-    font-family: ui-monospace, monospace;
-    font-weight: 600;
-    font-size: 17px;
-    letter-spacing: -0.02em;
-  }
-  .brand::after { content: "."; color: var(--accent); }
-  .nav-links a {
-    color: var(--fg-dim);
-    text-decoration: none;
-    font-size: 14px;
-    margin-left: 24px;
-  }
-  .nav-links a:hover { color: var(--fg); }
-  /* Hero — minimal */
-  .hero { padding: 100px 0 80px; }
-  h1 {
-    font-size: 56px;
+    font-family: 'Fraunces', serif;
     font-weight: 500;
-    letter-spacing: -0.035em;
-    line-height: 1.05;
-    margin-bottom: 32px;
-  }
-  h1 em {
-    font-style: normal;
-    color: var(--accent);
-  }
-  .lede {
-    font-size: 20px;
-    color: var(--fg-dim);
-    max-width: 600px;
-    margin-bottom: 48px;
-  }
-  /* Sections — narrative-first */
-  section { padding: 64px 0; border-top: 1px solid var(--rule); }
-  .kicker {
-    font-family: ui-monospace, monospace;
-    color: var(--accent);
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 16px;
-  }
-  h2 {
-    font-size: 32px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    margin-bottom: 24px;
-  }
-  h3 {
-    font-size: 19px;
-    font-weight: 600;
-    margin-top: 32px;
-    margin-bottom: 10px;
-    color: var(--fg);
-  }
-  p {
-    margin-bottom: 18px;
-    color: var(--fg-dim);
-  }
-  p:last-child { margin-bottom: 0; }
-  p strong { color: var(--fg); font-weight: 600; }
-  p.large {
-    font-size: 19px;
-    color: var(--fg);
-  }
-  /* Pull-quote */
-  .pull {
+    font-style: italic;
     font-size: 22px;
-    line-height: 1.4;
-    color: var(--fg);
-    border-left: 2px solid var(--accent);
-    padding: 4px 0 4px 24px;
-    margin: 32px 0;
+    letter-spacing: -0.02em;
+    color: var(--cream);
+  }
+  .brand::after { content: "·"; color: var(--amber); margin-left: 3px; font-style: normal; }
+  .nav-links a {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--cream-mid);
+    text-decoration: none;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-left: 28px;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--amber); }
+
+  /* === HERO === */
+  .hero { padding: 120px 0 100px; position: relative; }
+  .hero .article-no {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--cream-faint);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .hero .article-no::after {
+    content: "";
+    flex: 1;
+    max-width: 120px;
+    height: 1px;
+    background: var(--cream-faint);
+  }
+  h1.hero-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(48px, 7vw, 88px);
+    font-weight: 350;
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    margin-bottom: 40px;
+    font-variation-settings: "SOFT" 30, "opsz" 144;
+  }
+  h1.hero-title em {
+    font-style: italic;
+    color: var(--amber);
+    font-weight: 300;
+    font-variation-settings: "SOFT" 80, "opsz" 144;
+  }
+  h1.hero-title .break { display: block; }
+
+  .hero .lede {
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--cream-dim);
+    max-width: 620px;
+    margin-bottom: 48px;
     font-weight: 400;
   }
-  /* Metric */
-  .metric-row {
+  .hero .lede .dropcap {
+    float: left;
+    font-family: 'Fraunces', serif;
+    font-size: 78px;
+    line-height: 0.85;
+    color: var(--amber);
+    padding: 8px 12px 0 0;
+    font-weight: 300;
+    font-style: italic;
+  }
+
+  .hero-meta {
     display: flex;
-    gap: 48px;
-    flex-wrap: wrap;
-    margin: 32px 0;
-    padding: 24px 0;
-    border-top: 1px solid var(--rule);
-    border-bottom: 1px solid var(--rule);
-  }
-  .metric {
-    flex: 1;
-    min-width: 140px;
-  }
-  .metric .label {
-    font-family: ui-monospace, monospace;
-    color: var(--fg-faint);
-    font-size: 12px;
+    gap: 32px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 6px;
+    letter-spacing: 0.16em;
+    color: var(--cream-faint);
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-warm);
   }
-  .metric .value {
-    font-family: ui-monospace, monospace;
-    font-size: 28px;
-    color: var(--fg);
+  .hero-meta span strong { color: var(--cream-dim); font-weight: 500; }
+
+  /* Verified stamp graphic */
+  .stamp {
+    position: absolute;
+    top: 140px;
+    right: -40px;
+    width: 200px;
+    height: 200px;
+    opacity: 0.15;
+    transform: rotate(-12deg);
+    pointer-events: none;
+    animation: stamp-fade 1.4s ease-out;
+  }
+  @keyframes stamp-fade {
+    0% { opacity: 0; transform: rotate(-12deg) scale(1.4); }
+    60% { opacity: 0.25; transform: rotate(-12deg) scale(0.95); }
+    100% { opacity: 0.15; transform: rotate(-12deg) scale(1); }
+  }
+  @media (max-width: 940px) { .stamp { display: none; } }
+
+  /* === SECTIONS === */
+  section { padding: 100px 0; position: relative; }
+  section + section { border-top: 1px solid var(--rule); }
+
+  .section-no {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--amber);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .section-no::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--amber);
+  }
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(32px, 4.5vw, 46px);
+    font-weight: 350;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    margin-bottom: 32px;
+    font-variation-settings: "SOFT" 40, "opsz" 96;
+  }
+  h2 em {
+    font-style: italic;
+    color: var(--amber);
+    font-weight: 300;
+  }
+  h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
     font-weight: 500;
+    margin-top: 40px;
+    margin-bottom: 12px;
+    color: var(--cream);
+    letter-spacing: -0.01em;
   }
-  .metric .value.accent { color: var(--accent); font-size: 32px; }
-  .metric .caption {
-    font-size: 12px;
-    color: var(--fg-faint);
-    margin-top: 4px;
+  p {
+    margin-bottom: 22px;
+    color: var(--cream-dim);
   }
-  /* Code */
-  pre {
-    background: var(--bg-card);
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    padding: 20px;
-    overflow-x: auto;
+  p:last-child { margin-bottom: 0; }
+  p strong { color: var(--cream); font-weight: 500; }
+  p em { color: var(--cream); font-style: italic; }
+  p.large {
+    font-size: 22px;
+    line-height: 1.5;
+    color: var(--cream);
+  }
+
+  /* Pull-quote */
+  .pull {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    line-height: 1.25;
+    color: var(--cream);
+    font-weight: 350;
+    font-style: italic;
+    border-left: 2px solid var(--amber);
+    padding: 8px 0 8px 28px;
+    margin: 40px 0;
+    font-variation-settings: "SOFT" 60, "opsz" 96;
+  }
+  .pull::before { content: "“"; color: var(--amber); margin-left: -8px; }
+  .pull::after { content: "”"; color: var(--amber); }
+
+  /* Marginalia */
+  .margin-note {
+    background: rgba(212, 168, 90, 0.04);
+    border-left: 2px solid var(--amber-dim);
+    padding: 14px 18px;
     margin: 24px 0;
-    font-size: 13.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--cream-mid);
     line-height: 1.6;
   }
-  pre code { color: var(--fg); }
-  .c { color: var(--fg-faint); }
-  .s { color: #f5a067; }
-  /* Bullet lists — sparse */
-  ul {
+  .margin-note .tag {
+    color: var(--amber);
+    font-weight: 500;
+    margin-right: 8px;
+  }
+
+  /* Bullet lists */
+  ul.styled {
     list-style: none;
-    margin: 16px 0;
+    margin: 28px 0;
+    padding: 0;
   }
-  ul li {
-    color: var(--fg-dim);
-    margin-bottom: 10px;
-    padding-left: 20px;
+  ul.styled li {
+    color: var(--cream-dim);
+    margin-bottom: 18px;
+    padding-left: 32px;
     position: relative;
+    line-height: 1.55;
   }
-  ul li::before {
-    content: "·";
-    color: var(--accent);
+  ul.styled li::before {
+    content: "§";
+    font-family: 'Fraunces', serif;
+    color: var(--amber);
     position: absolute;
-    left: 6px;
-    font-weight: bold;
+    left: 0;
+    font-size: 20px;
+    line-height: 1;
+    top: 2px;
   }
-  /* Use-case cards */
-  .usecases {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0;
-    margin-top: 24px;
+  ul.styled li strong { color: var(--cream); }
+
+  /* === HEADLINE METRIC — huge numerals === */
+  .metric-block {
+    margin: 40px 0;
+    padding: 48px 40px;
+    background: linear-gradient(180deg, rgba(212,168,90,0.04), rgba(184,92,60,0.02));
+    border: 1px solid var(--rule-warm);
+    border-radius: 4px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
   }
-  .usecase {
-    padding: 24px 0;
-    border-bottom: 1px solid var(--rule);
+  .metric-block::before, .metric-block::after {
+    content: "";
+    position: absolute;
+    width: 20px; height: 20px;
+    border: 1px solid var(--amber-dim);
   }
-  .usecase:last-child { border-bottom: none; }
-  .usecase h3 { margin-top: 0; margin-bottom: 6px; font-size: 17px; }
-  .usecase .who {
-    font-family: ui-monospace, monospace;
-    color: var(--fg-faint);
-    font-size: 12px;
+  .metric-block::before { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+  .metric-block::after { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+
+  .metric-block .compare-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+  .metric-cell .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 6px;
+    letter-spacing: 0.18em;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
   }
-  .usecase p { font-size: 15.5px; margin-bottom: 0; }
+  .metric-cell .numeral {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(72px, 12vw, 120px);
+    font-weight: 300;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    color: var(--cream);
+    font-variation-settings: "SOFT" 20, "opsz" 144;
+    font-feature-settings: 'lnum' 1;
+  }
+  .metric-cell.win .numeral { color: var(--amber); }
+  .metric-cell .caption {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-mid);
+    margin-top: 14px;
+    letter-spacing: 0.06em;
+  }
+  .metric-cell .vs {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--cream-faint);
+    font-size: 16px;
+    align-self: center;
+    padding-bottom: 30px;
+  }
+  .metric-block .footnote {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-faint);
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule-warm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
 
   /* === SCENARIO COMPARISON === */
   .scenario {
-    margin: 32px 0;
+    margin: 40px 0;
   }
   .scenario-tabs {
     display: flex;
-    gap: 4px;
-    margin-bottom: 0;
+    gap: 0;
     border-bottom: 1px solid var(--rule);
   }
   .scenario-tab {
     background: transparent;
     border: none;
-    color: var(--fg-faint);
-    padding: 12px 16px;
-    font-family: inherit;
-    font-size: 14px;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
-    margin-bottom: -1px;
-  }
-  .scenario-tab:hover { color: var(--fg-dim); }
-  .scenario-tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-  .scenario-prompt {
-    background: var(--bg-card);
-    border: 1px solid var(--rule);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    padding: 18px 22px;
-    margin-bottom: 24px;
-    font-family: ui-monospace, monospace;
-    font-size: 14px;
-    color: var(--fg);
-  }
-  .scenario-prompt .ask {
-    color: var(--fg-faint);
+    color: var(--cream-mid);
+    padding: 14px 22px;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 6px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+  }
+  .scenario-tab:hover { color: var(--cream); }
+  .scenario-tab.active {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+  }
+  .scenario-prompt {
+    background: var(--ink-2);
+    border: 1px solid var(--rule);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 22px 26px;
+    margin-bottom: 24px;
+  }
+  .scenario-prompt .ask {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--cream-faint);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 10px;
+  }
+  .scenario-prompt #prompt-text {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 19px;
+    color: var(--cream);
+    font-weight: 350;
   }
   .scenario-compare {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 18px;
   }
   .compare-col {
-    background: var(--bg-card);
+    background: var(--ink-2);
     border: 1px solid var(--rule);
-    border-radius: 8px;
+    border-radius: 4px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    position: relative;
   }
-  .compare-col.bad { border-color: #3a1f1f; }
-  .compare-col.good { border-color: var(--accent-dim); }
+  .compare-col.bad::before {
+    content: "REJECTED BY ORC";
+    position: absolute;
+    top: 8px;
+    right: -32px;
+    transform: rotate(35deg);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--rust);
+    letter-spacing: 0.15em;
+    padding: 3px 36px;
+    border: 1px solid var(--rust);
+    opacity: 0.6;
+    background: var(--ink);
+  }
+  .compare-col.good { border-color: var(--amber-dim); }
   .compare-header {
-    padding: 12px 18px;
-    font-family: ui-monospace, monospace;
-    font-size: 12px;
+    padding: 14px 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.14em;
     border-bottom: 1px solid var(--rule);
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
-  .compare-col.bad .compare-header { color: #d88b8b; background: rgba(58, 31, 31, 0.3); }
-  .compare-col.good .compare-header { color: var(--accent); background: rgba(74, 154, 90, 0.08); }
+  .compare-col.bad .compare-header {
+    color: var(--rust);
+    background: rgba(184, 92, 60, 0.06);
+  }
+  .compare-col.good .compare-header {
+    color: var(--amber);
+    background: rgba(212, 168, 90, 0.06);
+  }
   .compare-body {
-    padding: 18px;
-    font-size: 14px;
-    line-height: 1.55;
+    padding: 22px;
+    font-size: 15px;
+    line-height: 1.6;
     flex-grow: 1;
   }
   .compare-body .answer {
-    color: var(--fg);
-    margin-bottom: 14px;
+    color: var(--cream);
+    margin-bottom: 16px;
+    font-family: 'Newsreader', serif;
   }
   .compare-body .meta-row {
-    font-family: ui-monospace, monospace;
-    font-size: 12px;
-    color: var(--fg-faint);
-    margin-top: 8px;
-    padding-top: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    margin-top: 14px;
+    padding-top: 14px;
     border-top: 1px dashed var(--rule);
+    line-height: 1.8;
   }
-  .compare-body .meta-row.has { color: var(--fg-dim); }
+  .compare-body .meta-row .missing {
+    color: var(--rust);
+    opacity: 0.7;
+    display: block;
+  }
+  .compare-body .meta-row .missing::before {
+    content: "× ";
+    font-weight: bold;
+  }
   .compare-body .tag {
     display: inline-block;
-    background: var(--bg);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 2px 6px;
-    margin: 2px 4px 2px 0;
-    font-size: 11px;
-    color: var(--fg-dim);
+    background: rgba(212, 168, 90, 0.08);
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    padding: 3px 8px;
+    margin: 3px 4px 3px 0;
+    font-size: 10px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
-  .compare-body .tag.accent { color: var(--accent); border-color: var(--accent-dim); }
+  .compare-body .tag.muted { color: var(--cream-mid); border-color: var(--cream-faint); background: transparent; }
   .compare-body .verdict {
     display: inline-block;
-    background: rgba(110, 231, 135, 0.1);
-    color: var(--accent);
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-family: ui-monospace, monospace;
-    font-size: 12px;
-    margin-bottom: 12px;
-    letter-spacing: 0.04em;
+    background: var(--amber);
+    color: var(--ink);
+    padding: 5px 12px;
+    border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    margin-bottom: 14px;
+    letter-spacing: 0.12em;
+    font-weight: 600;
   }
-  .compare-body .missing {
-    color: #d88b8b;
+  .source-quote {
+    background: var(--ink);
+    border-left: 2px solid var(--amber);
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-family: 'Newsreader', serif;
     font-style: italic;
-    font-size: 13px;
+    font-size: 14px;
+    color: var(--cream-dim);
+    line-height: 1.6;
   }
-  .compare-body .source-quote {
-    background: var(--bg);
-    border-left: 2px solid var(--accent-dim);
-    padding: 8px 12px;
-    margin: 10px 0;
-    font-size: 13px;
-    color: var(--fg-dim);
-    font-style: italic;
+  .source-quote .ref {
+    display: block;
+    margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-style: normal;
+    font-size: 10px;
+    color: var(--cream-faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
-  /* Diagram */
+
+  /* === FLOW DIAGRAM === */
   .flow-diagram {
-    margin: 32px 0;
-    padding: 24px;
-    background: var(--bg-card);
+    margin: 40px 0;
+    padding: 36px 24px;
+    background: var(--ink-2);
     border: 1px solid var(--rule);
-    border-radius: 8px;
+    border-radius: 4px;
     overflow-x: auto;
   }
   .flow-row {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-    min-width: 580px;
+    gap: 6px;
+    min-width: 640px;
   }
   .flow-node {
-    background: var(--bg);
+    background: var(--ink);
     border: 1px solid var(--rule);
-    border-radius: 6px;
-    padding: 12px 14px;
-    font-family: ui-monospace, monospace;
-    font-size: 12px;
-    color: var(--fg-dim);
+    border-radius: 3px;
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-mid);
     text-align: center;
-    min-width: 80px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    min-width: 96px;
+    justify-content: center;
   }
   .flow-node.orc {
-    border-color: var(--accent-dim);
-    background: rgba(74, 154, 90, 0.08);
-    color: var(--accent);
-    padding: 16px 18px;
+    border-color: var(--amber);
+    background: rgba(212, 168, 90, 0.06);
+    color: var(--amber);
+    padding: 18px 22px;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
     position: relative;
   }
   .flow-node.orc .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-    margin-bottom: 6px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    text-transform: lowercase;
+    color: var(--amber);
+    letter-spacing: 0;
+    font-weight: 400;
   }
   .flow-node.orc .sub {
-    color: var(--fg-dim);
-    font-size: 11px;
-    line-height: 1.5;
-    text-align: left;
+    color: var(--cream-mid);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+    text-align: center;
   }
   .flow-arrow {
-    color: var(--fg-faint);
-    font-size: 14px;
+    color: var(--cream-faint);
+    font-size: 18px;
     flex-shrink: 0;
-  }
-  @media (max-width: 640px) {
-    .scenario-compare { grid-template-columns: 1fr; }
-    .scenario-tab { padding: 10px 12px; font-size: 13px; }
+    align-self: center;
+    font-family: 'IBM Plex Mono', monospace;
   }
 
-  /* CTA */
-  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 32px; }
+  /* === CODE === */
+  pre {
+    background: var(--ink-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 24px 28px;
+    overflow-x: auto;
+    margin: 32px 0;
+    font-size: 13.5px;
+    line-height: 1.7;
+    position: relative;
+  }
+  pre::before {
+    content: "TERMINAL · ZSH";
+    position: absolute;
+    top: 8px;
+    right: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--cream-faint);
+    letter-spacing: 0.16em;
+  }
+  pre code { color: var(--cream); font-family: 'IBM Plex Mono', monospace; }
+  .c { color: var(--cream-mid); font-style: italic; }
+  .s { color: var(--amber); }
+  .k { color: var(--rust); }
+
+  /* === USE-CASE LIST === */
+  .usecases {
+    margin: 32px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .usecase {
+    padding: 28px 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 32px;
+    align-items: baseline;
+  }
+  .usecase .who {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--amber);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .usecase h3 { margin: 0 0 6px 0; font-size: 19px; }
+  .usecase p { font-size: 16px; margin: 0; line-height: 1.55; }
+  @media (max-width: 640px) {
+    .usecase { grid-template-columns: 1fr; gap: 8px; }
+  }
+
+  /* === REGULATORY TIMELINE === */
+  .timeline {
+    margin: 40px 0;
+    padding-left: 24px;
+    border-left: 2px solid var(--amber-dim);
+  }
+  .timeline-item {
+    padding: 16px 0 16px 20px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -31px;
+    top: 22px;
+    width: 8px;
+    height: 8px;
+    background: var(--amber);
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px var(--ink), 0 0 0 5px var(--amber-dim);
+  }
+  .timeline-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-bottom: 4px;
+  }
+  .timeline-headline {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    color: var(--cream);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .timeline-body {
+    font-size: 15px;
+    color: var(--cream-dim);
+    line-height: 1.5;
+  }
+
+  /* === CTA === */
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 40px; }
   .btn {
     display: inline-flex;
     align-items: center;
-    padding: 14px 22px;
-    border-radius: 6px;
-    font-size: 15px;
+    padding: 16px 28px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
     text-decoration: none;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    transition: all 0.2s;
   }
-  .btn-primary { background: var(--accent); color: #0a0a0a; }
-  .btn-primary:hover { background: #82f29a; }
-  .btn-secondary { border: 1px solid var(--rule); color: var(--fg); }
-  .btn-secondary:hover { border-color: var(--fg-faint); }
-  /* Links */
-  a { color: var(--link); }
-  /* Footer */
+  .btn-primary {
+    background: var(--amber);
+    color: var(--ink);
+  }
+  .btn-primary:hover { background: var(--cream); }
+  .btn-secondary {
+    border: 1px solid var(--cream-faint);
+    color: var(--cream);
+  }
+  .btn-secondary:hover { border-color: var(--amber); color: var(--amber); }
+
+  a { color: var(--amber); text-decoration-color: var(--amber-dim); text-underline-offset: 3px; }
+  a:hover { color: var(--cream); }
+
+  /* === FOOTER === */
   footer {
-    padding: 48px 0 80px;
+    padding: 60px 0 100px;
     border-top: 1px solid var(--rule);
-    font-size: 14px;
-    color: var(--fg-faint);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--cream-faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-  footer a { color: var(--fg-dim); text-decoration: none; }
-  footer a:hover { color: var(--fg); }
+  footer .seal {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--cream-mid);
+  }
+  footer .seal::before {
+    content: "❀";
+    color: var(--amber);
+    font-size: 14px;
+  }
+
+  /* Reveal animations */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
   /* Mobile */
   @media (max-width: 640px) {
-    h1 { font-size: 38px; }
-    h2 { font-size: 26px; }
-    .lede { font-size: 17px; }
-    .pull { font-size: 18px; }
-    .nav-links { display: none; }
+    body { font-size: 17px; }
+    h1.hero-title { font-size: 44px; }
+    .hero { padding: 80px 0 60px; }
+    .scenario-compare { grid-template-columns: 1fr; }
+    .scenario-tab { padding: 12px 14px; font-size: 11px; letter-spacing: 0.08em; }
+    .compare-col.bad::before { display: none; }
+    .nav-links a { margin-left: 16px; font-size: 10px; }
+    .metric-block { padding: 32px 20px; }
+    .metric-block .compare-row { gap: 24px; }
+    .metric-cell .vs { display: none; }
+    .hero-meta { gap: 18px; flex-wrap: wrap; }
+    .pull { font-size: 22px; padding-left: 18px; }
   }
 </style>
 </head>
@@ -441,8 +792,8 @@
   <div class="container">
     <div class="brand">orc</div>
     <div class="nav-links">
-      <a href="#story">Why this exists</a>
-      <a href="#orc">What it is</a>
+      <a href="#problem">Why this exists</a>
+      <a href="#proof">Proof</a>
       <a href="#contact">Contact</a>
     </div>
   </div>
@@ -450,22 +801,47 @@
 
 <header class="hero">
   <div class="container">
-    <h1>AI is now making decisions <br>you can't take back.<br><em>Orc makes them defensible.</em></h1>
-    <p class="lede">A small open-source runtime that binds every AI claim to evidence you own — and produces an audit trail a regulator can replay months later.</p>
+    <div class="article-no">PREAMBLE · v0.1.4 · open source</div>
+    <h1 class="hero-title">
+      AI is now making decisions <span class="break">you can't take back.</span>
+      <span class="break"><em>Orc makes them defensible.</em></span>
+    </h1>
+    <p class="lede">
+      <span class="dropcap">A</span>small open-source runtime that binds every AI claim to evidence you own — and produces an audit trail a regulator can replay months later.
+    </p>
+    <div class="hero-meta">
+      <span><strong>F1 0.864</strong> on HaluBench</span>
+      <span>Above <strong>Lynx-70B</strong> home-court</span>
+      <span><strong>MIT</strong> · No fine-tuning</span>
+    </div>
+
+    <svg class="stamp" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <path id="circle-path" d="M 100, 100 m -75, 0 a 75,75 0 1,1 150,0 a 75,75 0 1,1 -150,0" />
+      </defs>
+      <circle cx="100" cy="100" r="95" fill="none" stroke="#d4a85a" stroke-width="2" />
+      <circle cx="100" cy="100" r="86" fill="none" stroke="#d4a85a" stroke-width="0.5" />
+      <text font-family="IBM Plex Mono" font-size="9" fill="#d4a85a" letter-spacing="3">
+        <textPath href="#circle-path">VERIFIED · CITED · REPLAYABLE · AUDIT-READY · </textPath>
+      </text>
+      <text x="100" y="92" font-family="Fraunces" font-size="22" fill="#d4a85a" text-anchor="middle" font-style="italic">orc</text>
+      <text x="100" y="115" font-family="IBM Plex Mono" font-size="10" fill="#d4a85a" text-anchor="middle" letter-spacing="3">v0.1.4</text>
+      <line x1="40" y1="125" x2="160" y2="125" stroke="#d4a85a" stroke-width="0.5" />
+    </svg>
   </div>
 </header>
 
 <!-- ACT 1: THE SHIFT -->
-<section id="story">
+<section id="problem">
   <div class="container">
-    <div class="kicker">What's happening</div>
-    <h2>The first generation of AI was about producing answers. The next generation is about defending them.</h2>
+    <div class="section-no">§01 · The shift</div>
+    <h2>The first generation of AI was about producing answers. The next is about <em>defending them</em>.</h2>
 
     <p class="large">For three years the question was: <em>can I get the model to give me a useful answer?</em> Companies wired up ChatGPT, Claude, Copilot. The wins were obvious and the stakes were low.</p>
 
-    <p>Then the AI work moved from "draft an email" to "approve a loan." From "summarize this meeting" to "decide which patient gets the trial." From "explain this clause" to "flag this transaction as suspicious." The model started touching decisions that affect people's lives and money — and the people responsible for those decisions started getting asked a different question:</p>
+    <p>Then AI moved from "draft an email" to "approve a loan." From "summarize this meeting" to "decide which patient gets the trial." From "explain this clause" to "flag this transaction as suspicious." The model started touching decisions that affect people's lives and money — and the people responsible for those decisions started getting asked a different question:</p>
 
-    <p class="pull">"Show me what the model said, why it said it, and prove no one can change the answer after the fact."</p>
+    <p class="pull">Show me what the model said, why it said it, and prove no one can change the answer after the fact.</p>
 
     <p>That question is being asked everywhere now. By bank examiners. By healthcare compliance officers. By EU regulators. By plaintiffs' lawyers. By the company's own auditors, six months after the decision was made. And the current AI stack has no good answer.</p>
   </div>
@@ -474,12 +850,12 @@
 <!-- ACT 2: THE GAP -->
 <section>
   <div class="container">
-    <div class="kicker">Why current tools fail this test</div>
+    <div class="section-no">§02 · Why current tools fail this test</div>
     <h2>The AI you're using today wasn't built to be defensible.</h2>
 
     <p>Every existing tool was built to solve a different problem:</p>
 
-    <ul>
+    <ul class="styled">
       <li><strong>The generation tools</strong> (ChatGPT, Claude, Copilot) produce answers. They don't produce evidence.</li>
       <li><strong>The agent frameworks</strong> (LangChain, LlamaIndex, AutoGen) compose calls. Verification is bolted on as an afterthought.</li>
       <li><strong>The observability platforms</strong> (LangSmith, Langfuse, Phoenix) record traces — but for engineers debugging, not for regulators auditing.</li>
@@ -488,256 +864,264 @@
 
     <p>Each of these is good at what it was built for. None of them, on its own, gives the bank compliance officer or the EU AI Act auditor what they actually need: <strong>a single artifact, produced at decision time, that proves what the AI was told, what it concluded, and what evidence it used — that a third party can verify independently months later.</strong></p>
 
+    <div class="margin-note">
+      <span class="tag">DOCUMENTED</span>
+      LangChain GitHub Issue #35357 (2025) explicitly requests EU AI Act Article 12-compliant logging. MCP's 2026 roadmap names enterprise audit as a known gap. This isn't speculation — the gap is acknowledged industry-wide.
+    </div>
+
     <p>That artifact doesn't exist in today's stack. That's the gap Orc fills.</p>
   </div>
 </section>
 
-<!-- ACT 2.5: VISUAL — SEE THE DIFFERENCE -->
+<!-- ACT 2.5: VISUAL -->
 <section>
   <div class="container">
-    <div class="kicker">See the difference</div>
-    <h2>The same AI claim, with and without a verification runtime.</h2>
+    <div class="section-no">§03 · See the difference</div>
+    <h2>The same AI claim, with and without a <em>verification runtime</em>.</h2>
 
-    <p>Pick a scenario. Look at what your AI gives you today versus what Orc gives you. The difference is what a regulator or auditor needs.</p>
+    <p>Pick a scenario. The left column shows what your AI gives you today. The right column shows the Orc-verified output — the artifact a regulator or auditor needs.</p>
 
     <div class="scenario">
       <div class="scenario-tabs" role="tablist">
-        <button class="scenario-tab active" data-scenario="bank" role="tab" aria-selected="true">🏦 Bank credit memo</button>
-        <button class="scenario-tab" data-scenario="health" role="tab">🏥 Clinical evidence</button>
-        <button class="scenario-tab" data-scenario="legal" role="tab">⚖️ Contract review</button>
+        <button class="scenario-tab active" data-scenario="bank" role="tab" aria-selected="true">Bank credit memo</button>
+        <button class="scenario-tab" data-scenario="health" role="tab">Clinical evidence</button>
+        <button class="scenario-tab" data-scenario="legal" role="tab">Contract review</button>
       </div>
 
-      <div class="scenario-prompt" id="scenario-prompt">
+      <div class="scenario-prompt">
         <div class="ask">Analyst asks the AI</div>
         <div id="prompt-text">"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."</div>
       </div>
 
       <div class="scenario-compare">
         <div class="compare-col bad">
-          <div class="compare-header">✕ Today, with a typical AI stack</div>
+          <div class="compare-header">Without verification — today's AI</div>
           <div class="compare-body">
             <div class="answer" id="bad-answer">
               "Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."
             </div>
             <div class="meta-row">
-              <span class="missing">No source citation</span><br>
-              <span class="missing">No way to replay this decision</span><br>
-              <span class="missing">No audit trail for the examiner</span><br>
-              <span class="missing">No way to verify it tomorrow</span>
+              <span class="missing">no source citation</span>
+              <span class="missing">no way to replay this</span>
+              <span class="missing">no audit trail</span>
+              <span class="missing">no way to verify it tomorrow</span>
             </div>
           </div>
         </div>
 
         <div class="compare-col good">
-          <div class="compare-header">✓ With Orc</div>
+          <div class="compare-header">With Orc — runtime-verified</div>
           <div class="compare-body">
-            <div class="verdict" id="good-verdict">SUPPORTED · confidence 0.91</div>
+            <div class="verdict" id="good-verdict">SUPPORTED · 0.91</div>
             <div class="answer" id="good-answer">
-              "Computed 1247 / 6783 × 100 = 18.38%. Matches the claim within rounding."
+              "Computed 1,247 / 6,783 × 100 = 18.38%. Matches the claim within rounding."
             </div>
             <div class="source-quote" id="good-source">
               "Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023."
-              <br><span style="font-size:11px; color: var(--fg-faint);">— filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT...</span>
+              <span class="ref">filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT…</span>
             </div>
-            <div class="meta-row has">
-              <span class="tag accent">cited</span>
-              <span class="tag accent">replayable</span>
-              <span class="tag accent">audited</span>
-              <span class="tag">run_id 01KS0QT1...</span>
+            <div class="meta-row">
+              <span class="tag">cited</span>
+              <span class="tag">replayable</span>
+              <span class="tag">audit-bundle</span>
+              <span class="tag muted">run_id 01KS0QT1…</span>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <p style="margin-top: 32px;">The left side is what you have today. The right side is the artifact a bank examiner, an EU AI Act auditor, or a court asks for. Orc's runtime invariants guarantee that a verdict <em>structurally cannot</em> exist without its evidence — so the right side is the only output the system can ship.</p>
-
-    <h3 style="margin-top: 40px;">Where Orc sits in the call</h3>
-    <p>Orc is a thin layer between the LLM and whatever consumes its output. The model still does the language work — Orc owns the retrieval, the verdict structure, and the trail.</p>
+    <h3>Where Orc sits in the call</h3>
+    <p>Orc is a thin layer between the LLM and whatever consumes its output. The model still does the language work. Orc owns the retrieval, the verdict structure, and the trail.</p>
 
     <div class="flow-diagram">
       <div class="flow-row">
         <div class="flow-node">Claim</div>
         <div class="flow-arrow">→</div>
         <div class="flow-node orc">
-          <div class="label">orc</div>
-          <div class="sub">retrieve · cite<br>verify · trace<br>approve · audit</div>
+          <div class="label">orc · runtime</div>
+          <div class="sub">retrieve · cite · verify<br>trace · approve · audit</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-node">Verdict</div>
         <div class="flow-arrow">+</div>
         <div class="flow-node">Citations</div>
         <div class="flow-arrow">+</div>
-        <div class="flow-node">Audit bundle</div>
+        <div class="flow-node">Audit&nbsp;bundle</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ACT 3: THE NEW CATEGORY -->
-<section id="orc">
-  <div class="container">
-    <div class="kicker">A new category</div>
-    <h2>Orc is a verification runtime — the layer between "the model said something" and "ship it."</h2>
-
-    <p>The job is small and specific. Every time the AI is about to produce a decision, Orc:</p>
-
-    <ul>
-      <li>Pulls the relevant evidence from a corpus <strong>you control</strong> — your contracts, your policies, your filings.</li>
-      <li>Asks the model to verify the claim against that evidence — with a structured verdict, not a free-form paragraph.</li>
-      <li><strong>Refuses to cite anything that doesn't exist.</strong> Hallucinated sources get dropped before the verdict reaches you.</li>
-      <li>Writes a versioned trace: the retrieval, the prompt, the response, the corpus version. <strong>Reproducible months later, byte for byte.</strong></li>
-      <li>For decisions that touch the outside world: routes to an approval queue with named-human sign-off.</li>
-    </ul>
-
-    <p>When a regulator asks "what did the AI do on this case?", you hand them a single tarball. They extract it, they re-run the decision against the frozen evidence snapshot, and they get the same answer. That's the artifact.</p>
-
-    <p class="pull">Orc isn't a model. It isn't a framework. It isn't a dashboard. It's the contract between an LLM and the person who has to defend the work product six months later.</p>
-  </div>
-</section>
-
-<!-- ACT 4: WHAT IT LOOKS LIKE -->
+<!-- ACT 3: HOW IT WORKS -->
 <section>
   <div class="container">
-    <div class="kicker">What it looks like</div>
-    <h2>One command. Every artifact.</h2>
+    <div class="section-no">§04 · What it looks like</div>
+    <h2>One command. <em>Every artifact.</em></h2>
 
     <pre><code><span class="c"># 1. Create a workspace and ingest evidence you own</span>
-$ orc workspace create credit-memos
-$ orc ingest ./Q3-filings -w credit-memos
+<span class="k">$</span> orc workspace create credit-memos
+<span class="k">$</span> orc ingest ./Q3-filings -w credit-memos
 
 <span class="c"># 2. Verify a claim against the corpus</span>
-$ orc verify <span class="s">"FY2023 EBITDA margin was 18.4%"</span> -w credit-memos
+<span class="k">$</span> orc verify <span class="s">"FY2023 EBITDA margin was 18.4%"</span> -w credit-memos
 
 <span class="c"># → SUPPORTED  confidence=0.91</span>
-<span class="c">#   reasoning: Computed 1247/6783 = 18.4%, matches the claim.</span>
-<span class="c">#   evidence: filing-2023-Q4.pdf §3 · p.12</span>
-<span class="c">#   run_id: 01KS0QT1MSV3NZA8ZSJK6VKJ7H</span>
+<span class="c">#   reasoning: Computed 1247/6783 = 18.4%, matches.</span>
+<span class="c">#   evidence:  filing-2023-Q4.pdf §3 · p.12</span>
+<span class="c">#   run_id:    01KS0QT1MSV3NZA8ZSJK6VKJ7H</span>
 
 <span class="c"># 3. Months later, hand a regulator a self-contained tarball</span>
-$ orc audit export -w credit-memos --include-evidence
+<span class="k">$</span> orc audit export -w credit-memos --include-evidence
 <span class="c"># → audit-credit-memos-20260519.tar.gz</span>
-<span class="c">#   contains every decision, every retrieval, every prompt,</span>
+<span class="c">#   contains every decision · every retrieval · every prompt</span>
 <span class="c">#   every approval — all hashed, all reproducible.</span></code></pre>
 
-    <p>That's the whole loop. Workspace, ingest, verify, audit. Also available as a Claude Code / Codex MCP server for teams already in those workflows.</p>
+    <p>That's the whole loop. Workspace, ingest, verify, audit. Also exposed as a Claude Code / Codex MCP server for teams already in those workflows.</p>
   </div>
 </section>
 
-<!-- ACT 5: PROOF -->
-<section>
+<!-- ACT 4: PROOF — big numerals -->
+<section id="proof">
   <div class="container">
-    <div class="kicker">Does the verification actually work?</div>
-    <h2>Yes. On the benchmark commercial faithfulness models compete on, Orc just beat the leader.</h2>
+    <div class="section-no">§05 · Does the verification work?</div>
+    <h2>On the benchmark commercial faithfulness models compete on, <em>Orc just beat the leader</em>.</h2>
 
-    <p>HaluBench is the public benchmark Patronus AI built to evaluate their Lynx-70B faithfulness classifier. On a 504-item stratified subsample of that benchmark:</p>
+    <p>HaluBench is the public benchmark Patronus AI built to evaluate their Lynx-70B faithfulness classifier — the current open-source SOTA. On a 504-item stratified subsample:</p>
 
-    <div class="metric-row">
-      <div class="metric">
-        <div class="label">Orc (this build)</div>
-        <div class="value accent">F1 0.864</div>
-        <div class="caption">general-purpose Claude Sonnet, no fine-tuning</div>
+    <div class="metric-block">
+      <div class="compare-row">
+        <div class="metric-cell win">
+          <div class="label">Orc · v0.1.4</div>
+          <div class="numeral" data-target="0.864">0.864</div>
+          <div class="caption">general-purpose Sonnet<br>+ safe calculator tool</div>
+        </div>
+        <div class="metric-cell vs"><em>vs.</em></div>
+        <div class="metric-cell">
+          <div class="label">Lynx-70B · Patronus</div>
+          <div class="numeral" data-target="0.850">0.850</div>
+          <div class="caption">dedicated 70B<br>fine-tuned classifier</div>
+        </div>
       </div>
-      <div class="metric">
-        <div class="label">Lynx-70B (Patronus)</div>
-        <div class="value">F1 0.850</div>
-        <div class="caption">dedicated 70B fine-tuned classifier</div>
-      </div>
+      <div class="footnote">HaluBench · N=503 evaluated · 2026-05-19 · reproducible: <span class="mono">uv run python -m benchmarks.faithfulness.run --n 504 --variant source_routed</span></div>
     </div>
 
-    <p>Orc lands above the dedicated fine-tuned model — with a general-purpose Claude call plus a small safe arithmetic evaluator that the model can invoke when a claim requires computation. The benchmark is fully reproducible (one command, ~$7 of API spend) and the per-source breakdown is public.</p>
+    <p>Orc lands above the dedicated fine-tuned model — with a general-purpose Claude call plus a 200-line safe arithmetic evaluator the model can invoke when a claim requires computation. The benchmark is fully reproducible (one command, ~$7 of API spend) and the per-source breakdown is public.</p>
 
-    <p>The point isn't the F1 number itself. It's that <strong>you can hit competitive verdict quality and produce the audit artifacts in the same call.</strong> The faithfulness judges produce a score. Orc produces a score plus the trail a regulator can verify.</p>
+    <p class="pull">The point isn't the F1 number. It's that you can hit competitive verdict quality and produce the audit artifacts in the same call.</p>
   </div>
 </section>
 
-<!-- ACT 6: WHO -->
+<!-- ACT 5: USE CASES -->
 <section>
   <div class="container">
-    <div class="kicker">Who needs this</div>
-    <h2>Anyone whose AI work has to survive a second reviewer.</h2>
+    <div class="section-no">§06 · Who needs this</div>
+    <h2>Anyone whose AI work has to survive <em>a second reviewer</em>.</h2>
 
     <div class="usecases">
       <div class="usecase">
-        <div class="who">Banks and fintech</div>
-        <h3>Credit decisions, transaction monitoring, regulatory reporting</h3>
-        <p>SR 11-7 model risk management requires reproducing the exact decision a model made. With Orc, the examiner gets a tarball and runs it themselves.</p>
+        <div class="who">Banks & fintech</div>
+        <div>
+          <h3>Credit decisions, transaction monitoring</h3>
+          <p>SR 11-7 model risk management requires reproducing the exact decision a model made. With Orc, the examiner gets a tarball and runs it themselves.</p>
+        </div>
       </div>
 
       <div class="usecase">
-        <div class="who">Healthcare and life sciences</div>
-        <h3>Clinical evidence summaries, regulatory submissions</h3>
-        <p>Every claim about a study traces to the paragraph it came from. Pharma teams stop debating whether the AI hallucinated — they can show, byte for byte, what it read.</p>
+        <div class="who">Healthcare</div>
+        <div>
+          <h3>Clinical evidence, regulatory submissions</h3>
+          <p>Every claim about a study traces to the paragraph it came from. Pharma teams stop debating whether the AI hallucinated — they can show, byte for byte, what it read.</p>
+        </div>
       </div>
 
       <div class="usecase">
-        <div class="who">EU enterprises deploying high-risk AI</div>
-        <h3>HR screening, credit decisioning, biometric verification</h3>
-        <p>The EU AI Act requires automatic event logging, transparency to deployers, and named-human oversight for high-risk systems. Orc's runtime invariants map directly to the regulatory text.</p>
+        <div class="who">EU enterprises</div>
+        <div>
+          <h3>EU AI Act high-risk systems</h3>
+          <p>Articles 12, 13, 14 require automatic event logging, transparency to deployers, and named-human oversight. Orc's runtime invariants map directly to the regulatory text.</p>
+        </div>
       </div>
 
       <div class="usecase">
-        <div class="who">Legal and professional services</div>
-        <h3>Contract review, e-discovery, opinion drafting</h3>
-        <p>An AI-assisted contract review needs to cite the exact clause, not "the document says." Orc's chunk-level citations + workspace isolation give privileged work a chain of custody.</p>
+        <div class="who">Legal & professional</div>
+        <div>
+          <h3>Contract review, e-discovery, opinions</h3>
+          <p>AI-assisted review needs to cite the exact clause, not "the document says." Orc's chunk citations + workspace isolation give privileged work a chain of custody.</p>
+        </div>
       </div>
 
       <div class="usecase">
-        <div class="who">Newsrooms and intelligence shops</div>
-        <h3>Fact-checking, source verification, long-form reporting</h3>
-        <p>When an AI-drafted story claims something, the editor can replay the verification against the archive and see exactly which sources were consulted.</p>
+        <div class="who">Newsrooms</div>
+        <div>
+          <h3>Fact-checking and source verification</h3>
+          <p>When an AI-drafted story claims something, the editor can replay the verification against the archive and see exactly which sources were consulted.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ACT 7: WHY NOW -->
+<!-- ACT 6: WHY NOW — timeline -->
 <section>
   <div class="container">
-    <div class="kicker">Why now</div>
-    <h2>The regulatory window just opened.</h2>
+    <div class="section-no">§07 · Why now</div>
+    <h2>The regulatory window <em>just opened</em>.</h2>
 
-    <p>Three things changed in the last twelve months:</p>
-
-    <p><strong>1. The EU AI Act is now in force.</strong> High-risk AI systems deployed in the EU must produce automatic event logs, transparency artifacts for deployers, and named-human oversight records. Articles 12, 13, 14. Penalties are real. Most enterprise AI teams don't yet have a stack that satisfies any of it.</p>
-
-    <p><strong>2. US regulators are moving the same direction.</strong> NIST AI RMF 1.0 is final. Sector regulators — Fed, OCC, CFPB, FDA, EEOC — are publishing AI-specific guidance. The phrase "model risk management" used to apply only to credit scoring; it now applies to everything an LLM touches in regulated industries.</p>
-
-    <p><strong>3. The AI stack matured past chatbots.</strong> Agents, tool use, MCP. Every framework treats verification as a downstream add-on. None of them produce the regulator handoff. There's an open issue on LangChain's GitHub from 2025 explicitly requesting EU-AI-Act-compliant logging. The gap is acknowledged industry-wide.</p>
-
-    <p>Q4 2025 forward, every CISO and chief risk officer is being asked the same question by their board. Orc is the shortest credible path to "we have an answer."</p>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">August 2024</div>
+        <div class="timeline-headline">EU AI Act enters into force</div>
+        <div class="timeline-body">Articles 12, 13, 14 require automatic event logging, deployer transparency, and named-human oversight for high-risk systems. Penalties up to 7% of global turnover.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">January 2026</div>
+        <div class="timeline-headline">NIST AI RMF 1.0 final</div>
+        <div class="timeline-body">US sector regulators (Fed, OCC, CFPB, FDA, EEOC) publishing AI-specific guidance based on the framework. "Model risk management" now applies to everything an LLM touches.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2025–2026</div>
+        <div class="timeline-headline">The AI stack matured past chatbots</div>
+        <div class="timeline-body">Agents, tool use, MCP. Every framework treats verification as a downstream add-on. None of them produces the regulator handoff.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Now</div>
+        <div class="timeline-headline">Every CRO is being asked the same question</div>
+        <div class="timeline-body">"Show me what the model said, why it said it, and prove no one can change the answer after the fact." Orc is the shortest credible path to "we have an answer."</div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ACT 8: WHERE IT IS NOW -->
+<!-- ACT 7: STATUS -->
 <section>
   <div class="container">
-    <div class="kicker">Status</div>
-    <h2>Shipped, open-source, in production locally.</h2>
+    <div class="section-no">§08 · Where it is today</div>
+    <h2>Shipped. Open-source. In production locally.</h2>
 
-    <p><strong>v0.1.4</strong> (May 2026). CLI + MCP server. 188 tests passing, deterministic replay, hashed audit export, multi-approver workflow. MIT licensed. The full benchmark, every line of the runtime, and the compliance mapping live in public:</p>
+    <p><strong>v0.1.4</strong> · May 2026. CLI + MCP server. <strong>188 tests passing</strong>, deterministic replay, hashed audit export, multi-approver workflow. MIT licensed. The full benchmark, every line of the runtime, and the compliance mapping live in public.</p>
 
-    <ul>
+    <ul class="styled">
       <li><a href="https://github.com/Thormatt/orc">github.com/Thormatt/orc</a> — code + benchmarks</li>
       <li><a href="https://orc-ebon.vercel.app">orc-ebon.vercel.app</a> — live site with the compliance walkthrough</li>
-      <li>One <code>uv pip install</code> away from running on a laptop</li>
+      <li>One <span class="mono">uv pip install</span> away from running on a laptop</li>
     </ul>
 
-    <p>Roadmap from here: hosted runtime for teams, additional verification modes (a calculator was the first; a comparator and a lookup are the next), and pilot deployments with one or two EU-regulated financial-services or healthcare teams. Letters of intent and design-partner conversations open.</p>
+    <p>Roadmap: hosted runtime for teams, additional verification modes (a calculator was first; a comparator and a lookup are next), and pilot deployments with one or two EU-regulated financial-services or healthcare teams.</p>
   </div>
 </section>
 
-<!-- ACT 9: CONTACT -->
+<!-- ACT 8: CONTACT -->
 <section id="contact">
   <div class="container">
-    <div class="kicker">Get in touch</div>
-    <h2>If any of this matches a problem you have.</h2>
+    <div class="section-no">§09 · Get in touch</div>
+    <h2>If any of this matches <em>a problem you have</em>.</h2>
 
-    <p><strong>If you're a potential design partner</strong> — a bank, a hospital system, a law firm, an EU-deployed AI team — I'd rather hear what you're verifying today and how it gets reviewed than send you a deck. Email me with the shape of the problem; I'll respond with a 15-minute call.</p>
+    <p><strong>Design partners</strong> — a bank, a hospital system, a law firm, an EU-deployed AI team — I'd rather hear what you're verifying today and how it gets reviewed than send you a deck. Email me with the shape of the problem; I'll respond with a 15-minute call.</p>
 
-    <p><strong>If you're a VC or strategic investor</strong> — I'm not actively running a process. The next 90 days are about getting one regulated-industry customer into production against this build. If that timeline aligns with your thesis, the conversation starts there.</p>
+    <p><strong>VC or strategic investors</strong> — not actively running a process. The next 90 days are about getting one regulated-industry customer into production. If that timeline aligns with your thesis, the conversation starts there.</p>
 
-    <p><strong>If you're a developer or open-source contributor</strong> — the repo is MIT, the tests run in two seconds, the docs are in the repo. PRs welcome.</p>
+    <p><strong>Developers and contributors</strong> — the repo is MIT, the tests run in two seconds, the docs are in the repo. PRs welcome.</p>
 
     <div class="cta-row">
       <a href="mailto:thormatt@gmail.com" class="btn btn-primary">Email →</a>
@@ -746,6 +1130,13 @@ $ orc audit export -w credit-memos --include-evidence
   </div>
 </section>
 
+<footer>
+  <div class="container">
+    <div class="seal">orc · built by Thor Matthíasson</div>
+    <div>MIT · v0.1.4 · 2026</div>
+  </div>
+</footer>
+
 <script>
   // Scenario tab switcher — three concrete examples that ground "what does Orc
   // give you that you don't have today" in a story a buyer recognizes.
@@ -753,26 +1144,26 @@ $ orc audit export -w credit-memos --include-evidence
     bank: {
       prompt: '"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."',
       badAnswer: '"Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."',
-      verdict: 'SUPPORTED · confidence 0.91',
-      goodAnswer: '"Computed 1247 / 6783 × 100 = 18.38%. Matches the claim within rounding."',
+      verdict: 'SUPPORTED · 0.91',
+      goodAnswer: '"Computed 1,247 / 6,783 × 100 = 18.38%. Matches the claim within rounding."',
       sourceText: '"Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023."',
-      sourceRef: '— filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT...',
+      sourceRef: 'filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT…',
     },
     health: {
       prompt: '"Does the trial data show Drug X reduced LDL by more than 30% vs placebo at week 12?"',
       badAnswer: '"Yes, the trial appears to show a significant reduction in LDL cholesterol compared to placebo at the week 12 endpoint."',
-      verdict: 'SUPPORTED · confidence 0.94',
-      goodAnswer: '"Trial reports LDL-C reduction of 38.2% (Drug X) vs 4.1% (placebo) at week 12, p<0.001. The 30% threshold is met."',
+      verdict: 'SUPPORTED · 0.94',
+      goodAnswer: '"LDL-C reduction of 38.2% (Drug X) vs 4.1% (placebo) at week 12, p<0.001. The 30% threshold is met."',
       sourceText: '"At week 12, mean LDL-C reduction was 38.2% in the Drug X arm (n=412) vs 4.1% in the placebo arm (n=408); p < 0.001."',
-      sourceRef: '— trial-NCT04xxxxxx.pdf §Results 4.2 · chunk 01KS0QT...',
+      sourceRef: 'trial-NCT04xxxxxx.pdf §Results 4.2 · chunk 01KS0QT…',
     },
     legal: {
       prompt: '"Does the master service agreement contain a unilateral termination clause for the customer?"',
       badAnswer: '"It looks like the MSA does allow the customer to terminate. There appears to be language permitting cancellation."',
-      verdict: 'SUPPORTED · confidence 0.88',
-      goodAnswer: '"Section 12.3 grants the Customer the right to terminate for convenience on 30 days written notice. The Supplier has no equivalent right — termination is unilateral."',
+      verdict: 'SUPPORTED · 0.88',
+      goodAnswer: '"Section 12.3 grants the Customer right to terminate for convenience on 30 days notice. Supplier has no equivalent right — termination is unilateral."',
       sourceText: '"Customer may terminate this Agreement for convenience at any time upon thirty (30) days prior written notice to Supplier..."',
-      sourceRef: '— msa-acme-2024.pdf §12.3 · p.18 · chunk 01KS0QT...',
+      sourceRef: 'msa-acme-2024.pdf §12.3 · p.18 · chunk 01KS0QT…',
     },
   };
 
@@ -790,7 +1181,7 @@ $ orc audit export -w credit-memos --include-evidence
     badAnswerEl.textContent = s.badAnswer;
     verdictEl.textContent = s.verdict;
     goodAnswerEl.textContent = s.goodAnswer;
-    sourceEl.innerHTML = s.sourceText + '<br><span style="font-size:11px; color: var(--fg-faint);">' + s.sourceRef + '</span>';
+    sourceEl.innerHTML = s.sourceText + '<span class="ref">' + s.sourceRef + '</span>';
   }
 
   tabs.forEach(tab => {
@@ -804,16 +1195,47 @@ $ orc audit export -w credit-memos --include-evidence
       applyScenario(tab.dataset.scenario);
     });
   });
-</script>
 
-<footer>
-  <div class="container">
-    <div>
-      <strong style="color: var(--fg);">orc</strong> · built by Thor Matthíasson · <a href="https://github.com/Thormatt/orc">github</a> · <a href="https://orc-ebon.vercel.app">live site</a>
-    </div>
-    <div>MIT · v0.1.4 · 2026</div>
-  </div>
-</footer>
+  // Animated count-up on the headline metric numerals.
+  function animateNumeral(el, target, duration) {
+    const start = 0;
+    const startTime = performance.now();
+    function tick(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const val = start + (target - start) * eased;
+      el.textContent = val.toFixed(3);
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = target.toFixed(3);
+    }
+    requestAnimationFrame(tick);
+  }
+  const numerals = document.querySelectorAll('[data-target]');
+  const numeralObs = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const target = parseFloat(entry.target.dataset.target);
+        animateNumeral(entry.target, target, 1400);
+        numeralObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  numerals.forEach(n => { n.textContent = "0.000"; numeralObs.observe(n); });
+
+  // Scroll reveal — pretty subtle, one per section.
+  const revealObs = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('section').forEach(s => {
+    s.classList.add('reveal');
+    revealObs.observe(s);
+  });
+</script>
 
 </body>
 </html>
