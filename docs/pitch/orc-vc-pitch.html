@@ -179,6 +179,164 @@
   section { padding: 110px 0; position: relative; }
   section + section { border-top: 1px solid var(--rule); }
 
+  /* === ELI5 PANELS === */
+  .eli5 {
+    padding: 80px 0 100px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eli5 .super {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--crimson);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .eli5 .super::before {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: var(--crimson);
+  }
+  .eli5 h2.eli5-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(30px, 4vw, 42px);
+    line-height: 1.15;
+    margin-bottom: 48px;
+    color: var(--ink);
+    font-weight: 400;
+  }
+  .eli5 h2.eli5-title em {
+    font-style: italic;
+    color: var(--crimson);
+  }
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .panel {
+    padding: 36px 28px 32px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+    background: var(--paper-2);
+  }
+  .panel:last-child { border-right: none; }
+  .panel-no {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--crimson);
+    line-height: 1;
+  }
+  .panel-art {
+    width: 100%;
+    height: 180px;
+    margin: 14px 0 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .panel-art svg { width: 100%; height: 100%; max-width: 220px; }
+  .panel-caption {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 10px;
+    min-height: 54px;
+  }
+  .panel-caption em { font-style: italic; color: var(--crimson); }
+  .panel-sub {
+    font-family: 'Spectral', serif;
+    font-size: 14.5px;
+    color: var(--ink-mute);
+    line-height: 1.5;
+  }
+  .panel-connector {
+    position: absolute;
+    top: 50%;
+    right: -14px;
+    transform: translateY(-50%);
+    background: var(--paper);
+    color: var(--crimson);
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    padding: 0 6px;
+    z-index: 2;
+    line-height: 1;
+  }
+  .panel:last-child .panel-connector { display: none; }
+
+  /* SVG animations — line art elements that loop gently */
+  @keyframes bubble-pop {
+    0%, 80%, 100% { opacity: 1; transform: scale(1); }
+    40% { opacity: 1; transform: scale(1.05); }
+  }
+  @keyframes shake-side {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-4deg); }
+    50% { transform: rotate(4deg); }
+    80% { transform: rotate(-3deg); }
+  }
+  @keyframes bob-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @keyframes stamp-land {
+    0%, 100% { transform: translate(0,0) scale(1); opacity: 0.95; }
+    30% { transform: translate(0,-30px) scale(1.4); opacity: 0; }
+    50% { transform: translate(0,-30px) scale(1.4); opacity: 0; }
+    65% { transform: translate(0,0) scale(1.15); opacity: 1; }
+    75% { transform: translate(0,0) scale(0.92); opacity: 1; }
+    85% { transform: translate(0,0) scale(1); opacity: 1; }
+  }
+  @keyframes paper-slide {
+    0% { transform: translateX(-8px); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes eyes-blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+  }
+  @keyframes pulse-faint {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  @keyframes shrug {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(2px); }
+  }
+
+  .svg-bubble { animation: bubble-pop 3s ease-in-out infinite; transform-origin: center; }
+  .svg-shake { animation: shake-side 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+  .svg-bob { animation: bob-up 2.2s ease-in-out infinite; transform-origin: center; }
+  .svg-stamp { animation: stamp-land 3.2s ease-in-out infinite; transform-origin: center; }
+  .svg-paper { animation: paper-slide 3s ease-out infinite; }
+  .svg-eyes { animation: eyes-blink 4s ease-in-out infinite; transform-origin: center; }
+  .svg-pulse { animation: pulse-faint 2s ease-in-out infinite; }
+  .svg-shrug { animation: shrug 2.6s ease-in-out infinite; transform-origin: center; }
+
+  @media (max-width: 740px) {
+    .panels { grid-template-columns: 1fr; border-bottom: 1px solid var(--ink); }
+    .panel { border-right: none; border-bottom: 1px solid var(--rule); padding: 32px 24px; }
+    .panel:last-child { border-bottom: none; }
+    .panel-connector {
+      top: auto; right: 50%; bottom: -14px;
+      transform: translateX(50%) rotate(90deg);
+    }
+    .panel-art { height: 150px; }
+  }
+
   .section-no {
     font-family: 'DM Serif Display', serif;
     font-style: italic;
@@ -852,6 +1010,141 @@
     </div>
   </div>
 </header>
+
+<!-- ELI5 PANELS -->
+<section class="eli5">
+  <div class="container">
+    <div class="super">The whole idea, in 30 seconds</div>
+    <h2 class="eli5-title">Here's the problem Orc solves, with no jargon. <em>Read the pictures.</em></h2>
+
+    <div class="panels">
+      <!-- PANEL 1 -->
+      <div class="panel">
+        <div class="panel-no">i</div>
+        <div class="panel-art">
+          <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <!-- AI box -->
+            <rect x="60" y="60" width="100" height="80" rx="8" stroke="#1d1611" stroke-width="2"/>
+            <!-- antenna -->
+            <line x1="110" y1="60" x2="110" y2="44" stroke="#1d1611" stroke-width="2"/>
+            <circle cx="110" cy="40" r="4" fill="#a8281e"/>
+            <!-- eyes (blink) -->
+            <g class="svg-eyes" style="transform-origin: 90px 90px;">
+              <circle cx="90" cy="90" r="5" fill="#1d1611"/>
+            </g>
+            <g class="svg-eyes" style="transform-origin: 130px 90px; animation-delay: 0.1s;">
+              <circle cx="130" cy="90" r="5" fill="#1d1611"/>
+            </g>
+            <!-- mouth -->
+            <path d="M 90 118 Q 110 128 130 118" stroke="#1d1611" stroke-width="2" stroke-linecap="round"/>
+            <!-- speech bubble (pulse) -->
+            <g class="svg-bubble" style="transform-origin: 200px 70px;">
+              <ellipse cx="200" cy="70" rx="34" ry="22" fill="#a8281e"/>
+              <path d="M 180 84 L 168 100 L 184 88 Z" fill="#a8281e"/>
+              <text x="200" y="76" text-anchor="middle" font-family="DM Serif Display" font-size="18" font-style="italic" fill="#efe5cf">yes.</text>
+            </g>
+            <!-- person below -->
+            <circle cx="36" cy="146" r="10" stroke="#1d1611" stroke-width="2"/>
+            <line x1="36" y1="156" x2="36" y2="180" stroke="#1d1611" stroke-width="2"/>
+            <line x1="36" y1="166" x2="46" y2="174" stroke="#1d1611" stroke-width="2"/>
+            <line x1="36" y1="166" x2="26" y2="174" stroke="#1d1611" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="panel-caption">AI gives you an answer.</div>
+        <div class="panel-sub">No source. No proof. Just words on a screen — and you have to decide whether to trust it.</div>
+        <div class="panel-connector">→</div>
+      </div>
+
+      <!-- PANEL 2 -->
+      <div class="panel">
+        <div class="panel-no">ii</div>
+        <div class="panel-art">
+          <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <!-- auditor with magnifying glass -->
+            <circle cx="60" cy="60" r="14" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="74" x2="60" y2="130" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="96" x2="44" y2="116" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="96" x2="84" y2="86" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="130" x2="48" y2="160" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="130" x2="72" y2="160" stroke="#1d1611" stroke-width="2"/>
+            <!-- magnifying glass at arm end (shakes) -->
+            <g class="svg-shake" style="transform-origin: 90px 80px;">
+              <circle cx="98" cy="78" r="13" stroke="#a8281e" stroke-width="2.5"/>
+              <line x1="107" y1="87" x2="116" y2="96" stroke="#a8281e" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+            <!-- big question mark (bobs) -->
+            <g class="svg-bob" style="transform-origin: 175px 70px;">
+              <text x="175" y="100" text-anchor="middle" font-family="DM Serif Display" font-size="72" font-style="italic" fill="#a8281e">?</text>
+            </g>
+            <!-- frozen person -->
+            <circle cx="200" cy="140" r="10" stroke="#1d1611" stroke-width="2"/>
+            <line x1="200" y1="150" x2="200" y2="178" stroke="#1d1611" stroke-width="2"/>
+            <line x1="200" y1="158" x2="188" y2="158" stroke="#1d1611" stroke-width="2"/>
+            <line x1="200" y1="158" x2="212" y2="158" stroke="#1d1611" stroke-width="2"/>
+            <!-- empty hand marks -->
+            <g class="svg-shrug" style="transform-origin: 200px 158px;">
+              <circle cx="188" cy="158" r="2" fill="#1d1611"/>
+              <circle cx="212" cy="158" r="2" fill="#1d1611"/>
+            </g>
+            <!-- thought dots (pulse) -->
+            <g class="svg-pulse">
+              <circle cx="218" cy="128" r="2.5" fill="#a8281e"/>
+              <circle cx="224" cy="120" r="2" fill="#a8281e"/>
+              <circle cx="228" cy="114" r="1.5" fill="#a8281e"/>
+            </g>
+          </svg>
+        </div>
+        <div class="panel-caption">Someone asks: <em>"where did you get that?"</em></div>
+        <div class="panel-sub">Six months later. A regulator, an examiner, your own legal team. You need to show your work — and you can't.</div>
+        <div class="panel-connector">→</div>
+      </div>
+
+      <!-- PANEL 3 -->
+      <div class="panel">
+        <div class="panel-no">iii</div>
+        <div class="panel-art">
+          <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <!-- AI box with orc badge -->
+            <rect x="40" y="50" width="80" height="64" rx="6" stroke="#1d1611" stroke-width="2"/>
+            <line x1="80" y1="50" x2="80" y2="36" stroke="#1d1611" stroke-width="2"/>
+            <circle cx="80" cy="32" r="3.5" fill="#a8281e"/>
+            <!-- eyes -->
+            <circle cx="64" cy="78" r="4" fill="#1d1611"/>
+            <circle cx="96" cy="78" r="4" fill="#1d1611"/>
+            <!-- smile -->
+            <path d="M 64 96 Q 80 108 96 96" stroke="#1d1611" stroke-width="2" stroke-linecap="round"/>
+            <!-- orc badge -->
+            <circle cx="118" cy="58" r="11" fill="#a8281e"/>
+            <text x="118" y="62" text-anchor="middle" font-family="DM Serif Display" font-size="11" font-style="italic" fill="#efe5cf">orc</text>
+            <!-- document (slides in) -->
+            <g class="svg-paper">
+              <rect x="140" y="76" width="74" height="92" fill="#efe5cf" stroke="#1d1611" stroke-width="2"/>
+              <line x1="148" y1="92" x2="206" y2="92" stroke="#1d1611" stroke-width="1.2"/>
+              <line x1="148" y1="100" x2="200" y2="100" stroke="#a8281e" stroke-width="1.2"/>
+              <line x1="148" y1="108" x2="195" y2="108" stroke="#1d1611" stroke-width="1"/>
+              <line x1="148" y1="116" x2="206" y2="116" stroke="#1d1611" stroke-width="1"/>
+              <line x1="148" y1="124" x2="192" y2="124" stroke="#1d1611" stroke-width="1"/>
+              <line x1="148" y1="132" x2="200" y2="132" stroke="#1d1611" stroke-width="1"/>
+              <!-- footer / page ref -->
+              <line x1="148" y1="148" x2="206" y2="148" stroke="#1d1611" stroke-width="0.6"/>
+              <text x="151" y="160" font-family="JetBrains Mono" font-size="6" fill="#6b5d4d">§3 · p.12</text>
+            </g>
+            <!-- stamp (lands rhythmically) -->
+            <g class="svg-stamp" style="transform-origin: 188px 138px;">
+              <circle cx="188" cy="138" r="18" stroke="#a8281e" stroke-width="2" fill="none"/>
+              <circle cx="188" cy="138" r="14" stroke="#a8281e" stroke-width="0.8" fill="none"/>
+              <text x="188" y="135" text-anchor="middle" font-family="DM Serif Display" font-size="9" font-style="italic" fill="#a8281e">orc</text>
+              <text x="188" y="145" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#a8281e" letter-spacing="1">VERIFIED</text>
+            </g>
+          </svg>
+        </div>
+        <div class="panel-caption">With Orc, <em>the answer comes with the receipt.</em></div>
+        <div class="panel-sub">Every claim cited. Every step recorded. Hand the file to anyone — they replay the exact decision themselves.</div>
+        <div class="panel-connector"></div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- I. THE SHIFT -->
 <section id="problem">
