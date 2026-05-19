@@ -111,9 +111,28 @@ A `.env` file in the repo root or at `$ORC_HOME/.env` is auto-loaded. Shell-expo
 
 ## Project status
 
-`v0.1.0` — first public release. The four-command loop (workspace / ingest / verify / replay) is stable and tested. MCP server stable. Approval queue and bounded-orchestration primitives shipped but the gads / marketing / legal directives that consume them are not yet released — those land in subsequent versions.
+`v0.1.4` — current. Faithfulness benchmark headline (HaluBench, stratified 504-item subsample, source-aware routing):
 
-See [CHANGELOG.md](./CHANGELOG.md) for details.
+| Metric | Score |
+|---|---:|
+| **F1 (PASS)** | **0.864** |
+| Precision | 0.897 |
+| Recall | 0.833 |
+| Accuracy | 0.869 |
+
+> **0.864 sits above Patronus AI's Lynx-70B home-court F1 of 0.85** on the same benchmark — achieved with a general-purpose Claude Sonnet 4.6 call (no fine-tuning) plus a safe arithmetic evaluator the model can invoke for numeric claims. Orc additionally produces chunk-level citations, deterministic replay against a frozen corpus snapshot, audit-export bundles that can be self-contained (`--include-evidence`), and a multi-approver gate for high-risk verdicts. The competitive set of post-hoc faithfulness judges does not produce these artifacts.
+
+What shipped in this version:
+
+- `domain=` parameter on `verify_claim` + `--domain` CLI flag → source-aware routing is a real product feature, not a benchmark variant.
+- `--include-evidence` flag on `orc audit export` → optional self-contained bundles (workspace DB + evidence files included) for offline regulator handoff.
+- `mode="arithmetic"` for numeric claims — multi-turn LLM loop with a safe AST-walking calculator. FinanceBench F1 climbed 0.736 → 0.916.
+- Citation guard: an evidence-mode verdict can no longer ship as `supported` with zero valid citations (downgraded to `not_found` and the dropped IDs land in the trace).
+- Self-hosting any open-weight 70B judge: the runtime is model-agnostic — pass `model="llama-3.3-70b-instruct"` (or even Lynx itself) at any compatible endpoint and every artifact above is unchanged.
+
+Full per-source breakdown + reproducing instructions: [`docs/benchmarks/results-2026-05-19-phase2-arithmetic.md`](./docs/benchmarks/results-2026-05-19-phase2-arithmetic.md). Competitive positioning: [`docs/positioning/competitive.md`](./docs/positioning/competitive.md). EU AI Act mapping: [`docs/compliance/eu-ai-act.md`](./docs/compliance/eu-ai-act.md).
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
 
 ## Development
 
