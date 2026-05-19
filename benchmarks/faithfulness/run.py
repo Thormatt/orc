@@ -244,6 +244,11 @@ def _run_decomposed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     return _run_with_mode(item, orc_home, "decomposed")
 
 
+def _run_arithmetic_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Production path in `mode="arithmetic"` — calculator tool + binary verdict."""
+    return _run_with_mode(item, orc_home, "arithmetic")
+
+
 def _run_source_routed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     """Source-aware routing: picks the mode that's empirically best for the
     item's source_ds (per the per-source breakdowns from the earlier runs).
@@ -459,7 +464,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hhem", action="store_true", help="Also score with self-hosted HHEM")
     parser.add_argument(
         "--variant",
-        choices=["default", "lynx_style", "judgment", "binary", "decomposed", "source_routed"],
+        choices=[
+            "default",
+            "lynx_style",
+            "judgment",
+            "binary",
+            "decomposed",
+            "arithmetic",
+            "source_routed",
+        ],
         default="default",
         help=(
             "Verification variant. "
@@ -468,6 +481,7 @@ def main(argv: list[str] | None = None) -> int:
             "`judgment` = mode=judgment (no BM25, lighter prompt, full moat). "
             "`binary` = mode=binary (no BM25, binary tool schema, full trace+replay+audit). "
             "`decomposed` = mode=decomposed (Haiku decompose → binary atoms → confidence-weighted aggregate). "
+            "`arithmetic` = mode=arithmetic (binary + calculator tool, multi-turn loop). "
             "`source_routed` = pick best mode per item's source_ds (caller-provided domain hint in production)."
         ),
     )
@@ -540,6 +554,7 @@ def main(argv: list[str] | None = None) -> int:
         "judgment": _run_judgment_one,
         "binary": _run_binary_one,
         "decomposed": _run_decomposed_one,
+        "arithmetic": _run_arithmetic_one,
         "source_routed": _run_source_routed_one,
     }
     runner = runners[args.variant]
