@@ -22,7 +22,7 @@ counts assume the production workspace shape (10 retrieved chunks,
 | Sonnet 4.6 (with prompt cache, steady state) | **$0.002 – 0.005** | Same F1; caching cuts repeated corpus reads 10× |
 | GPT-4o | $0.008 – 0.012 | F1 0.761 |
 | Haiku 4.5 | **$0.001 – 0.003** | F1 0.764 (only ~0.025 below Sonnet) |
-| Gemini 3.5 Flash | **$0.0005 – 0.001** | Quality TBD at full N (smoke F1 ~0.84) |
+| Gemini 3.5 Flash | **$0.0005 – 0.001** | **F1 0.890 on N=447** — 57 max_tokens skips; directional cost/quality winner ([see caveat](../benchmarks/results-2026-05-19-multi-model.md)) |
 | Llama 3.3 70B / Qwen 2.5 72B (open-weight via OpenRouter) | $0.001 – 0.003 | Binary mode only; F1 ~0.58–0.67 |
 | Llama 3.3 70B / Qwen 2.5 72B (self-hosted) | $0 API + GPU rental | See below |
 
