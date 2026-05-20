@@ -258,6 +258,89 @@
   .a-draw { stroke-dasharray: 200; animation: draw 2.4s ease-out infinite; }
   .a-glow { animation: glow 2.4s ease-in-out infinite; }
 
+  /* === FILE-VIEWER (Scene VI) === */
+  .terminal {
+    background: #0f0c08;
+    color: #efe5cf;
+    border-radius: 6px;
+    padding: 22px 26px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 32px 0 28px;
+    box-shadow: 4px 4px 0 var(--ink);
+    position: relative;
+    overflow-x: auto;
+  }
+  .terminal::before {
+    content: "auditor's machine — $ tar tzf audit-credit-memos-20260520.tar.gz";
+    position: absolute;
+    top: 6px;
+    right: 14px;
+    font-size: 9px;
+    color: var(--ink-faint);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .terminal .file { color: #6ee787; }
+  .terminal .dir { color: #f5a067; }
+  .terminal .comment { color: #a3957e; font-style: italic; }
+  .terminal .prompt { color: #6ee787; font-weight: 600; }
+  .terminal .size { color: #a3957e; }
+
+  .file-viewer-wrap {
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+    margin-top: 24px;
+  }
+  .file-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    flex-wrap: wrap;
+    background: var(--paper-3);
+  }
+  .ftab {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--rule);
+    color: var(--ink-mute);
+    padding: 12px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .ftab:hover { color: var(--ink); background: var(--paper-2); }
+  .ftab.active {
+    color: var(--crimson);
+    background: var(--paper);
+    border-bottom-color: var(--crimson);
+  }
+  .file-body {
+    padding: 0;
+    background: var(--paper);
+    max-height: 540px;
+    overflow: auto;
+  }
+  .file-body pre {
+    margin: 0;
+    padding: 24px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink-2);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .file-body .k { color: var(--crimson); }
+  .file-body .s { color: var(--ink); font-weight: 500; }
+  .file-body .n { color: #6b8e23; }
+  .file-body .c { color: var(--ink-faint); font-style: italic; }
+  .file-body .h { background: rgba(168, 40, 30, 0.08); padding: 0 2px; }
+
   /* CLOSE */
   .close {
     padding: 120px 0;
@@ -698,6 +781,49 @@
   </div>
 </section>
 
+<!-- ============================ SCENE 6 ============================ -->
+<section class="scene reveal">
+  <div class="container">
+    <div class="scene-header">
+      <div class="scene-no">vi.</div>
+      <div class="scene-title">What's actually <em>in the envelope</em>?</div>
+      <div class="scene-sub">No mystery. Here's the exact file listing and contents an auditor opens on their own machine.</div>
+    </div>
+
+    <div class="terminal"><span class="prompt">$</span> tar tzf audit-credit-memos-20260520.tar.gz
+<span class="file">manifest.json</span>            <span class="comment"># bundle metadata + sha256 of every file</span>
+<span class="file">README.md</span>                <span class="comment"># human-readable index + replay instructions</span>
+<span class="file">runs.csv</span>                 <span class="comment"># one row per Run in this bundle</span>
+<span class="file">evidence.csv</span>             <span class="comment"># every ingested document with its sha256</span>
+<span class="file">approvals.csv</span>            <span class="comment"># approval queue + per-approver decisions</span>
+<span class="dir">workspace/</span>
+<span class="dir">workspace/orc.db</span>         <span class="comment"># SQLite database (captured via Online Backup API)</span>
+<span class="dir">workspace/traces/2026/05/01KS0QT1MSV3NZA8ZSJK6VKJ7H.json</span>
+<span class="dir">workspace/evidence/filing-2023-Q4.pdf</span>
+
+<span class="comment"># 9 files · 184 KB compressed · 612 KB uncompressed</span>
+<span class="comment"># every file (except manifest.json) is sha256-hashed inside manifest.json</span></div>
+
+    <p class="caption">Click each file to see what's actually inside. <strong>This is what the auditor reads — line for line, byte for byte.</strong></p>
+
+    <div class="file-viewer-wrap">
+      <div class="file-tabs" role="tablist">
+        <button class="ftab active" data-file="manifest" role="tab" aria-selected="true">manifest.json</button>
+        <button class="ftab" data-file="readme" role="tab">README.md</button>
+        <button class="ftab" data-file="runs" role="tab">runs.csv</button>
+        <button class="ftab" data-file="evidence" role="tab">evidence.csv</button>
+        <button class="ftab" data-file="trace" role="tab">trace.json</button>
+        <button class="ftab" data-file="approvals" role="tab">approvals.csv</button>
+      </div>
+      <div class="file-body">
+        <pre id="file-content"></pre>
+      </div>
+    </div>
+
+    <p class="caption" style="margin-top: 28px;">Every file is hashed in <code>manifest.json</code>. The auditor verifies integrity with one shell command (<code>sha256sum -c</code>) before they read anything else.</p>
+  </div>
+</section>
+
 <!-- CLOSE -->
 <section class="close">
   <div class="container">
@@ -716,8 +842,204 @@
       }
     });
   }, { threshold: 0.15 });
-
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // === File viewer: realistic sample content from a synthetic audit bundle ===
+  const FILES = {
+    manifest: `{
+  <span class="k">"export_manifest_version"</span>: <span class="n">1</span>,
+  <span class="k">"orc_version"</span>: <span class="s">"0.1.4"</span>,
+  <span class="k">"python_version"</span>: <span class="s">"3.12.8"</span>,
+  <span class="k">"platform"</span>: <span class="s">"macOS-26.2-arm64"</span>,
+  <span class="k">"workspace"</span>: <span class="s">"credit-memos"</span>,
+  <span class="k">"exported_at"</span>: <span class="s">"2026-05-20T16:30:00Z"</span>,
+  <span class="k">"range_from"</span>: <span class="n">null</span>,
+  <span class="k">"range_to"</span>: <span class="n">null</span>,
+  <span class="k">"trace_schema_versions_supported"</span>: [<span class="n">2</span>],
+  <span class="k">"trace_schema_versions_seen"</span>: [<span class="n">2</span>],
+  <span class="k">"self_contained"</span>: <span class="n">true</span>,
+  <span class="k">"missing_evidence_files"</span>: [],
+  <span class="k">"counts"</span>: {
+    <span class="k">"runs"</span>: <span class="n">1</span>,
+    <span class="k">"evidence"</span>: <span class="n">1</span>,
+    <span class="k">"approvals"</span>: <span class="n">1</span>,
+    <span class="k">"approval_decisions"</span>: <span class="n">1</span>,
+    <span class="k">"trace_files"</span>: <span class="n">1</span>,
+    <span class="k">"evidence_files"</span>: <span class="n">1</span>,
+    <span class="k">"missing_evidence_files"</span>: <span class="n">0</span>
+  },
+  <span class="k">"files"</span>: {
+    <span class="k">"README.md"</span>: <span class="s">"3a7c91f02e84b5d9..."</span>,
+    <span class="k">"approvals.csv"</span>: <span class="s">"e91204bc77a3d5f8..."</span>,
+    <span class="k">"evidence.csv"</span>: <span class="s">"a3f9d2b4cf12e84d..."</span>,
+    <span class="k">"runs.csv"</span>: <span class="s">"7b2e5891fd0c4a17..."</span>,
+    <span class="k">"workspace.json"</span>: <span class="s">"f0a1c93bd248e5b7..."</span>,
+    <span class="k">"workspace/orc.db"</span>: <span class="s">"d847a2f1e93cb086..."</span>,
+    <span class="k">"workspace/traces/2026/05/01KS0QT1MSV3NZA8ZSJK6VKJ7H.json"</span>: <span class="s">"4b9e21f7a6c83d40..."</span>,
+    <span class="k">"workspace/evidence/filing-2023-Q4.pdf"</span>: <span class="s">"c1d3e92ab874f560..."</span>
+  }
+}`,
+
+    readme: `<span class="c"># Orc audit export</span>
+
+This bundle is the audit artifact for workspace \`credit-memos\`, produced by
+\`orc audit export\` at \`2026-05-20T16:30:00Z\`.
+
+<span class="c">## Bundle metadata</span>
+- orc version: \`0.1.4\`
+- python: \`3.12.8\` (macOS-26.2-arm64)
+- export manifest version: \`1\`
+- trace schema versions supported by this build: \`[2]\`
+- trace schema versions seen in this bundle: \`[2]\`
+- date range (started_at): \`—\` … \`—\`
+
+<span class="c">## Counts</span>
+- approval_decisions: \`1\`
+- approvals: \`1\`
+- evidence: \`1\`
+- evidence_files: \`1\`
+- missing_evidence_files: \`0\`
+- runs: \`1\`
+- trace_files: \`1\`
+
+<span class="c">## File layout</span>
+- \`manifest.json\` — this bundle's metadata + sha256 of every file below.
+- \`workspace.json\` — workspace row at export time.
+- \`runs.csv\` — one row per Run included in this bundle.
+- \`evidence.csv\` — evidence manifest with sha256 of each source.
+- \`approvals.csv\` — approval queue + per-approver decisions.
+- \`workspace/traces/&lt;YYYY&gt;/&lt;MM&gt;/&lt;run_id&gt;.json\` — full trace JSON for every
+  included Run.
+- \`workspace/orc.db\` — workspace SQLite database (corpus state, runs,
+  approvals). Captured via SQLite Online Backup so WAL state is included.
+- \`workspace/evidence/...\` — every ingested evidence file, mounted under
+  the same relative path as in the original workspace.
+
+<span class="c">## Reproducing a Run</span>
+
+<span class="h">This bundle is self-contained.</span>
+
+Extract and replay in an isolated environment — the example below uses
+ORC_HOME so the replay does not touch your existing Orc data:
+
+\`\`\`
+tar xzf audit-credit-memos-20260520.tar.gz
+
+WS=credit-memos
+mkdir -p ./orc-replay-home/workspaces/$WS
+cp -R workspace/* ./orc-replay-home/workspaces/$WS/
+
+ORC_HOME=$(pwd)/orc-replay-home orc replay 01KS0QT1MSV3NZA8ZSJK6VKJ7H
+\`\`\`
+
+\`effective_kwargs\` (v2 traces) pin the manifest defaults in force at the
+time of the original run, so a later manifest change does not silently
+shift behavior on replay.
+
+<span class="c">## Integrity</span>
+Every file in this tarball except \`manifest.json\` is hashed in
+\`manifest.json\` (manifest.json cannot hash itself). Verify with:
+    sha256sum -c &lt;(jq -r '.files | to_entries[] |
+        "\\(.value)  \\(.key)"' manifest.json)`,
+
+    runs: `<span class="k">run_id,directive,skill,workspace,corpus_version,started_at,ended_at,status,model,total_input_tokens,total_output_tokens,total_cache_read,total_cache_creation,output_summary,error_message</span>
+01KS0QT1MSV3NZA8ZSJK6VKJ7H,research,verify_claim,credit-memos,1,2026-05-19T22:14:08Z,2026-05-19T22:14:11Z,closed,claude-sonnet-4-6,4287,142,3892,395,<span class="s">"label=supported confidence=0.91"</span>,
+`,
+
+    evidence: `<span class="k">evidence_id,source_path,stored_path,sha256,mime_type,title,ingested_at,corpus_version</span>
+01KS0QSXM9ZVF82QHXP1Y3PE7K,./Q3-filings/filing-2023-Q4.pdf,/Users/thor/.orc/workspaces/credit-memos/evidence/01KS0QSXM9ZVF82QHXP1Y3PE7K-filing-2023-Q4.pdf,<span class="s">c1d3e92ab874f560f8920cba2e8b9701a4d62cfa15b8743ce209a8bdf0312e94</span>,application/pdf,FY2023 Annual Report,2026-05-19T22:13:42Z,1
+`,
+
+    trace: `{
+  <span class="k">"schema_version"</span>: <span class="n">2</span>,
+  <span class="k">"run_id"</span>: <span class="s">"01KS0QT1MSV3NZA8ZSJK6VKJ7H"</span>,
+  <span class="k">"directive"</span>: <span class="s">"research"</span>,
+  <span class="k">"skill"</span>: <span class="s">"verify_claim"</span>,
+  <span class="k">"workspace"</span>: <span class="s">"credit-memos"</span>,
+  <span class="k">"corpus_version"</span>: <span class="n">1</span>,
+  <span class="k">"started_at"</span>: <span class="s">"2026-05-19T22:14:08Z"</span>,
+  <span class="k">"ended_at"</span>: <span class="s">"2026-05-19T22:14:11Z"</span>,
+  <span class="k">"status"</span>: <span class="s">"closed"</span>,
+  <span class="k">"inputs"</span>: {
+    <span class="k">"claim"</span>: <span class="s">"FY2023 EBITDA margin was 18.4%"</span>,
+    <span class="k">"workspace"</span>: <span class="s">"credit-memos"</span>
+  },
+  <span class="k">"effective_kwargs"</span>: {
+    <span class="k">"claim"</span>: <span class="s">"FY2023 EBITDA margin was 18.4%"</span>,
+    <span class="k">"model"</span>: <span class="s">"claude-sonnet-4-6"</span>,
+    <span class="k">"k"</span>: <span class="n">10</span>,
+    <span class="k">"retrieval_pool"</span>: <span class="n">50</span>,
+    <span class="k">"max_tokens"</span>: <span class="n">2048</span>,
+    <span class="k">"mode"</span>: <span class="s">"evidence"</span>
+  },
+  <span class="k">"retrieval"</span>: {
+    <span class="k">"method"</span>: <span class="s">"bm25"</span>,
+    <span class="k">"candidates_considered"</span>: <span class="n">28</span>,
+    <span class="k">"chunk_ids"</span>: [
+      <span class="s">"01KS0QSXM9ZVF82QHXP1Y3PE7K_3_2"</span>,
+      <span class="s">"01KS0QSXM9ZVF82QHXP1Y3PE7K_3_1"</span>,
+      <span class="s">"01KS0QSXM9ZVF82QHXP1Y3PE7K_3_3"</span>,
+      <span class="c">"... (7 more)"</span>
+    ]
+  },
+  <span class="k">"llm_calls"</span>: [
+    {
+      <span class="k">"call_id"</span>: <span class="s">"01KS0QT1XYZ4A5B6C7D8E9F0G1"</span>,
+      <span class="k">"model"</span>: <span class="s">"claude-sonnet-4-6"</span>,
+      <span class="k">"input_tokens"</span>: <span class="n">4287</span>,
+      <span class="k">"output_tokens"</span>: <span class="n">142</span>,
+      <span class="k">"cache_read_input_tokens"</span>: <span class="n">3892</span>,
+      <span class="k">"cache_creation_input_tokens"</span>: <span class="n">395</span>,
+      <span class="k">"elapsed_ms"</span>: <span class="n">2917</span>,
+      <span class="k">"response"</span>: {
+        <span class="k">"stop_reason"</span>: <span class="s">"tool_use"</span>,
+        <span class="k">"tool_input_keys"</span>: [<span class="s">"confidence"</span>, <span class="s">"contradicting_chunk_ids"</span>, <span class="s">"label"</span>, <span class="s">"missing_information"</span>, <span class="s">"reasoning"</span>, <span class="s">"supporting_chunk_ids"</span>],
+        <span class="k">"dropped_chunk_ids"</span>: [],
+        <span class="k">"label_downgraded"</span>: <span class="n">false</span>
+      }
+    }
+  ],
+  <span class="k">"output"</span>: {
+    <span class="k">"label"</span>: <span class="s">"supported"</span>,
+    <span class="k">"confidence"</span>: <span class="n">0.91</span>,
+    <span class="k">"reasoning"</span>: <span class="s">"The passage states adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023. Computed 1247/6783 = 0.1838 = 18.38%, which matches the claim of 18.4% within rounding tolerance."</span>,
+    <span class="k">"supporting_chunks"</span>: [
+      {
+        <span class="k">"chunk_id"</span>: <span class="s">"01KS0QSXM9ZVF82QHXP1Y3PE7K_3_2"</span>,
+        <span class="k">"evidence_title"</span>: <span class="s">"FY2023 Annual Report"</span>,
+        <span class="k">"headings_path"</span>: <span class="s">"§3 Financial Performance &gt; Operating Results"</span>,
+        <span class="k">"text"</span>: <span class="s">"Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023..."</span>
+      }
+    ],
+    <span class="k">"model"</span>: <span class="s">"claude-sonnet-4-6"</span>
+  }
+}`,
+
+    approvals: `<span class="k">approval_id,workspace,directive,skill,source_run_id,status,summary,approvers_required,created_at,decided_at,decided_by,decision_note,decision_id,decision,decided_at_decision,note</span>
+01KS0QV4PB7HMR3N8Y2QFZ9W2L,credit-memos,research,verify_claim,01KS0QT1MSV3NZA8ZSJK6VKJ7H,approved,<span class="s">"Approve verdict for FY2023 EBITDA margin claim"</span>,1,2026-05-19T22:15:02Z,2026-05-19T22:18:47Z,j.smith@bank.com,<span class="s">"Verified citation against §3 p.12. OK to include in credit memo."</span>,01KS0QV5CDXNAJ7T4HK6P8Q1MZ,approve,2026-05-19T22:18:47Z,
+`
+  };
+
+  const tabs = document.querySelectorAll('.ftab');
+  const content = document.getElementById('file-content');
+
+  function showFile(key) {
+    content.innerHTML = FILES[key];
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      showFile(tab.dataset.file);
+    });
+  });
+
+  showFile('manifest');
 </script>
 
 </body>
