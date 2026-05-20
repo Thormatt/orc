@@ -28,6 +28,32 @@ customer in production.
 
 ---
 
+## Positioning (two layers)
+
+Orc has two distinct audiences with different vocabularies. Both messages are
+true; the right one to lead with depends on who's reading.
+
+**For developers:**
+
+> Open-source verification runtime for AI workflows that need evidence, replay,
+> and audit trails.
+
+**For buyers (CRO, GC, head of compliance, head of regulated AI):**
+
+> Audit evidence infrastructure for regulated AI systems. Orc turns AI outputs
+> into a replayable audit packet: what the model saw, what it claimed, what
+> evidence supported it, who approved it, and what bundle a reviewer can
+> inspect later.
+
+Notice what the buyer message does *not* say: it does not say "verification
+runtime," it does not say "MCP tool," it does not say "model-agnostic judge,"
+and it does not lead with an F1 number. Those framings put Orc into the
+LangSmith / Langfuse / RAG-evals procurement bucket — wrong category, wrong
+buyer, wrong sales cycle. The audit-evidence framing puts Orc into the
+compliance-infrastructure bucket, which is where the budget lives.
+
+F1 stays as proof. It does not lead.
+
 ## The thesis
 
 The pattern: open-source the runtime, charge for the operations companies
@@ -53,9 +79,38 @@ compresses too fast.
 Orc's wedge is **the audit artifact a regulator will accept.** Verification
 is *how*; defensibility is *what*. Compliance products live in a different
 procurement cycle, a different buyer (Chief Risk Officer, not CTO), and a
-different sales motion than dev tools. That's the moat — and it's exactly
-what the EU AI Act, NIST AI RMF, SR 11-7, and EBA model-risk guidance are
-moving the market toward.
+different sales motion than dev tools. That's the moat.
+
+### What we explicitly are NOT
+
+We are not an observability platform. LangSmith ($39/seat/mo + per-trace
+pricing) and Langfuse (open-source, self-hostable LLM tracing) already own
+that category. Trying to compete on "we trace your LLM calls too" loses on
+day one — they have more integrations, more years of head start, and a
+broader product.
+
+Orc's narrower wedge: **portable audit evidence + verification controls.**
+An auditor can take an Orc bundle off the network, open it on their laptop,
+and re-run the exact decision. That's a different shape of artifact than a
+trace dashboard.
+
+### Why this timing matters
+
+The EU AI Act's headline date (2 August 2026) is the **broad applicability**
+date — it's when the regulation kicks in, but most enterprise-relevant
+obligations come later:
+
+- **2 December 2027** — high-risk obligations under Annex III categories
+  (biometrics, critical infrastructure, education, employment,
+  migration/asylum/border control). *This is the date most deployers need
+  to be ready for.*
+- **2 August 2028** — product-integrated high-risk systems under sectoral
+  law (simplification agreement).
+
+Frame this as "the preparation window is open" — not "deadline tomorrow."
+The buyer who lands an audit-evidence solution in 2026–2027 is comfortably
+positioned. The buyer who shows up in mid-2027 with nothing in place is
+not. That's the sales narrative.
 
 Every business decision below leans into this.
 
@@ -141,6 +196,31 @@ for one-client engagements, that's a Team workspace.)
 
 ---
 
+## ICP — who specifically
+
+Not "regulated companies." Specifically, **AI teams inside regulated
+organizations that have at least one workflow they need to defend:**
+
+- Finance — credit memos, transaction-monitoring narratives, earnings-call
+  analyses, model-risk-management filings.
+- Healthcare and life sciences — clinical evidence summaries, regulatory
+  submissions, post-market surveillance reports.
+- HR / talent platforms deploying in the EU — automated screening or
+  scoring systems falling under the Annex III high-risk categories.
+- Insurance — underwriting narratives, claims-adjudication explanations.
+- Legal ops — contract review, e-discovery, opinion drafting at firms or
+  in-house legal teams.
+- Public-sector vendors — anyone selling AI tools into agencies that
+  will be subject to AI accountability laws.
+- EU-facing SaaS — any product shipping AI features to EU users where
+  Article 26 deployer obligations will bind on either the vendor or the
+  customer.
+
+Wrong ICP signal: "every AI team needs this." Right ICP signal: a head
+of compliance/risk at one of the orgs above can name a specific workflow
+where AI is producing a decision and an auditor or counsel will eventually
+ask "show me how you got there."
+
 ## Go-to-market — pilot-first, SaaS later
 
 The single biggest founder mistake here would be building the SaaS before
@@ -148,10 +228,7 @@ The single biggest founder mistake here would be building the SaaS before
 
 Order of operations:
 
-1. **Now.** Pitch the pilot offer to 10 regulated-industry teams. EU
-   banks, US clinical-research orgs, mid-size law firms running AI
-   review, HR-tech vendors deploying in the EU, pharma regulatory
-   submissions teams.
+1. **Now.** Pitch the pilot offer to 10 ICP-fit teams (see above).
 2. **Land 3.** First 3 are free in exchange for case-study rights,
    logo usage, and detailed weekly feedback. Each one is roughly 4
    weeks of full-time work — that's the cost of the customer-discovery

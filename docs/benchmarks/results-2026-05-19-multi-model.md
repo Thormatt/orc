@@ -1,30 +1,49 @@
-# Faithfulness benchmark — multi-model portability
+# Faithfulness benchmark — provider portability + verdict-quality sensitivity
 
-**Run date:** 2026-05-19/20 · **Orc version:** 0.1.4 · **Dataset:** stratified 504-item HaluBench subsample.
+**Orc version:** 0.1.4 · **Dataset:** stratified 504-item HaluBench subsample.
 
 A test of the "the judge model is a knob; the runtime is the moat" claim from the competitive doc. Same Orc runtime, same HaluBench items, same prompts — five different LLM judges swapped in via `ORC_VERIFY_MODEL`.
 
-## Headline
+## The honest headline
 
-| Model | Provider | Mode | F1 | N | Cost band |
+> **Orc's audit/runtime contract is provider-portable. Verification quality is model-sensitive. Hosted models run without tuning; open-weight deployments need calibration.**
+
+This is the strongest claim the data supports. Stronger claims ("model-agnostic," "works on the commercial frontier") overpromise. Weaker claims ("only Sonnet works") understate.
+
+Three follow-on facts that matter to a buyer:
+
+1. **The runtime contract — citation enforcement, trace, replay, audit-export, multi-approver — is identical across every model tested.** Swap `ORC_VERIFY_MODEL`, get the same artifacts. That part is real.
+2. **Verdict-quality F1 varies by model.** Hosted commercial models (Sonnet, Haiku, GPT-4o, Gemini Flash) cluster within ~10 F1 points of each other on this benchmark. Open-weight Llama 3.3 70B lands much lower without per-model adaptation.
+3. **The source-routed F1=0.864 headline is Sonnet-specific.** We have not validated source-routed numbers on the other models. Default (evidence) mode is the apples-to-apples comparison below.
+
+## Results
+
+| Model | Provider | Mode | F1 | N | Status |
 |---|---|---|---:|---:|---|
-| **Sonnet 4.6** | Anthropic | source_routed | **0.864** | 503 | $$$ |
-| Sonnet 4.6 | Anthropic | default (evidence) | 0.788 | 503 | $$$ |
-| Haiku 4.5 | Anthropic | default | 0.764 | 504 | $ |
-| GPT-4o | OpenAI | default | 0.761 | 503 | $$$ |
-| Gemini 3.5 Flash | Google | default | 0.840 | 85 *(see note)* | $ |
-| Llama 3.3 70B | Meta (open-weight) | default | **0.000** | 20 | ¢ |
-| Llama 3.3 70B | Meta (open-weight) | binary | 0.583 | 20 | ¢ |
+| **Sonnet 4.6** | Anthropic | source-routed | **0.864** | 503 | Production headline (Sonnet-only validated) |
+| Sonnet 4.6 | Anthropic | default | 0.788 | 503 | Apples-to-apples baseline |
+| Haiku 4.5 | Anthropic | default | 0.764 | 504 | ✓ full |
+| GPT-4o | OpenAI | default | 0.761 | 503 | ✓ full |
+| Gemini 3.5 Flash | Google | default | 0.840* | 85 | **Directional only** — credit-exhaustion mid-run |
+| Llama 3.3 70B | Meta (open-weight) | default | 0.000 | 20 | Citation guard rejected every verdict — see below |
+| Llama 3.3 70B | Meta (open-weight) | binary | 0.583 | 20 | Smoke only; full N pending |
 
-> *Gemini run is N=85 instead of 504 because OpenRouter credits exhausted mid-run. The result on those 85 items projects to a competitive full-N number, but should be re-run with topped-up credits before being cited as definitive.*
+> *The Gemini 3.5 Flash row is **directional only**. N=85 with 405 of the missing 419 items caused by OpenRouter `402 credit` skips. The 85 items that did complete look strong, but this is not a publishable F1 number until a full N=504 re-run lands.*
 
-## The portability claim — what's true and what isn't
+## On the Llama F1 = 0.000 result
 
-**True for Anthropic-family and large commercial models.** Sonnet 4.6, Haiku 4.5, GPT-4o, and Gemini 3.5 Flash all run the existing Orc prompts and produce competitive verdicts without any per-model tuning. Quality varies (0.76–0.79 default-mode F1), but the *runtime is genuinely portable* across these providers — drop-in via `ORC_VERIFY_MODEL`, no code changes.
+This is not the embarrassment it first appears to be. It is **the citation guard doing exactly what it was built for.**
 
-**Not true out-of-the-box for open-weight Llama 3.3 70B.** Default (evidence) mode collapsed to F1 0.0: the model returned `not_found` on every item. Diagnosis: Llama is calling the verdict tool but producing chunk IDs the citation guard rejects (likely hallucinated or wrong format). Every "supported" verdict gets downgraded to `not_found` per the guard logic in `verify_claim.py`. Switching to **binary mode** (no chunk-citation requirement) recovers Llama to F1 0.58 on n=20 — functional but well below the commercial models.
+In evidence mode, the runtime requires the verdict to cite chunk IDs that exist in the retrieval set. Hallucinated or malformed chunk IDs get filtered out, and a `supported` verdict with zero remaining citations is downgraded to `not_found` (see `src/orc/directives/research/skills/verify_claim.py` — the citation guard). Llama 3.3 70B in evidence mode was emitting verdicts with chunk IDs that didn't match anything in the retrieval set, and the runtime correctly refused to ship them.
 
-The more accurate framing: **the runtime is model-portable, but mode selection should match model capability.** Commercial models with strong Anthropic-style tool use → evidence mode. Open-weight models that struggle with structured chunk-ID citation → binary mode.
+**The right read on this result: the runtime preferred to return "no support" rather than silently ship fake evidence.** That's the guarantee the audit story is built on. The catastrophic F1 is the runtime's safety mechanism firing, not the runtime breaking.
+
+What this tells us about Llama 3.3 70B specifically:
+- It cannot drive the evidence-mode 4-label tool schema out of the box.
+- It can drive the simpler binary tool schema (F1 ~0.58 on N=20).
+- To use Llama in evidence mode for an enterprise/VPC deployment, you would need some combination of: (a) per-model prompt tuning, (b) structured-output / grammar-constrained decoding, (c) a chunk-ID normalization layer that maps Llama's output format to the runtime's expected format, or (d) using binary mode as the default and accepting the F1 ceiling that comes with it.
+
+That work is real. It is also the kind of work an enterprise pilot can scope and pay for.
 
 ## Per-source breakdown
 
@@ -84,10 +103,17 @@ The cheapest options (Haiku, Gemini Flash) land within ~10 F1 points of Sonnet's
 
 ## Implications for the product
 
-1. **The "model-agnostic" claim needs the modifier "across the commercial frontier."** Sonnet + Haiku + GPT-4o + Gemini Flash all work in evidence mode. Llama 3.3 70B does not. Saying "any model works" overpromises; saying "any commercial frontier model + Llama in binary mode" is what's actually true.
-2. **For VPC/on-prem deployments using open-weight 70Bs, binary mode is the default.** Evidence mode requires citation-discipline that Llama doesn't currently provide. The runtime makes that choice clean (one flag); we should document it as the recommended on-prem path.
-3. **There's a real engineering item we'd take on for an enterprise pilot using open-weight:** prompt-tuning evidence mode for Llama, or adding a model-capability detection layer that auto-selects mode. That work is real, billable consulting — not free.
-4. **Haiku 4.5 deserves promotion in the default config for cost-conscious deployments.** F1 0.764 at ~5× lower cost than Sonnet is the right tradeoff for many compliance use cases where the absolute F1 ceiling matters less than the per-call cost.
+1. **The claim that's defensible:**
+   > "Orc's runtime contract is provider-portable; verification quality is model-calibrated. Major hosted model APIs (Anthropic, OpenAI, Google) run without tuning; open-weight / VPC deployments require deployment-specific calibration."
+   Not "model-agnostic." Not "commercial frontier" (Sonnet 4.6 and GPT-4o are recent but the benchmark says nothing about, e.g., o1 or Claude Opus 4.x — we tested what we tested). "Major hosted model APIs" is what the evidence currently supports, with caveats for the Gemini and Llama cells that need full N before being cited externally.
+
+2. **For VPC / on-prem deployments using open-weight 70Bs, binary mode is the default route** until the calibration work is done. The runtime makes that choice clean (one parameter); we document it as the recommended on-prem starting point.
+
+3. **The open-weight calibration is real engineering work — and it's exactly the right shape for a paid enterprise pilot.** A regulated buyer who wants Orc running on their own Llama deployment inside their VPC gets: prompt tuning, structured-output / grammar-constrained decoding (or chunk-ID normalization), evidence-mode validation against their corpus, and a final benchmark on their workflow's actual claim distribution. That work is the *content* of the pilot, not a hidden tax on it.
+
+4. **Haiku 4.5 deserves promotion in the default config for cost-conscious deployments.** F1 0.764 at ~5× lower cost than Sonnet is the right tradeoff for many compliance use cases where the absolute F1 ceiling matters less than per-call cost.
+
+5. **The source-routed F1=0.864 headline is honest only as a Sonnet number.** The source-routed cells for Haiku, GPT-4o, Gemini, and Llama are unvalidated. We should not imply the routed strategy lifts every model by the same delta until those runs land. Default (evidence) mode is the comparable baseline this benchmark currently supports.
 
 ## Reproducing
 

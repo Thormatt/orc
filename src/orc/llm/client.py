@@ -116,17 +116,23 @@ def _build_openrouter_client(anthropic_cls: Any, api_key: str) -> Any:
 def messages_create(client: Any, **kwargs: Any) -> Any:
     """Wrapper around `client.messages.create(...)` that adds OpenRouter-specific routing.
 
-    When we're routed through OpenRouter, pin the upstream to Anthropic-direct so prompt
-    caching works (other upstreams like Bedrock don't expose Anthropic's cache API).
+    When we're routed through OpenRouter and the target model is Anthropic-family, pin
+    the upstream to Anthropic-direct so prompt caching works (other upstreams like
+    Bedrock don't expose Anthropic's cache API). For non-Anthropic models (Llama, GPT,
+    Qwen, Mistral, etc.) we let OpenRouter pick the upstream — pinning Anthropic would
+    route the wrong way and fail.
     """
     if _provider == "openrouter":
-        extra_body = kwargs.get("extra_body") or {}
-        if "provider" not in extra_body:
-            extra_body = {
-                **extra_body,
-                "provider": {"order": ["Anthropic"], "allow_fallbacks": False},
-            }
-        kwargs["extra_body"] = extra_body
+        model = kwargs.get("model", "")
+        is_anthropic_model = model.startswith("anthropic/") or "claude" in model.lower()
+        if is_anthropic_model:
+            extra_body = kwargs.get("extra_body") or {}
+            if "provider" not in extra_body:
+                extra_body = {
+                    **extra_body,
+                    "provider": {"order": ["Anthropic"], "allow_fallbacks": False},
+                }
+            kwargs["extra_body"] = extra_body
     return client.messages.create(**kwargs)
 
 

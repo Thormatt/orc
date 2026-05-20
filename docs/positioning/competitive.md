@@ -101,9 +101,15 @@ call. 0.864 vs 0.85 is the wedge: **comparable verdict quality plus the
 artifacts a regulator needs, all without the inference cost or operational
 complexity of a self-hosted 70B model.**
 
-The runtime is model-agnostic — pass `model="llama-3.3-70b-instruct"` or
-even Lynx itself to any OpenAI-compatible endpoint and every artifact
-above is unchanged. The judge model is a knob; the runtime is the moat.
+The runtime is **provider-portable, model-calibrated**. The same Orc
+binary, the same prompts, the same audit-bundle layout work across
+Anthropic, OpenAI, and Google hosted APIs without code changes — see
+the [multi-model benchmark](../benchmarks/results-2026-05-19-multi-model.md)
+for evidence. Open-weight models (Llama 3.3 70B tested) need
+deployment-specific calibration: binary mode out of the box, or prompt
+tuning / structured-output tuning for evidence mode. That calibration
+work is real engineering, and it's the right scope for a paid enterprise
+pilot — not a hidden tax on the open-source claim.
 
 A reviewer who wants a strict head-to-head should pair this number with a
 Lynx run on the same 503-item subsample under the same label mapping.

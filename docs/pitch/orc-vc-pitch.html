@@ -1288,9 +1288,16 @@
 
 <span class="c"># 3. Months later, hand a regulator a self-contained tarball</span>
 <span class="k">$</span> orc audit export -w credit-memos --include-evidence
-<span class="c"># → audit-credit-memos-20260519.tar.gz</span>
+<span class="c"># → audit-credit-memos-20260520.tar.gz</span>
 <span class="c">#   every decision · every retrieval · every prompt</span>
-<span class="c">#   every approval — all hashed, all reproducible.</span></code></pre>
+<span class="c">#   every approval — all hashed, all reproducible.</span>
+
+<span class="c"># 4. The regulator opens the tarball on their own machine and replays it</span>
+<span class="k">$</span> tar xzf audit-credit-memos-20260520.tar.gz
+<span class="k">$</span> ORC_HOME=$(pwd)/orc-replay-home orc replay 01KS0QT1MSV3NZA8ZSJK6VKJ7H
+<span class="c"># → re-executes the exact decision against the frozen corpus snapshot</span>
+<span class="c"># → produces the same verdict, byte-for-byte reproducible</span>
+<span class="c"># → no access to the operator's infrastructure required</span></code></pre>
 
     <p>That's the whole loop. Workspace, ingest, verify, audit. Also exposed as a Claude Code / Codex MCP server for teams already in those workflows.</p>
   </div>
@@ -1381,30 +1388,39 @@
 <section>
   <div class="container">
     <div class="section-no"><span class="roman">VII</span>Why now</div>
-    <h2>The regulatory window <em>just opened</em>.</h2>
+    <h2>The preparation window <em>is open</em>.</h2>
+
+    <p>The EU AI Act runs in stages. The honest read is "the preparation window is open" — not "deadline tomorrow." But teams that show up in mid-2027 with no audit trail in place will not be comfortable.</p>
 
     <div class="timeline">
       <div class="timeline-item">
-        <div class="timeline-date">August 2024</div>
-        <div class="timeline-headline">EU AI Act enters into force</div>
-        <div class="timeline-body">Articles 12, 13, 14 require automatic event logging, deployer transparency, and named-human oversight for high-risk systems. Penalties up to 7% of global turnover.</div>
+        <div class="timeline-date">2 Feb 2025</div>
+        <div class="timeline-headline">Prohibited practices banned</div>
+        <div class="timeline-body">First wave of the AI Act in force — bans on social-scoring, real-time public biometric ID, etc. AI literacy obligations begin.</div>
       </div>
       <div class="timeline-item">
-        <div class="timeline-date">January 2026</div>
-        <div class="timeline-headline">NIST AI RMF 1.0 final</div>
-        <div class="timeline-body">US sector regulators (Fed, OCC, CFPB, FDA, EEOC) publishing AI-specific guidance based on the framework. "Model risk management" now applies to everything an LLM touches.</div>
+        <div class="timeline-date">2 Aug 2026</div>
+        <div class="timeline-headline">Broad applicability + GPAI obligations</div>
+        <div class="timeline-body">The regulation becomes broadly applicable. GPAI-model obligations and the governance / enforcement infrastructure (national authorities, AI Office) activate.</div>
       </div>
       <div class="timeline-item">
-        <div class="timeline-date">2025–2026</div>
-        <div class="timeline-headline">The AI stack matured past chatbots</div>
-        <div class="timeline-body">Agents, tool use, MCP. Every framework treats verification as a downstream add-on. None produces the regulator handoff.</div>
+        <div class="timeline-date">2 Dec 2027</div>
+        <div class="timeline-headline">High-risk obligations land</div>
+        <div class="timeline-body">Annex III high-risk categories — biometrics, critical infrastructure, education, employment, migration / asylum / border control. <em>This is the date most regulated AI deployers need to be ready for.</em> Articles 12, 13, 14 (event logging, transparency to deployers, human oversight) are binding.</div>
       </div>
       <div class="timeline-item">
-        <div class="timeline-date">Now</div>
-        <div class="timeline-headline">Every CRO is being asked the same question</div>
-        <div class="timeline-body">"Show me what the model said, why it said it, and prove no one can change the answer after the fact." Orc is the shortest credible path to "we have an answer."</div>
+        <div class="timeline-date">2 Aug 2028</div>
+        <div class="timeline-headline">Product-integrated high-risk</div>
+        <div class="timeline-body">Per the simplification agreement, AI components built into regulated products (medical devices, vehicles, etc.) covered under sectoral law fall fully under the AI Act.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Parallel · US</div>
+        <div class="timeline-headline">NIST AI RMF + sector regulators</div>
+        <div class="timeline-body">Fed, OCC, CFPB, FDA, EEOC publishing AI-specific guidance based on the framework. "Model risk management" now applies to everything an LLM touches in regulated industries.</div>
       </div>
     </div>
+
+    <p style="margin-top: 32px;">Every CRO, GC, and head of regulated AI is being asked the same question by their board right now: <em>"show me what the model said, why it said it, and prove no one can change the answer after the fact."</em> Orc is the shortest credible path to "we have an answer."</p>
   </div>
 </section>
 

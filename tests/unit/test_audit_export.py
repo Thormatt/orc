@@ -242,6 +242,73 @@ def test_self_contained_downgraded_when_evidence_file_missing(
     assert len(manifest.missing_evidence_files) >= 1
 
 
+def test_self_contained_bundle_actually_replays_in_fresh_orc_home(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End-to-end: produce a self-contained bundle, extract it into a brand-new
+    ORC_HOME, and run replay against the run_id. This is the load-bearing
+    promise of `--include-evidence` — if it doesn't pass, the audit pitch
+    is overselling.
+    """
+    name = _seed_workspace(orc_home, tmp_path)
+    run_id = _make_verify_run(name, monkeypatch)
+
+    # Produce the self-contained bundle.
+    bundle = tmp_path / "bundle.tar.gz"
+    manifest = export_workspace(name, output_path=bundle, include_evidence=True)
+    assert manifest.self_contained is True
+
+    # Extract into a fresh ORC_HOME tree, following the bundle README's
+    # instructions: workspace/ subtree → ORC_HOME/workspaces/<original-name>/.
+    replay_home = tmp_path / "replay-home"
+    target_ws = replay_home / "workspaces" / name
+    target_ws.mkdir(parents=True)
+
+    with tarfile.open(bundle, "r:gz") as tar:
+        for m in tar.getmembers():
+            if not m.name.startswith("workspace/"):
+                continue
+            # Strip the leading "workspace/" so files land directly under the
+            # target workspace dir.
+            stripped = m.name[len("workspace/"):]
+            if not stripped:
+                continue
+            dest = target_ws / stripped
+            if m.isdir():
+                dest.mkdir(parents=True, exist_ok=True)
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            f = tar.extractfile(m)
+            assert f is not None
+            dest.write_bytes(f.read())
+
+    # Re-point ORC_HOME and the verify client (so replay re-runs without
+    # making a real LLM call — same fake we used for the original run).
+    monkeypatch.setenv("ORC_HOME", str(replay_home))
+    from tests._fake_llm import FakeAnthropic, make_verdict_response
+
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    from orc.llm import client as client_module
+
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    # `ws_module.resolve(name)` must succeed against the extracted workspace.
+    # If the path layout is wrong, replay will fail here.
+    ws_module._reset_cache_for_tests() if hasattr(ws_module, "_reset_cache_for_tests") else None
+    from orc.runs.replay import replay as do_replay
+
+    result = do_replay(run_id)
+
+    # The replay produces a new run with the original as parent. The original
+    # verdict was not_found (corpus is small, claim is unrelated) — replay
+    # should produce the same shape of result.
+    assert result["original_run_id"] == run_id
+    assert "new_run_id" in result
+    assert result["new_run_id"] != run_id
+    assert result["mode"] in {"frozen", "live"}
+
+
 def test_db_backup_via_sqlite_api_not_torn_read(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
