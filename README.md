@@ -130,7 +130,7 @@ What shipped in this version:
 - Citation guard: an evidence-mode verdict can no longer ship as `supported` with zero valid citations (downgraded to `not_found` and the dropped IDs land in the trace).
 - Self-hosting any open-weight 70B judge: the runtime is model-agnostic — pass `model="llama-3.3-70b-instruct"` (or even Lynx itself) at any compatible endpoint and every artifact above is unchanged.
 
-Full per-source breakdown + reproducing instructions: [`docs/benchmarks/results-2026-05-19-phase2-arithmetic.md`](./docs/benchmarks/results-2026-05-19-phase2-arithmetic.md). Competitive positioning: [`docs/positioning/competitive.md`](./docs/positioning/competitive.md). EU AI Act mapping: [`docs/compliance/eu-ai-act.md`](./docs/compliance/eu-ai-act.md). Business model + stage-by-stage roadmap: [`docs/business/roadmap.md`](./docs/business/roadmap.md).
+Full per-source breakdown + reproducing instructions: [`docs/benchmarks/results-2026-05-19-phase2-arithmetic.md`](./docs/benchmarks/results-2026-05-19-phase2-arithmetic.md). Multi-model portability (Sonnet, Haiku, GPT-4o, Gemini Flash, Llama 3.3 70B): [`docs/benchmarks/results-2026-05-19-multi-model.md`](./docs/benchmarks/results-2026-05-19-multi-model.md). Competitive positioning: [`docs/positioning/competitive.md`](./docs/positioning/competitive.md). EU AI Act mapping: [`docs/compliance/eu-ai-act.md`](./docs/compliance/eu-ai-act.md). Business model + stage-by-stage roadmap: [`docs/business/roadmap.md`](./docs/business/roadmap.md).
 
 See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
 

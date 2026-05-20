@@ -250,7 +250,7 @@ That's sellable now. The SaaS comes after we've seen the repeated pain.
 | LangChain ships Article-12-compliant logging (their own #35357) | 18–24 months | Their framework is the agent layer; Orc is the runtime layer underneath. The audit-bundle / replay / approver-queue story is a different shape than they ship. |
 | Patronus AI / Galileo / Vectara add audit-export to their products | 12–24 months | They optimize one part of the loop (the judge). Bundling judge + runtime + audit + approver is a different SKU. |
 | A managed-compliance-tool vendor (Credo AI, Holistic AI) adds a runtime layer | 24+ months | They sell to policy / risk officers, not engineers. Building a runtime is far from their muscle. Easier for Orc to grow up into compliance than for compliance vendors to grow down into runtime. |
-| Open-weight 70B faithfulness models match Sonnet F1 | already happening | Doesn't matter — Orc's model is pluggable. A customer that prefers Lynx-70B for their VPC just sets `model=lynx-70b`. The runtime is the moat. |
+| Open-weight 70B faithfulness models match Sonnet F1 | already happening | Doesn't matter — Orc's model is pluggable. A customer that prefers Lynx-70B for their VPC just sets `model=lynx-70b`. The runtime is the moat. *Caveat: per the [multi-model benchmark](../benchmarks/results-2026-05-19-multi-model.md), open-weight Llama 3.3 70B needs binary mode + per-model prompt-tuning to land competitive — a real engineering item that turns into billable enterprise-pilot work.* |
 
 ---
 
