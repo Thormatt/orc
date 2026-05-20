@@ -258,6 +258,137 @@
   .a-draw { stroke-dasharray: 200; animation: draw 2.4s ease-out infinite; }
   .a-glow { animation: glow 2.4s ease-in-out infinite; }
 
+  /* === HONEST-QUESTION CALLOUT (Scene III½) === */
+  .question-card {
+    background: var(--paper-2);
+    border: 2px solid var(--ink);
+    padding: 40px 36px;
+    margin: 32px auto 36px;
+    position: relative;
+    box-shadow: 6px 6px 0 var(--crimson);
+    max-width: 760px;
+  }
+  .question-card .q-label {
+    position: absolute;
+    top: -12px;
+    left: 28px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .question-card .q-text {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: clamp(24px, 3.4vw, 32px);
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  .question-card .q-text::before { content: "“"; color: var(--crimson); }
+  .question-card .q-text::after { content: "”"; color: var(--crimson); }
+  .question-card .q-answer {
+    font-family: 'Spectral', serif;
+    font-size: 19px;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+  .question-card .q-answer strong { color: var(--ink); }
+
+  .compare-table {
+    margin-top: 40px;
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+  .compare-table .compare-head {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 2px solid var(--ink);
+  }
+  .compare-table .compare-head > div {
+    padding: 18px 22px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+  .compare-table .compare-head .col-claim {
+    color: var(--ink-mute);
+    background: var(--paper-3);
+    border-right: 1px solid var(--rule);
+  }
+  .compare-table .compare-head .col-claim em {
+    font-style: italic;
+    color: var(--crimson);
+  }
+  .compare-table .compare-head .col-orc {
+    color: var(--crimson);
+    background: var(--paper);
+  }
+  .compare-table .compare-head .col-orc em {
+    font-style: italic;
+  }
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--rule);
+  }
+  .compare-row:last-child { border-bottom: none; }
+  .compare-row > div {
+    padding: 20px 22px;
+    font-family: 'Spectral', serif;
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+  .compare-row .claim-side {
+    background: var(--paper-3);
+    border-right: 1px solid var(--rule);
+    color: var(--ink-mute);
+    font-style: italic;
+  }
+  .compare-row .claim-side::before {
+    content: "× ";
+    color: var(--crimson);
+    font-style: normal;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    margin-right: 4px;
+  }
+  .compare-row .orc-side {
+    color: var(--ink);
+  }
+  .compare-row .orc-side::before {
+    content: "✓ ";
+    color: var(--crimson);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    margin-right: 4px;
+  }
+  .compare-row .orc-side code,
+  .compare-row .claim-side code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--paper);
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+    font-style: normal;
+  }
+  @media (max-width: 700px) {
+    .compare-table .compare-head,
+    .compare-row {
+      grid-template-columns: 1fr;
+    }
+    .compare-table .compare-head .col-claim,
+    .compare-row .claim-side {
+      border-right: none;
+      border-bottom: 1px solid var(--rule);
+    }
+  }
+
   /* === FILE-VIEWER (Scene VI) === */
   .terminal {
     background: #0f0c08;
@@ -634,6 +765,71 @@
       </div>
     </div>
     <p class="caption">Both answers say <strong>"18.4%"</strong>. Only one of them tells you <strong>where it came from</strong> and lets a third party check the work.</p>
+  </div>
+</section>
+
+<!-- ============================ SCENE III½ ============================ -->
+<section class="scene reveal">
+  <div class="container">
+    <div class="scene-header">
+      <div class="scene-no">iii½.</div>
+      <div class="scene-title">The honest question every reader has by now.</div>
+      <div class="scene-sub">"Couldn't I just ask Claude to cite its sources?"</div>
+    </div>
+
+    <div class="question-card">
+      <div class="q-label">Asked of every demo</div>
+      <div class="q-text">Couldn't I just ask Claude to cite its sources?</div>
+      <div class="q-answer">
+        You can. And you'll get a paragraph that <em>sounds</em> like a citation. But the answer is <strong>"trust me,"</strong> not <strong>"check me."</strong>
+        <br><br>
+        Asking the AI to support a claim is asking the AI to <strong>summarize its own work</strong>. Orc is the runtime that captures the work itself — what was retrieved, what was sent, what came back, whether the citations are real, whether it's reproducible.
+      </div>
+    </div>
+
+    <div class="compare-table">
+      <div class="compare-head">
+        <div class="col-claim">What the AI says <em>when you just ask</em></div>
+        <div class="col-orc">What Orc <em>actually guarantees</em></div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">"As stated on page 12 of the filing…"</div>
+        <div class="orc-side">The cited chunk_id (e.g. <code>01KS0QSXM9…</code>) actually exists in the retrieval set — runtime drops invalid IDs before the verdict ships.</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">"The document confirms a margin of 18.4%."</div>
+        <div class="orc-side">Corpus is sha256-pinned. The exact bytes of <code>filing-2023-Q4.pdf</code> at <code>corpus_version=1</code> are what was read — recorded in the trace.</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">"I checked the relevant section."</div>
+        <div class="orc-side">Trace JSON records every chunk in the retrieval set, the prompt, the LLM call, token counts, cache hits, and elapsed time.</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">"You can verify this yourself."</div>
+        <div class="orc-side"><code>orc replay &lt;run_id&gt;</code> reproduces the verdict deterministically — same answer, six months later, on any machine.</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">"I won't say anything I can't support."</div>
+        <div class="orc-side">Citation guard downgrades <code>supported → not_found</code> when every cited chunk is hallucinated. The runtime <strong>structurally cannot</strong> ship a supported verdict with no real evidence.</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">[silently retries differently next time]</div>
+        <div class="orc-side">Schema-versioned trace + <code>effective_kwargs</code> snapshot pin the exact manifest defaults in force at run time. A later code change doesn't silently shift past verdicts.</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="claim-side">[no record of who approved an action it triggered]</div>
+        <div class="orc-side">Mutating actions land in the approval queue with named-human sign-off, SQL-enforced uniqueness, EU AI Act Article 14 §5 compliant.</div>
+      </div>
+    </div>
+
+    <p class="caption">Without Orc you have <strong>the AI's word</strong>. With Orc you have <strong>the AI's work, hashed</strong>. That is the only difference an auditor cares about.</p>
   </div>
 </section>
 
