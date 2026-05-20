@@ -92,18 +92,70 @@ Three concrete deployment shapes:
 
 ## How does this compare to the alternative?
 
-The alternative to AI-assisted verification is **a human reviewing each
-output.** At a $200/hr fully-loaded compliance-analyst rate and 5
-minutes per review, that's **$17 per manual verification**.
+The comparison isn't "Orc vs a perfect human reviewer." Two corrections
+worth being explicit about:
 
-So at Haiku rates, the AI verification costs ~0.02% of the manual cost.
-Even at Sonnet rates, it's ~0.1%. The number that matters isn't "is
-this more expensive than a Google search" — it's "is this cheaper than
-the human review it replaces."
+**1. Humans aren't 100% either.** Inter-rater agreement on compliance
+judgments typically runs 80–90% — fatigue, attention drift, and
+genuine ambiguity in the underlying claim. Comparing Orc-at-F1-0.86
+to a hypothetical 100%-accurate human is the wrong baseline.
 
-A more honest framing for a CRO: **Orc lets you verify 1,000× more AI
-outputs than your team could review manually, while producing the audit
-trail that defends each one.**
+**2. Orc is review-triage, not review-replacement.** The honest model
+is that Orc changes *what* humans review, not whether they review:
+
+| | Without Orc | With Orc |
+|---|---|---|
+| Human reviews | Every output | The 10–20% Orc flags |
+| Auto-pass | Nothing | High-confidence `supported` with valid citations |
+| Auto-flag for human | Nothing | `contradicted`, `not_found`, low-confidence |
+| Audit trail | "Analyst approved" (no record) | Full retrieval + verdict + citations + approval gate, replayable |
+
+The human stays in the loop on every hard case (via the approval
+queue) and always in the loop on external action. **Orc doesn't
+replace the reviewer; it lets one reviewer cover 5–10× the volume.**
+
+### The honest cost comparison
+
+A compliance analyst at $200/hr fully-loaded, 5 minutes per review,
+costs **~$17 per manual verification.**
+
+Today, a team of 5 analysts can review ~5,000 outputs/year — and the
+record of what they reviewed is a Slack message and an approval
+ticket.
+
+With Orc routing the 80–90% of clear-cut cases automatically:
+- Same 5 analysts now meaningfully review **25,000–50,000 outputs/year**
+  (the same volume of human attention, applied to the cases that need
+  it).
+- Every one of the 50,000 carries a full audit bundle, replayable.
+- The bill for the Orc API spend at Haiku: $1.5–5K/year for 50K
+  verifications.
+
+Versus the human-only baseline of $850K/year for 5,000 reviews (and no
+audit artifact), this is what the buyer is actually buying. **Not
+"cheap AI"; better coverage per dollar of human attention, plus an
+artifact that survives an audit.**
+
+### Honest failure-mode framing
+
+Two ways Orc can be wrong, both worth naming:
+
+- **False positive (`supported` when the claim is actually wrong):**
+  The citation guard reduces this — the cited chunks have to exist
+  and match retrieval. But the model can still pick chunks that look
+  supportive and aren't. Sonnet source-routed precision on PASS is
+  0.90, meaning ~10% of `supported` verdicts could be wrong. The
+  audit trail lets a downstream reviewer catch which ones.
+- **False negative (Orc misses a real problem):** more dangerous in
+  silent-fail mode. Mitigation: route low-confidence, `not_found`,
+  and `contradicted` to mandatory human review rather than auto-
+  passing them.
+
+Neither failure mode invalidates the audit trail. Even an Orc verdict
+that turns out to be wrong is a *traceable* wrong verdict — the
+retrieval set, the LLM call, the citation, the approver all recorded.
+That's what an audit needs: not "the AI was always right," but "here
+is exactly what the AI did, with what evidence, and who signed off."
 
 ---
 
