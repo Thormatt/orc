@@ -211,13 +211,20 @@ def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResul
         do_ingest(ws, str(corpus_dir))
         claim = f"Q: {item['question']}\nA: {item['answer']}"
         skill = directives.get("research").skills["verify_claim"]
+        # Allow env-driven max_tokens override for benchmarking verbose models
+        # like Gemini that occasionally exceed the 2048 default.
+        skill_kwargs: dict[str, Any] = {"claim": claim, "mode": mode}
+        if (env_max := os.environ.get("ORC_MAX_TOKENS")):
+            skill_kwargs["max_tokens"] = int(env_max)
         with open_run(
             ws, directive="research", skill="verify_claim", inputs={"claim": claim, "mode": mode}
         ) as run:
             run.record_effective_kwargs(
-                {"claim": claim, "model": "halubench", "mode": mode}
+                {"claim": claim, "model": "halubench", "mode": mode, **(
+                    {"max_tokens": skill_kwargs["max_tokens"]} if "max_tokens" in skill_kwargs else {}
+                )}
             )
-            out = skill.run(workspace=ws, run=run, claim=claim, mode=mode)
+            out = skill.run(workspace=ws, run=run, **skill_kwargs)
             run.close(output=out)
         res.run_id = run.run_id
         res.orc_verdict = out["label"]

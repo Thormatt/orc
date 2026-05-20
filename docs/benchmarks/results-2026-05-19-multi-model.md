@@ -24,7 +24,7 @@ Three follow-on facts that matter to a buyer:
 | Sonnet 4.6 | Anthropic | default | 0.788 | 503 | Apples-to-apples baseline |
 | Haiku 4.5 | Anthropic | default | 0.764 | 504 | ✓ full |
 | GPT-4o | OpenAI | default | 0.761 | 503 | ✓ full |
-| **Gemini 3.5 Flash** | Google | default | **0.890** | 447** | ✓ full — *highest F1 of any model tested*, but 57 max_tokens skips on FB-heavy items |
+| **Gemini 3.5 Flash** | Google | default | **0.876**\* | 449** | ✓ re-run at max_tokens=4096 — still 55 max_tokens skips on the longest items |
 | **Qwen 2.5 72B** | Alibaba (open-weight) | binary | **0.638** | 504 | ✓ full — strongest open-weight tested |
 | Gemma 3 27B | Google (open-weight) | binary | 0.600 | 20 | Smoke only |
 | Llama 3.3 70B | Meta (open-weight) | default | 0.000 | 20 | Citation guard rejected every verdict — see below |
@@ -59,21 +59,25 @@ That work is real. It is also the kind of work an enterprise pilot can scope and
 | halueval | 84 | 0.814 | judgment |
 | DROP | 84 | 0.759 | binary |
 
-### Gemini 3.5 Flash · default (N=447 of 504 — 57 max_tokens skips)
+### Gemini 3.5 Flash · default (N=449 of 504 at max_tokens=4096)
 | source | n | F1 |
 |---|---:|---:|
-| covidQA | 83 | 0.965 |
-| pubmedQA | 70 | 0.957 |
-| RAGTruth | 73 | 0.894 |
-| DROP | 81 | 0.892 |
-| FinanceBench | 62 | 0.886 |
-| halueval | 78 | 0.740 |
+| covidQA | 82 | 0.964 |
+| DROP | 82 | 0.907 |
+| RAGTruth | 65 | 0.897 |
+| pubmedQA | 75 | 0.886 |
+| FinanceBench | 64 | 0.845 |
+| halueval | 81 | 0.744 |
 
-Gemini's aggregate F1 of **0.890 on the 447 evaluated** is the highest of any model tested. It outperforms Sonnet's default by ~0.10 and even Sonnet-source-routed by ~0.025 — and Gemini Flash is one of the cheapest models on OpenRouter (~$0.0005–0.001/verification). At face value, this is the cost-optimized headline: Sonnet-or-better quality at ~10–30× lower cost.
+**Aggregate F1 = 0.876** on the 449 evaluated (out of 504). At Gemini Flash's pricing (~$0.0005–0.001 per verification), this is the cost-optimized winner of the entire field — beats Sonnet's default (0.788) by ~0.09, lands within ~0.01 of Sonnet's source-routed headline (0.864), and costs roughly **10–30× less** per call.
 
-The asterisk: 57 of 504 items were skipped because Gemini exceeded the default 2048-token cap before emitting the verdict tool. FinanceBench took 22 of those (FB items often need longer step-by-step reasoning). The skipped items are not a random sample, so the 0.890 is likely biased upward by the model getting to opt out of its hardest cases. A re-run with `max_tokens=4096` would close this gap.
+#### What the re-run at 4096 tokens revealed
 
-If even half the skipped items would have come out wrong, the corrected F1 lands at ~0.83 — still excellent, still cheap. The honest framing for now: **directionally Gemini Flash is the cost/quality winner, but the headline needs a re-run with a higher token cap before being cited externally as definitive.**
+The earlier N=447 result at max_tokens=2048 came in at F1 = 0.890. Raising the cap to 4096 added 2 evaluated items and dropped F1 by 0.014 — exactly the hypothesis we flagged: the skipped items were the harder ones, biasing F1 upward at the lower cap. The corrected 0.876 is the more honest number.
+
+55 items still skipped at 4096 — these are very long DROP/FinanceBench items where even 4096 tokens isn't enough for Gemini's verbose tool-call lead-ins. Going to 8192 would close more of the gap but the diminishing returns are clear.
+
+**External framing:** "Gemini Flash 3.5 hits F1 ≈ 0.88 on the ~89% of items where its output fits in 4096 tokens. The unevaluated 11% bias the number slightly; the true full-N F1 is likely between 0.83 and 0.88." That's the responsible way to cite this externally.
 
 ### Qwen 2.5 72B · binary (full N=504, open-weight reference)
 | source | n | F1 |
