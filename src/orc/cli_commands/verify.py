@@ -10,6 +10,7 @@ import click
 from rich.console import Console
 
 from orc import directives
+from orc.directives.research.routing import UnknownDomainError
 from orc.errors import WorkspaceNotFoundError
 from orc.ingest.loaders import load_file, load_url
 from orc.runs import open_run
@@ -103,7 +104,10 @@ def _verify_one(
 
     with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
         run.record_effective_kwargs(kwargs)
-        result = skill.run(workspace=ws, run=run, **kwargs)
+        try:
+            result = skill.run(workspace=ws, run=run, **kwargs)
+        except UnknownDomainError as exc:
+            raise click.ClickException(str(exc)) from exc
         run.close(output=result)
 
     if as_json:
@@ -174,7 +178,10 @@ def _verify_from_document(
             kwargs["domain"] = domain
         with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
             run.record_effective_kwargs(kwargs)
-            result = verify_skill.run(workspace=ws, run=run, **kwargs)
+            try:
+                result = verify_skill.run(workspace=ws, run=run, **kwargs)
+            except UnknownDomainError as exc:
+                raise click.ClickException(str(exc)) from exc
             run.close(output=result)
         results.append({**result, "_run_id": run.run_id})
 

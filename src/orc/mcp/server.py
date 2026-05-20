@@ -21,6 +21,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from orc import directives
+from orc.directives.research.routing import UnknownDomainError
 from orc.errors import TraceNotFoundError, WorkspaceNotFoundError
 from orc.runs import open_run
 from orc.storage import workspace as ws_module
@@ -49,7 +50,10 @@ def _verify_claim_core(
         inputs={"claim": claim, "workspace": ws.name, "domain": domain},
     ) as run:
         run.record_effective_kwargs(skill_kwargs)
-        result = skill.run(workspace=ws, run=run, **skill_kwargs)
+        try:
+            result = skill.run(workspace=ws, run=run, **skill_kwargs)
+        except UnknownDomainError as exc:
+            return {"error": str(exc), "run_id": run.run_id}
         run.close(output=result)
     return {"run_id": run.run_id, **result}
 

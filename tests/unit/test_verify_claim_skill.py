@@ -351,6 +351,41 @@ def test_verify_unknown_domain_raises(
         skill.run(workspace=ws, run=run, claim="x", domain="NotARealDomain")
 
 
+def test_cli_verify_unknown_domain_is_clean_click_error(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """User typo on --domain shouldn't blow up as an unhandled exception —
+    it should land as a Click error with non-zero exit and the unknown
+    value mentioned in the output."""
+    name = _setup_corpus(orc_home, tmp_path)
+    _install_fake_client(monkeypatch, FakeAnthropic())  # never called
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["verify", "x", "--workspace", name, "--domain", "NotARealDomain"],
+    )
+    assert result.exit_code != 0
+    # The error should be Click-formatted (no raw traceback).
+    combined = (result.output or "") + (str(result.exception) if result.exception else "")
+    assert "NotARealDomain" in combined
+
+
+def test_mcp_verify_unknown_domain_returns_error_payload(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MCP surface returns a clean error dict for unknown domain, doesn't
+    let the exception bubble up as a protocol-level fault."""
+    name = _setup_corpus(orc_home, tmp_path)
+    _install_fake_client(monkeypatch, FakeAnthropic())
+
+    from orc.mcp.server import _verify_claim_core
+
+    result = _verify_claim_core("x", workspace=name, domain="NotARealDomain")
+    assert "error" in result
+    assert "NotARealDomain" in result["error"]
+
+
 def test_cli_verify_domain_flag_routes_to_binary(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

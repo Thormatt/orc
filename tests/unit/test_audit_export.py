@@ -170,6 +170,110 @@ def test_export_include_evidence_bundles_db_and_evidence(
         assert actual == manifest.files[path], f"hash mismatch for {path}"
 
 
+def test_self_contained_bundle_places_traces_under_workspace(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression for the high-severity finding: a self-contained bundle puts
+    traces under workspace/traces/ so that `orc replay` (which resolves via
+    workspace_traces_dir) actually finds them after the auditor extracts the
+    workspace/ subtree into ~/.orc/workspaces/<name>/."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-self-contained.tar.gz"
+    manifest = export_workspace(name, output_path=out, include_evidence=True)
+
+    members = _untar(out)
+    top_level_traces = [
+        m for m in members if m.startswith("traces/") and not m.startswith("workspace/")
+    ]
+    workspace_traces = [m for m in members if m.startswith("workspace/traces/")]
+
+    assert workspace_traces, "self-contained bundle must have traces under workspace/"
+    assert not top_level_traces, (
+        f"self-contained bundle should not duplicate traces at top level: {top_level_traces}"
+    )
+    # All workspace traces are listed in manifest.files.
+    for path in workspace_traces:
+        assert path in manifest.files, f"{path} missing from manifest.files"
+
+
+def test_inspectable_bundle_keeps_traces_at_top_level(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When --include-evidence is NOT set, traces stay at the top level so the
+    bundle reads naturally as an inspection artifact."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-inspect.tar.gz"
+    export_workspace(name, output_path=out)
+
+    members = _untar(out)
+    top_level_traces = [m for m in members if m.startswith("traces/")]
+    workspace_traces = [m for m in members if m.startswith("workspace/traces/")]
+    assert top_level_traces, "inspectable bundle should have traces at top level"
+    assert not workspace_traces, "inspectable bundle should not put traces under workspace/"
+
+
+def test_self_contained_downgraded_when_evidence_file_missing(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bundle must NOT claim self_contained=True if an expected evidence file
+    is missing from disk. The manifest records the missing paths so an
+    auditor can see exactly what's incomplete."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+
+    # Delete one ingested evidence file to simulate corruption / accidental
+    # cleanup between ingest and export.
+    from orc.paths import workspace_evidence_dir
+
+    ev_dir = workspace_evidence_dir(name)
+    ev_files = list(ev_dir.rglob("*"))
+    ev_files = [p for p in ev_files if p.is_file()]
+    assert ev_files, "fixture should have at least one evidence file"
+    ev_files[0].unlink()
+
+    out = tmp_path / "audit-incomplete.tar.gz"
+    manifest = export_workspace(name, output_path=out, include_evidence=True)
+
+    assert manifest.self_contained is False, (
+        "bundle missing source files must not claim self_contained=True"
+    )
+    assert len(manifest.missing_evidence_files) >= 1
+
+
+def test_db_backup_via_sqlite_api_not_torn_read(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bundled orc.db must be a transactionally consistent copy — the
+    SQLite Online Backup API guarantees this even if the source DB is in
+    WAL mode with pending writes. Sanity-check: the copy opens cleanly and
+    has the expected schema."""
+    import sqlite3
+
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-db.tar.gz"
+    export_workspace(name, output_path=out, include_evidence=True)
+    members = _untar(out)
+
+    extracted = tmp_path / "orc-copy.db"
+    extracted.write_bytes(members["workspace/orc.db"])
+    conn = sqlite3.connect(str(extracted))
+    try:
+        # Workspace + run tables should be queryable.
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        assert "workspace" in tables
+        assert "run" in tables
+        # The run we created during the test should be present.
+        n_runs = conn.execute("SELECT count(*) FROM run").fetchone()[0]
+        assert n_runs >= 1
+    finally:
+        conn.close()
+
+
 def test_export_manifest_hashes_cover_every_tar_member_except_manifest(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
