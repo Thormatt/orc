@@ -24,11 +24,13 @@ Three follow-on facts that matter to a buyer:
 | Sonnet 4.6 | Anthropic | default | 0.788 | 503 | Apples-to-apples baseline |
 | Haiku 4.5 | Anthropic | default | 0.764 | 504 | ✓ full |
 | GPT-4o | OpenAI | default | 0.761 | 503 | ✓ full |
-| Gemini 3.5 Flash | Google | default | 0.840* | 85 | **Directional only** — credit-exhaustion mid-run |
+| Gemini 3.5 Flash | Google | default | 0.840* | 85 | **Directional only** — credit-exhaustion in earlier run; full re-run pending |
+| **Qwen 2.5 72B** | Alibaba (open-weight) | binary | **0.638** | 504 | ✓ full — strongest open-weight tested |
+| Gemma 3 27B | Google (open-weight) | binary | 0.600 | 20 | Smoke only |
 | Llama 3.3 70B | Meta (open-weight) | default | 0.000 | 20 | Citation guard rejected every verdict — see below |
-| Llama 3.3 70B | Meta (open-weight) | binary | 0.583 | 20 | Smoke only; full N pending |
+| Llama 3.3 70B | Meta (open-weight) | binary | 0.583 | 20 | Smoke only |
 
-> *The Gemini 3.5 Flash row is **directional only**. N=85 with 405 of the missing 419 items caused by OpenRouter `402 credit` skips. The 85 items that did complete look strong, but this is not a publishable F1 number until a full N=504 re-run lands.*
+> *The Gemini 3.5 Flash row at N=85 is **directional only**. 405 of the 419 missing items were OpenRouter `402 credit` skips during the earlier run. A full N=504 re-run is in flight.*
 
 ## On the Llama F1 = 0.000 result
 
@@ -56,6 +58,18 @@ That work is real. It is also the kind of work an enterprise pilot can scope and
 | pubmedQA | 84 | 0.865 | binary |
 | halueval | 84 | 0.814 | judgment |
 | DROP | 84 | 0.759 | binary |
+
+### Qwen 2.5 72B · binary (full N=504, open-weight reference)
+| source | n | F1 |
+|---|---:|---:|
+| pubmedQA | 84 | 0.741 |
+| RAGTruth | 84 | 0.710 |
+| covidQA | 84 | 0.694 |
+| halueval | 84 | 0.600 |
+| FinanceBench | 84 | 0.560 |
+| DROP | 84 | 0.451 |
+
+Qwen is the strongest open-weight model tested. The aggregate F1 of 0.638 lands ~0.13 below the hosted commercial models — a real gap, but high-recall (0.71) suggests the model is finding the right items and the precision shortfall (0.58) is where calibration could help. For a regulated buyer wanting a fully on-premise judge inside their VPC, Qwen 2.5 72B in binary mode is the most defensible starting point of the open-weight set we tested.
 
 ### Haiku 4.5 · default (evidence)
 | source | n | F1 |
