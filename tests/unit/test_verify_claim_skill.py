@@ -185,6 +185,67 @@ def test_verify_drops_hallucinated_chunk_ids(
     assert response_meta["label_downgraded"] is True
 
 
+def test_verify_partial_with_no_valid_citations_downgrades_to_not_found(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `partial` verdict whose every cited chunk was hallucinated has no
+    grounding either — it must downgrade to not_found, same as supported /
+    contradicted. Otherwise `partial` is a citation-guard bypass."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            make_verdict_response(
+                label="partial",
+                confidence=0.5,
+                supporting_chunk_ids=["01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api")
+        run.close(output=result)
+
+    assert result["supporting_chunks"] == []
+    assert result["label"] == "not_found"
+
+
+def test_verify_redacts_hallucinated_ids_in_reasoning_prose(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The structured citation arrays are filtered, but the free-text `reasoning`
+    can also smuggle chunk IDs (the tool schema asks the model to cite them in
+    prose). A chunk ID in reasoning that is not in the retrieval set must not
+    reach the caller verbatim."""
+    name = _setup_corpus(orc_home, tmp_path)
+    real_id = _supporting_chunk_id(name, "Skills API")
+    fake_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"  # ULID-shaped, not in retrieval
+    fake = FakeAnthropic(
+        responses=[
+            make_verdict_response(
+                label="supported",
+                confidence=0.9,
+                reasoning=f"Chunk {real_id} affirms it; see also {fake_id}.",
+                supporting_chunk_ids=[real_id],
+            )
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="skills api")
+        run.close(output=result)
+
+    assert result["label"] == "supported"
+    assert real_id in result["reasoning"]  # the genuine citation survives
+    assert fake_id not in result["reasoning"]  # the hallucinated one is gone
+
+
 def test_verify_records_token_usage_and_cache_metrics(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -621,3 +682,27 @@ def test_verify_decomposed_mode_confidence_weighted_majority(
 
     # Net score = +0.9 − 0.3 = +0.6 → supported
     assert result["label"] == "supported"
+
+
+def test_verify_decomposed_zero_confidence_atom_does_not_count_as_half(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A supported atom with confidence 0.0 must contribute 0.0 to the vote, not
+    be coerced to 0.5 by a falsy check. With a single such atom the net score is
+    0 → `partial`; the bug would push it to `supported`."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            _make_decomposition_response(["A"]),
+            _make_binary_response(faithful=True, confidence=0.0),
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["verify_claim"]
+    with open_run(ws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, claim="x", mode="decomposed")
+        run.close(output=result)
+
+    assert result["label"] == "partial"

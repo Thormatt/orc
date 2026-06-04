@@ -9,6 +9,7 @@ Pipeline (per the plan):
 
 from __future__ import annotations
 
+import re
 import time
 from importlib.resources import files
 from typing import Any
@@ -21,6 +22,25 @@ from orc.llm.models import resolve_verify_model
 from orc.retrieval import bm25_search
 from orc.runs.runner import Run
 from orc.storage.workspace import Workspace
+
+# Chunk IDs are ULIDs (26-char Crockford base32, excluding I/L/O/U). The
+# adjudicator is asked to cite IDs in its prose reasoning, so a hallucinated ID
+# can ride along in free text even after the structured arrays are filtered.
+_ULID_RE = re.compile(r"\b[0-9A-HJKMNP-TV-Z]{26}\b")
+
+
+def _redact_unlisted_ids(text: str, valid_ids: set[str]) -> str:
+    """Replace any ULID-shaped token not in the retrieval set with a marker.
+
+    Keeps the citation invariant honest for the free-text `reasoning` field:
+    only IDs that actually exist in retrieval survive verbatim."""
+    if not text:
+        return text
+    return _ULID_RE.sub(
+        lambda m: m.group(0) if m.group(0) in valid_ids else "[unverified-id]",
+        text,
+    )
+
 
 DECOMPOSE_TOOL_SCHEMA: dict[str, Any] = {
     "name": "record_decomposition",
@@ -423,16 +443,25 @@ class _VerifyClaim:
             (set(raw_supporting) | set(raw_contradicting)) - candidate_ids
         )
 
-        # Citation guard: in evidence mode, if the adjudicator labeled supported
-        # but every cited chunk was hallucinated, the verdict has no grounding
-        # — downgrade to not_found rather than ship "supported" with empty
-        # citations. Same for contradicted.
+        # Citation guard: in evidence mode, if the adjudicator returned a grounded
+        # label but every cited chunk was hallucinated, the verdict has no grounding
+        # — downgrade to not_found rather than ship a label with empty citations.
+        # `partial` is included: with neither valid supporting nor contradicting
+        # chunks it is just as ungrounded as a bare "supported".
         if mode == "evidence":
             label_raw = verdict_input.get("label")
-            if (label_raw == "supported" and not supporting) or (
-                label_raw == "contradicted" and not contradicting
+            if (
+                (label_raw == "supported" and not supporting)
+                or (label_raw == "contradicted" and not contradicting)
+                or (label_raw == "partial" and not supporting and not contradicting)
             ):
                 verdict_input["label"] = "not_found"
+
+        # Strip hallucinated chunk IDs that the model slipped into prose reasoning;
+        # the structured arrays above are already filtered, but free text is not.
+        verdict_input["reasoning"] = _redact_unlisted_ids(
+            verdict_input.get("reasoning", ""), candidate_ids
+        )
 
         # 5. Record LLM call usage.
         usage = response.usage
@@ -542,7 +571,7 @@ def _run_decomposed(
     # confidence; the substantive claim was still right.
     score = 0.0
     for a in atom_results:
-        c = a["confidence"] or 0.5
+        c = a["confidence"] if a["confidence"] is not None else 0.5
         if a["label"] == "supported":
             score += c
         elif a["label"] == "contradicted":
