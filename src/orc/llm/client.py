@@ -121,7 +121,11 @@ def messages_create(client: Any, **kwargs: Any) -> Any:
     Bedrock don't expose Anthropic's cache API). For non-Anthropic models (Llama, GPT,
     Qwen, Mistral, etc.) we let OpenRouter pick the upstream — pinning Anthropic would
     route the wrong way and fail.
+
+    Sampling is pinned to temperature=0 by default so that `orc replay` re-issues the
+    same decision rather than a fresh sample. Callers can override explicitly.
     """
+    kwargs.setdefault("temperature", 0)
     if _provider == "openrouter":
         model = kwargs.get("model", "")
         is_anthropic_model = model.startswith("anthropic/") or "claude" in model.lower()
