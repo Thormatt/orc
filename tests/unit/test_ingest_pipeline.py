@@ -44,6 +44,35 @@ def test_ingest_dir_recursively(orc_home: Path, tmp_path: Path) -> None:
     assert cv == 3  # bumped per ingest
 
 
+def test_ingest_leaves_no_orphan_file_when_db_write_fails(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # If anything fails after the evidence bytes are persisted, the file must not
+    # be left orphaned on disk with no DB row — that desyncs the corpus and breaks
+    # the audit story. The write is committed only if the DB transaction succeeds.
+    ws = ws_module.create("demo")
+    doc = tmp_path / "a.md"
+    doc.write_text("# Alpha\n\nBody.\n")
+
+    import orc.ingest.pipeline as pipeline_mod
+    from orc.paths import workspace_evidence_dir
+
+    def boom(_text: str) -> list:
+        raise RuntimeError("simulated chunker failure")
+
+    monkeypatch.setattr(pipeline_mod, "chunk_text", boom)
+
+    with pytest.raises(RuntimeError):
+        do_ingest(ws, str(doc))
+
+    leftover = list(workspace_evidence_dir("demo").iterdir())
+    assert leftover == [], f"orphaned evidence files: {leftover}"
+
+    with open_connection(workspace_db_path("demo")) as conn:
+        evidence_count = conn.execute("SELECT COUNT(*) AS n FROM evidence").fetchone()["n"]
+    assert evidence_count == 0
+
+
 def test_ingest_is_idempotent_on_sha(orc_home: Path, tmp_path: Path) -> None:
     ws = ws_module.create("demo")
     corpus = _make_corpus(tmp_path)

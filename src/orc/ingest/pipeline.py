@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from orc.core.clock import now_iso
 from orc.core.ids import new_chunk_id, new_evidence_id
@@ -74,50 +76,81 @@ def _ingest_one(workspace: Workspace, doc: LoadedDoc) -> list[str]:
         evidence_id = new_evidence_id()
         ext = _MIME_EXT.get(doc.mime_type, ".bin")
         stored_path = workspace_evidence_dir(workspace.name) / f"{evidence_id}{ext}"
-        stored_path.write_bytes(doc.raw_bytes)
 
+        # Chunk before any disk write so a chunker failure leaves nothing behind.
         chunks = chunk_text(doc.text)
 
-        with transaction(conn):
-            conn.execute(
-                "UPDATE workspace SET corpus_version = corpus_version + 1 WHERE name = ?",
-                (workspace.name,),
+        # Stage the evidence bytes to a temp file and only promote it into place
+        # once the DB transaction commits. A failure anywhere leaves neither an
+        # orphaned file nor a dangling row — the corpus stays consistent.
+        tmp_path = stored_path.with_name(f"{stored_path.name}.{os.getpid()}.tmp")
+        stored_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path.write_bytes(doc.raw_bytes)
+        try:
+            _commit_evidence(
+                conn,
+                workspace=workspace,
+                evidence_id=evidence_id,
+                stored_path=stored_path,
+                sha=sha,
+                doc=doc,
+                chunks=chunks,
             )
-            new_corpus_version = conn.execute(
-                "SELECT corpus_version FROM workspace WHERE name = ?", (workspace.name,)
-            ).fetchone()["corpus_version"]
+        except BaseException:
+            tmp_path.unlink(missing_ok=True)
+            raise
+        os.replace(tmp_path, stored_path)
+        return [evidence_id]
 
+
+def _commit_evidence(
+    conn: Any,
+    *,
+    workspace: Workspace,
+    evidence_id: str,
+    stored_path: Path,
+    sha: str,
+    doc: LoadedDoc,
+    chunks: list,
+) -> None:
+    with transaction(conn):
+        conn.execute(
+            "UPDATE workspace SET corpus_version = corpus_version + 1 WHERE name = ?",
+            (workspace.name,),
+        )
+        new_corpus_version = conn.execute(
+            "SELECT corpus_version FROM workspace WHERE name = ?", (workspace.name,)
+        ).fetchone()["corpus_version"]
+
+        conn.execute(
+            "INSERT INTO evidence(evidence_id, source_path, stored_path, sha256, mime_type, "
+            "title, ingested_at, corpus_version) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                evidence_id,
+                doc.source_uri,
+                str(stored_path),
+                sha,
+                doc.mime_type,
+                doc.title,
+                now_iso(),
+                new_corpus_version,
+            ),
+        )
+        for c in chunks:
             conn.execute(
-                "INSERT INTO evidence(evidence_id, source_path, stored_path, sha256, mime_type, "
-                "title, ingested_at, corpus_version) VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO chunk(chunk_id, evidence_id, seq, text, token_count, "
+                "headings_path, start_offset, end_offset) VALUES (?,?,?,?,?,?,?,?)",
                 (
+                    new_chunk_id(),
                     evidence_id,
-                    doc.source_uri,
-                    str(stored_path),
-                    sha,
-                    doc.mime_type,
-                    doc.title,
-                    now_iso(),
-                    new_corpus_version,
+                    c.seq,
+                    c.text,
+                    c.token_count,
+                    c.headings_path,
+                    c.start_offset,
+                    c.end_offset,
                 ),
             )
-            for c in chunks:
-                conn.execute(
-                    "INSERT INTO chunk(chunk_id, evidence_id, seq, text, token_count, "
-                    "headings_path, start_offset, end_offset) VALUES (?,?,?,?,?,?,?,?)",
-                    (
-                        new_chunk_id(),
-                        evidence_id,
-                        c.seq,
-                        c.text,
-                        c.token_count,
-                        c.headings_path,
-                        c.start_offset,
-                        c.end_offset,
-                    ),
-                )
-
-        return [evidence_id]
 
 
 def _iter_files(root: Path, *, recursive: bool) -> Iterator[Path]:
