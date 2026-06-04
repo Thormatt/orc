@@ -68,9 +68,14 @@ def create(name: str, *, embedding_model: str | None = None) -> Workspace:
 def resolve(name: str | None) -> Workspace:
     """Open an existing workspace by name. None falls back to ORC_DEFAULT_WORKSPACE or 'default'."""
     resolved_name = name if name is not None else os.environ.get("ORC_DEFAULT_WORKSPACE", "default")
+    # Validate before touching the filesystem: the name may come straight from an
+    # untrusted MCP/LLM caller. An invalid name (traversal, separators, etc.) must
+    # never build a path, and the error must not echo a resolved path (probe oracle).
+    if not _is_valid_name(resolved_name):
+        raise WorkspaceNotFoundError(f"Workspace {resolved_name!r} not found")
     db_path = workspace_db_path(resolved_name)
     if not db_path.exists():
-        raise WorkspaceNotFoundError(f"Workspace {resolved_name!r} not found at {db_path}")
+        raise WorkspaceNotFoundError(f"Workspace {resolved_name!r} not found")
 
     with open_connection(db_path) as conn:
         row = conn.execute(

@@ -48,6 +48,31 @@ def test_resolve_unknown_errors(orc_home: Path) -> None:
         ws_module.resolve("nope")
 
 
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../escape",
+        "../../etc",
+        "a/b",
+        "foo/../../bar",
+        "with space",
+        "x" * 65,
+        "",
+    ],
+)
+def test_resolve_rejects_traversal_and_invalid_names(orc_home: Path, name: str) -> None:
+    # A malicious MCP/LLM-supplied workspace name must not escape the workspaces
+    # root or build a path outside ~/.orc/workspaces/. resolve() validates the
+    # name the same way create() does, before touching the filesystem, and must
+    # not echo a resolved absolute/traversal path back to an untrusted caller
+    # (which would be a filesystem-probe oracle).
+    with pytest.raises(WorkspaceNotFoundError) as exc_info:
+        ws_module.resolve(name)
+    # The error may reflect the caller's own input, but must not leak the
+    # resolved absolute filesystem path it probed.
+    assert str(orc_home) not in str(exc_info.value)
+
+
 def test_resolve_default_falls_back(orc_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ws_module.create("default")
     monkeypatch.delenv("ORC_DEFAULT_WORKSPACE", raising=False)
