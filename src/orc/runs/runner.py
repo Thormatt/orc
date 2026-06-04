@@ -82,6 +82,54 @@ class Run:
                 safe[k] = f"<non-serializable {type(v).__name__}>"
         self.effective_kwargs = safe
 
+    def propose(
+        self,
+        *,
+        executor: str,
+        params: dict[str, Any],
+        summary: str,
+        idempotency_key: str | None = None,
+        approvers_required: int = 1,
+        constraints: dict[str, Any] | None = None,
+    ) -> str:
+        """Stage an effect for human approval. The analysis plane can only propose —
+        never execute. Validates the executor, its params schema, and the workspace
+        allow-list *before* enqueuing, so a compromised skill cannot stage an
+        out-of-policy action. Returns the approval_id.
+        """
+        from orc import effects
+        from orc.queue import approval
+
+        executor_spec = effects.get(executor)  # ExecutorNotFoundError if unknown
+        effects.validate_params(params, executor_spec.params_schema)
+        if not effects.is_allowed(self.workspace.name, executor):
+            raise effects.ExecutorNotAllowedError(
+                f"Executor {executor!r} is not in the allow-list for "
+                f"workspace {self.workspace.name!r}"
+            )
+        action = effects.Action(
+            executor=executor,
+            version=executor_spec.version,
+            params=params,
+            idempotency_key=idempotency_key or new_run_id(),
+            constraints=constraints or {},
+        )
+        approval_id = approval.enqueue(
+            self.workspace.name,
+            directive=self.directive,
+            skill=self.skill,
+            source_run_id=self.run_id,
+            summary=summary,
+            payload={},
+            proposed_action=action.to_dict(),
+            approvers_required=approvers_required,
+        )
+        self.record(
+            "proposal",
+            {"approval_id": approval_id, "executor": executor, "summary": summary},
+        )
+        return approval_id
+
     def record_retrieval(
         self,
         chunks: list[RetrievedChunk],
