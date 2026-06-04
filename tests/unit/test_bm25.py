@@ -61,4 +61,12 @@ def test_fts_query_sanitizes_special_chars() -> None:
     assert _fts_query_from_user_text("hello world") == '"hello" OR "world"'
     assert _fts_query_from_user_text("AND OR foo*") == '"and" OR "or" OR "foo"'
     assert _fts_query_from_user_text("") == ""
-    assert _fts_query_from_user_text("a") == ""  # single chars dropped
+    assert _fts_query_from_user_text("a") == ""  # single ASCII chars dropped (noise)
+
+
+def test_fts_query_keeps_single_nonascii_tokens() -> None:
+    # A single CJK ideograph is a meaningful term, unlike a single ASCII letter.
+    # Dropping it would turn the query into "" and short-circuit to a confident
+    # not_found over a corpus that may well contain the character.
+    assert _fts_query_from_user_text("水") == '"水"'
+    assert _fts_query_from_user_text("水 a") == '"水"'
