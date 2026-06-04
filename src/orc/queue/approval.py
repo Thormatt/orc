@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS approval_execution (
     result           TEXT,
     last_error       TEXT,
     executed_at      TEXT,
+    next_retry_at    TEXT,
     UNIQUE (idempotency_key)
 );
 CREATE INDEX IF NOT EXISTS idx_approval_execution_status ON approval_execution(exec_status);
@@ -393,7 +394,7 @@ def _row_to_approval(row: object, decisions: list[Decision]) -> Approval:
 _LEASABLE = (
     "a.status = 'approved' AND ("
     "  e.approval_id IS NULL"
-    "  OR e.exec_status = 'pending'"
+    "  OR (e.exec_status = 'pending' AND (e.next_retry_at IS NULL OR e.next_retry_at <= ?))"
     "  OR (e.exec_status = 'leased' AND e.lease_expires_at < ?)"
     ")"
 )
@@ -414,7 +415,7 @@ def lease_one(
             "SELECT a.approval_id AS approval_id, a.proposed_action AS proposed_action "
             "FROM approval a LEFT JOIN approval_execution e ON e.approval_id = a.approval_id "
             f"WHERE {_LEASABLE} ORDER BY a.created_at ASC, a.approval_id ASC",
-            (now,),
+            (now, now),
         ).fetchall()
         for r in rows:
             approval_id = r["approval_id"]
@@ -510,10 +511,16 @@ def mark_executed(workspace: str, approval_id: str, *, result: dict[str, Any]) -
 
 
 def mark_failed(
-    workspace: str, approval_id: str, *, error: str, max_attempts: int = 3
+    workspace: str,
+    approval_id: str,
+    *,
+    error: str,
+    max_attempts: int = 3,
+    backoff_seconds: float = 30,
 ) -> str:
-    """Record a failed attempt. Returns 'pending' (retry available) or 'dead'
-    (attempts exhausted; needs a human re-trigger)."""
+    """Record a failed attempt. Returns 'pending' (retry available after a backoff)
+    or 'dead' (attempts exhausted; needs a human re-trigger). The backoff sets
+    next_retry_at so a worker does not re-lease the same action within one pass."""
     ensure_approval_table(workspace)
     db_path = workspace_db_path(workspace)
     with open_connection(db_path) as conn, transaction(conn):
@@ -523,10 +530,13 @@ def mark_failed(
         ).fetchone()
         attempts = (int(row["attempts"]) if row else 0) + 1
         new_status = "dead" if attempts >= max_attempts else "pending"
+        next_retry = (
+            now_plus_seconds_iso(backoff_seconds) if new_status == "pending" else None
+        )
         conn.execute(
             "UPDATE approval_execution SET exec_status=?, attempts=?, last_error=?, "
-            "lease_owner=NULL, lease_expires_at=NULL WHERE approval_id = ?",
-            (new_status, attempts, error, approval_id),
+            "lease_owner=NULL, lease_expires_at=NULL, next_retry_at=? WHERE approval_id = ?",
+            (new_status, attempts, error, next_retry, approval_id),
         )
     return new_status
 
