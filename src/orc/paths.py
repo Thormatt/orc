@@ -46,6 +46,11 @@ def workspace_traces_dir(name: str) -> Path:
     return workspace_root(name) / "traces"
 
 
+def workspace_effects_dir(name: str) -> Path:
+    """Sandbox root for filesystem effect outputs (the `fs.write_file` executor)."""
+    return workspace_root(name) / "out"
+
+
 def trace_json_path(workspace: str, run_id: str, started_at_iso: str) -> Path:
     """Path for a trace JSON file. started_at_iso must be UTC ISO 8601."""
     year = started_at_iso[:4]
