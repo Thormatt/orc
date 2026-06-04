@@ -10,14 +10,14 @@ Bind every claim to evidence you own. Cite real sources only. Replay every decis
 
 ## What is this
 
-`orc` is a CLI + MCP server that runs LLM verification against a corpus you control. The architecture enforces four invariants by construction:
+`orc` is a CLI + MCP server that runs LLM verification against a corpus you control. The architecture is built around four invariants:
 
 | | Invariant |
 |---|---|
-| **Citations** | The runtime *structurally cannot* return a citation that doesn't exist in retrieval. Hallucinated chunk IDs are dropped before the verdict reaches you. |
-| **Architecture** | Skills are pure functions with explicit I/O contracts. No agent identities, no personas, no emergent coordination. Persistence lives in the workspace, not the agents. |
-| **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. `orc replay <run_id>` re-executes the exact decision against the same corpus snapshot. |
-| **Approval** | Anything that would mutate the outside world lands in the approval queue first. Write paths run as separate processes with separate tokens. Blast radius from a compromised agent is zero by design. |
+| **Citations** | A verdict can only cite chunks that exist in the retrieval set. Hallucinated chunk IDs are filtered from both the structured citations *and* the free-text reasoning before the verdict reaches you, and a verdict left with no valid grounding is downgraded to `not_found`. |
+| **Architecture** | Skills are stateless callables with explicit I/O contracts — no agent identities, no personas, no emergent coordination. Side effects are funneled through an injected run/workspace; persistence lives in the workspace, not the agents. |
+| **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. LLM sampling is pinned to `temperature=0` and the corpus is pinned by version, so `orc replay <run_id>` re-issues the original decision against the same snapshot rather than a fresh sample (best-effort against residual model nondeterminism). |
+| **Approval** | Anything that would mutate the outside world is routed to an approval queue first — write paths drain only from approved entries, never directly from skill outputs. *(Today orc ships read/verify paths only; process- and token-level isolation of write paths is on the roadmap, not yet implemented.)* |
 
 Built for **research analysts, editorial teams, legal & compliance, agentic-workflow engineers** — anyone whose AI work product has to survive a second reviewer six months later.
 
@@ -88,7 +88,7 @@ orc mcp serve                          start the MCP stdio server
     └── traces/<YYYY>/<MM>/<run_id>.json    full per-run trace payloads
 ```
 
-- **Stateless skills + durable context.** Skills are pure functions. Workspaces, evidence, runs, and traces persist; agents do not.
+- **Stateless skills + durable context.** Skills are stateless callables — their side effects flow through an injected run/workspace, never module-level state. Workspaces, evidence, runs, and traces persist; agents do not.
 - **Verification bound to owned evidence.** `verify_claim` retrieves K=10 chunks via BM25 (SQLite FTS5), sends them in one LLM call with `cache_control: ephemeral` on the corpus block, and parses a structured verdict via tool use.
 - **Trace-and-replay from day one.** Every CLI/MCP call writes a `run` row + a JSON file containing the full retrieval, every LLM call's usage (including `cache_read_input_tokens`), and the structured output. `orc replay` re-executes against the corpus snapshot referenced by `corpus_version`.
 - **Directive registry.** `directives.get(name).skills[skill_name]` is the only dispatch path. Adding a new directive (e.g. `marketing`, `legal`, `db-doctor`) is a `register(DirectiveSpec(...))` call + a manifest — no surface code changes.
