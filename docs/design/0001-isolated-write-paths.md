@@ -1,8 +1,17 @@
 # Design 0001 — Isolated write paths
 
-**Status:** Draft / RFC
+**Status:** Phases 1–2 implemented · Phase 3 (hosted) planned
 **Author:** (orc maintainers)
 **Scope:** Turn the Approval invariant from aspiration into an enforced property.
+
+> **Implementation note (Phases 1–2 shipped).** The `Action` envelope (`orc.effects.action`),
+> executor registry + per-workspace allow-list (`orc.effects.registry`), guarded
+> `run_action` + credential separation (`orc.effects.run`), the `fs.write_file` reference
+> executor, `Run.propose()`, the `approval_execution` lifecycle (lease / mark / idempotency /
+> retry-with-backoff), the `orc execute <approval_id>` command, **and the `orc worker`
+> auto-drain daemon (`orc.effects.worker`)** are implemented and tested. What remains is
+> hosted row-level authz per plane, a secrets vault, and per-executor container isolation
+> (Phase 3).
 
 ---
 

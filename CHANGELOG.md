@@ -7,6 +7,29 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Isolated write paths (Phase 1)** — the effect plane that makes the Approval
+  invariant enforceable rather than aspirational (see
+  `docs/design/0001-isolated-write-paths.md`):
+  - `orc.effects` — a typed, schema-validated `Action` envelope; an executor
+    registry with a **deny-by-default per-workspace allow-list**; a guarded
+    `run_action` enforcing allow-list + params schema + required write credential;
+    and the `fs.write_file` reference executor (sandboxed to `<workspace>/out/`).
+  - `Run.propose(...)` — skills can *propose* an action (validated + policy-checked
+    at enqueue time) but never execute one.
+  - Approval **execution lifecycle** — `approval_execution` table with atomic
+    leasing, `UNIQUE(idempotency_key)` effectively-once backstop, and
+    retry→dead semantics (`lease_one`, `begin_execution`, `mark_executed`,
+    `mark_failed`, `get_execution`).
+  - **`orc execute <approval_id>`** — the separate effect-plane process that holds
+    the write credentials (which the analysis plane never sees), refuses anything
+    not human-approved, and records the outcome.
+- **Isolated write paths (Phase 2)** — **`orc worker`**, the auto-drain daemon:
+  `drain_once` executes every leasable approved action in a pass; failures back off
+  (`next_retry_at`) so they retry on a later pass instead of spinning, and exhaust to
+  `dead` after `--max-attempts`. `--once` drains a single pass (cron-friendly).
+
 ### Fixed (hardening)
 
 - **Replay determinism** — LLM sampling is now pinned to `temperature=0` at the

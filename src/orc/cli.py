@@ -3,6 +3,7 @@ import click
 from orc import __version__
 from orc.cli_commands import approve as approve_cmd
 from orc.cli_commands import audit as audit_cmd
+from orc.cli_commands import execute as execute_cmd
 from orc.cli_commands import ingest as ingest_cmd
 from orc.cli_commands import mcp as mcp_cmd
 from orc.cli_commands import replay as replay_cmd
@@ -10,6 +11,7 @@ from orc.cli_commands import research as research_cmd
 from orc.cli_commands import search as search_cmd
 from orc.cli_commands import trace as trace_cmd
 from orc.cli_commands import verify as verify_cmd
+from orc.cli_commands import worker as worker_cmd
 from orc.cli_commands import workspace as workspace_cmd
 
 
@@ -27,6 +29,8 @@ main.add_command(research_cmd.research_command)
 main.add_command(trace_cmd.trace_group)
 main.add_command(replay_cmd.replay_command)
 main.add_command(approve_cmd.approve_group)
+main.add_command(execute_cmd.execute_command)
+main.add_command(worker_cmd.worker_command)
 main.add_command(audit_cmd.audit_group)
 main.add_command(mcp_cmd.mcp)
 

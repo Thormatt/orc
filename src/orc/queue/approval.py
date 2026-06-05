@@ -26,10 +26,11 @@ from __future__ import annotations
 
 import contextlib
 import json
+import sqlite3
 from dataclasses import dataclass, field
 from typing import Any
 
-from orc.core.clock import now_iso
+from orc.core.clock import now_iso, now_plus_seconds_iso
 from orc.core.ids import new_id
 from orc.errors import OrcError
 from orc.paths import workspace_db_path
@@ -65,6 +66,21 @@ CREATE TABLE IF NOT EXISTS approval_decision (
     UNIQUE (approval_id, decided_by)
 );
 CREATE INDEX IF NOT EXISTS idx_approval_decision_approval ON approval_decision(approval_id);
+
+CREATE TABLE IF NOT EXISTS approval_execution (
+    approval_id      TEXT PRIMARY KEY REFERENCES approval(approval_id) ON DELETE CASCADE,
+    exec_status      TEXT NOT NULL DEFAULT 'pending',  -- pending|leased|succeeded|failed|dead
+    lease_owner      TEXT,
+    lease_expires_at TEXT,
+    attempts         INTEGER NOT NULL DEFAULT 0,
+    idempotency_key  TEXT NOT NULL,
+    result           TEXT,
+    last_error       TEXT,
+    executed_at      TEXT,
+    next_retry_at    TEXT,
+    UNIQUE (idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS idx_approval_execution_status ON approval_execution(exec_status);
 """
 
 VALID_STATUS = {"pending", "approved", "rejected", "expired"}
@@ -82,6 +98,14 @@ class ApprovalAlreadyDecidedError(OrcError):
 
 class DuplicateApproverError(OrcError):
     """A natural person tried to record a second decision on the same approval."""
+
+
+class NotApprovedError(OrcError):
+    """Execution was attempted on an approval that is not in the `approved` state."""
+
+
+class AlreadyExecutedError(OrcError):
+    """Execution was attempted on an action that already succeeded."""
 
 
 @dataclass(frozen=True)
@@ -360,3 +384,172 @@ def _row_to_approval(row: object, decisions: list[Decision]) -> Approval:
         decision_note=row["decision_note"],
         decisions=decisions,
     )
+
+
+# --- Execution lifecycle (effect plane) --------------------------------------
+#
+# Approved approvals are drained by the effect plane. The execution row tracks the
+# lease + outcome; UNIQUE(idempotency_key) is the effectively-once backstop.
+
+_LEASABLE = (
+    "a.status = 'approved' AND ("
+    "  e.approval_id IS NULL"
+    "  OR (e.exec_status = 'pending' AND (e.next_retry_at IS NULL OR e.next_retry_at <= ?))"
+    "  OR (e.exec_status = 'leased' AND e.lease_expires_at < ?)"
+    ")"
+)
+
+
+def lease_one(
+    workspace: str, *, lease_owner: str, ttl_seconds: float = 300
+) -> Approval | None:
+    """Atomically lease one approved, not-yet-executed approval. Returns None if
+    nothing is leasable. BEGIN IMMEDIATE serializes workers so a row is leased once."""
+    ensure_approval_table(workspace)
+    db_path = workspace_db_path(workspace)
+    leased_id: str | None = None
+    with open_connection(db_path) as conn, transaction(conn):
+        now = now_iso()
+        expires = now_plus_seconds_iso(ttl_seconds)
+        rows = conn.execute(
+            "SELECT a.approval_id AS approval_id, a.proposed_action AS proposed_action "
+            "FROM approval a LEFT JOIN approval_execution e ON e.approval_id = a.approval_id "
+            f"WHERE {_LEASABLE} ORDER BY a.created_at ASC, a.approval_id ASC",
+            (now, now),
+        ).fetchall()
+        for r in rows:
+            approval_id = r["approval_id"]
+            proposed = json.loads(r["proposed_action"]) if r["proposed_action"] else None
+            if proposed is None:
+                continue  # approved but nothing to execute
+            idem = str(proposed.get("idempotency_key") or approval_id)
+            existing = conn.execute(
+                "SELECT 1 FROM approval_execution WHERE approval_id = ?", (approval_id,)
+            ).fetchone()
+            if existing is not None:
+                conn.execute(
+                    "UPDATE approval_execution SET exec_status='leased', lease_owner=?, "
+                    "lease_expires_at=? WHERE approval_id = ?",
+                    (lease_owner, expires, approval_id),
+                )
+                leased_id = approval_id
+                break
+            try:
+                conn.execute(
+                    "INSERT INTO approval_execution(approval_id, exec_status, lease_owner, "
+                    "lease_expires_at, attempts, idempotency_key) "
+                    "VALUES (?, 'leased', ?, ?, 0, ?)",
+                    (approval_id, lease_owner, expires, idem),
+                )
+            except sqlite3.IntegrityError:
+                # The idempotency key is already in flight/done for another approval.
+                continue
+            leased_id = approval_id
+            break
+    if leased_id is None:
+        return None
+    return get(workspace, leased_id)
+
+
+def begin_execution(
+    workspace: str, approval_id: str, *, lease_owner: str, ttl_seconds: float = 300
+) -> Approval:
+    """Lease a *specific* approval for execution (the manual `orc execute` path).
+
+    Raises ApprovalNotFoundError / NotApprovedError / AlreadyExecutedError so the
+    caller can refuse cleanly. Returns the Approval (with its proposed_action)."""
+    ensure_approval_table(workspace)
+    db_path = workspace_db_path(workspace)
+    with open_connection(db_path) as conn, transaction(conn):
+        row = conn.execute(
+            "SELECT status, proposed_action FROM approval WHERE approval_id = ?",
+            (approval_id,),
+        ).fetchone()
+        if row is None:
+            raise ApprovalNotFoundError(f"Approval not found: {approval_id}")
+        if row["status"] != "approved":
+            raise NotApprovedError(
+                f"Approval {approval_id} is {row['status']}, not approved"
+            )
+        proposed = json.loads(row["proposed_action"]) if row["proposed_action"] else None
+        if proposed is None:
+            raise NotApprovedError(f"Approval {approval_id} has no action to execute")
+        idem = str(proposed.get("idempotency_key") or approval_id)
+        existing = conn.execute(
+            "SELECT exec_status FROM approval_execution WHERE approval_id = ?",
+            (approval_id,),
+        ).fetchone()
+        expires = now_plus_seconds_iso(ttl_seconds)
+        if existing is None:
+            conn.execute(
+                "INSERT INTO approval_execution(approval_id, exec_status, lease_owner, "
+                "lease_expires_at, attempts, idempotency_key) VALUES (?, 'leased', ?, ?, 0, ?)",
+                (approval_id, lease_owner, expires, idem),
+            )
+        elif existing["exec_status"] == "succeeded":
+            raise AlreadyExecutedError(f"Approval {approval_id} already executed")
+        else:
+            conn.execute(
+                "UPDATE approval_execution SET exec_status='leased', lease_owner=?, "
+                "lease_expires_at=? WHERE approval_id = ?",
+                (lease_owner, expires, approval_id),
+            )
+    return get(workspace, approval_id)
+
+
+def mark_executed(workspace: str, approval_id: str, *, result: dict[str, Any]) -> None:
+    """Record a successful execution. Terminal — the action will not be leased again."""
+    ensure_approval_table(workspace)
+    db_path = workspace_db_path(workspace)
+    with open_connection(db_path) as conn, transaction(conn):
+        conn.execute(
+            "UPDATE approval_execution SET exec_status='succeeded', result=?, "
+            "executed_at=?, last_error=NULL, lease_owner=NULL, lease_expires_at=NULL "
+            "WHERE approval_id = ?",
+            (json.dumps(result, default=str), now_iso(), approval_id),
+        )
+
+
+def mark_failed(
+    workspace: str,
+    approval_id: str,
+    *,
+    error: str,
+    max_attempts: int = 3,
+    backoff_seconds: float = 30,
+) -> str:
+    """Record a failed attempt. Returns 'pending' (retry available after a backoff)
+    or 'dead' (attempts exhausted; needs a human re-trigger). The backoff sets
+    next_retry_at so a worker does not re-lease the same action within one pass."""
+    ensure_approval_table(workspace)
+    db_path = workspace_db_path(workspace)
+    with open_connection(db_path) as conn, transaction(conn):
+        row = conn.execute(
+            "SELECT attempts FROM approval_execution WHERE approval_id = ?",
+            (approval_id,),
+        ).fetchone()
+        attempts = (int(row["attempts"]) if row else 0) + 1
+        new_status = "dead" if attempts >= max_attempts else "pending"
+        next_retry = (
+            now_plus_seconds_iso(backoff_seconds) if new_status == "pending" else None
+        )
+        conn.execute(
+            "UPDATE approval_execution SET exec_status=?, attempts=?, last_error=?, "
+            "lease_owner=NULL, lease_expires_at=NULL, next_retry_at=? WHERE approval_id = ?",
+            (new_status, attempts, error, next_retry, approval_id),
+        )
+    return new_status
+
+
+def get_execution(workspace: str, approval_id: str) -> dict[str, Any] | None:
+    ensure_approval_table(workspace)
+    db_path = workspace_db_path(workspace)
+    with open_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM approval_execution WHERE approval_id = ?", (approval_id,)
+        ).fetchone()
+    if row is None:
+        return None
+    data = dict(row)
+    data["result"] = json.loads(data["result"]) if data["result"] else None
+    return data
