@@ -331,10 +331,11 @@ Tests (TDD, mirroring the existing suite):
 
 ## 11. Open decisions (need a human call)
 
-1. **First real executor.** `fs.write_file` (no external creds, ships immediately) vs.
-   jumping straight to an MCP-backed one (`gmail.send_draft`) to prove the credential-split
-   on something users care about. Recommendation: ship `fs.write_file` as the reference in
-   Phase 1, add an MCP executor in Phase 2.
+1. ~~**First real executor.**~~ **Resolved.** `fs.write_file` shipped as the Phase 1
+   reference (no external creds); `gmail.send_draft` shipped as the first
+   external-credential executor (`orc.effects.builtin.gmail`), sending an existing
+   draft via the Gmail REST API with a `GMAIL_TOKEN` bearer held only by the effect
+   plane. Sending (not composing) is gated because sending is the irreversible mutation.
 2. **Cross-plane integrity on a single SQLite file.** Phase 1/2 rely on OS-user/file-perm
    separation (analysis user can't read the worker's env; both can write the DB). Do we want
    an interim HMAC over `(approval_id, proposed_action, status, decided_by)` to detect a

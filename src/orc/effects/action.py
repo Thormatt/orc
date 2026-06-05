@@ -84,7 +84,12 @@ def _validate(value: Any, schema: dict[str, Any], *, path: str) -> None:
         for req in schema.get("required", []):
             if req not in value:
                 raise ActionValidationError(f"{path}: missing required field {req!r}")
-        for key, subschema in schema.get("properties", {}).items():
+        properties = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            extra = sorted(set(value) - set(properties))
+            if extra:
+                raise ActionValidationError(f"{path}: unexpected properties {extra}")
+        for key, subschema in properties.items():
             if key in value:
                 _validate(value[key], subschema, path=f"{path}.{key}")
 

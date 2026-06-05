@@ -18,6 +18,7 @@ from orc.effects.base import MissingCredentialError
 from orc.errors import WorkspaceNotFoundError
 from orc.queue import approval as approval_module
 from orc.queue.approval import (
+    ActionDeadError,
     AlreadyExecutedError,
     ApprovalNotFoundError,
     NotApprovedError,
@@ -48,7 +49,7 @@ def execute_command(approval_id: str, workspace: str | None) -> None:
     except AlreadyExecutedError:
         console.print(f"[dim]Approval {approval_id} was already executed — no-op.[/dim]")
         return
-    except (ApprovalNotFoundError, NotApprovedError) as exc:
+    except (ApprovalNotFoundError, NotApprovedError, ActionDeadError) as exc:
         raise click.ClickException(str(exc)) from exc
 
     action = Action.from_dict(appr.proposed_action or {})
