@@ -27,12 +27,8 @@ def _allow(orc_home: Path, workspace: str, executor_ids: list[str]) -> None:
 
 class _FakeResp:
     def __init__(self, status: int = 200, payload: dict[str, Any] | None = None) -> None:
-        self.status = status
+        self.status_code = status
         self._payload = payload or {}
-
-    def raise_for_status(self) -> None:
-        if self.status >= 400:
-            raise RuntimeError(f"HTTP {self.status}")
 
     def json(self) -> dict[str, Any]:
         return self._payload

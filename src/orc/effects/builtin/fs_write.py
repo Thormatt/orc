@@ -15,6 +15,7 @@ from orc.paths import workspace_effects_dir
 _PARAMS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["path", "content"],
+    "additionalProperties": False,
     "properties": {
         "path": {"type": "string"},
         "content": {"type": "string"},

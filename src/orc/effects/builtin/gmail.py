@@ -22,6 +22,7 @@ _SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/drafts/send"
 _PARAMS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["draft_id"],
+    "additionalProperties": False,
     "properties": {"draft_id": {"type": "string"}},
 }
 
@@ -41,7 +42,10 @@ class GmailSendDraft:
             json={"id": params["draft_id"]},
             timeout=30.0,
         )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            # Surface only the status — the Gmail error body can carry account
+            # metadata, and this message is persisted to last_error in the DB.
+            raise RuntimeError(f"Gmail API error: HTTP {response.status_code}")
         data = response.json()
         return {"message_id": data.get("id"), "thread_id": data.get("threadId")}
 

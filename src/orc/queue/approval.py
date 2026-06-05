@@ -108,6 +108,10 @@ class AlreadyExecutedError(OrcError):
     """Execution was attempted on an action that already succeeded."""
 
 
+class ActionDeadError(OrcError):
+    """Execution was attempted on a dead action (retries exhausted); needs a reset."""
+
+
 @dataclass(frozen=True)
 class Decision:
     decision_id: str
@@ -429,7 +433,8 @@ def lease_one(
             if existing is not None:
                 conn.execute(
                     "UPDATE approval_execution SET exec_status='leased', lease_owner=?, "
-                    "lease_expires_at=? WHERE approval_id = ?",
+                    "lease_expires_at=? WHERE approval_id = ? "
+                    "AND exec_status NOT IN ('succeeded', 'dead')",
                     (lease_owner, expires, approval_id),
                 )
                 leased_id = approval_id
@@ -488,10 +493,15 @@ def begin_execution(
             )
         elif existing["exec_status"] == "succeeded":
             raise AlreadyExecutedError(f"Approval {approval_id} already executed")
+        elif existing["exec_status"] == "dead":
+            raise ActionDeadError(
+                f"Approval {approval_id} is dead (retries exhausted); reset required"
+            )
         else:
             conn.execute(
                 "UPDATE approval_execution SET exec_status='leased', lease_owner=?, "
-                "lease_expires_at=? WHERE approval_id = ?",
+                "lease_expires_at=? WHERE approval_id = ? "
+                "AND exec_status NOT IN ('succeeded', 'dead')",
                 (lease_owner, expires, approval_id),
             )
     return get(workspace, approval_id)
