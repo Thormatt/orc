@@ -25,6 +25,10 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
   - **`orc execute <approval_id>`** — the separate effect-plane process that holds
     the write credentials (which the analysis plane never sees), refuses anything
     not human-approved, and records the outcome.
+- **`gmail.send_draft` executor** — the first external-credential executor, proving
+  the credential split end to end: it sends an existing Gmail draft via the Gmail
+  REST API using a bearer token read from `GMAIL_TOKEN`, which lives only in the
+  effect-plane process. Gated by the same allow-list + schema + credential checks.
 - **Isolated write paths (Phase 2)** — **`orc worker`**, the auto-drain daemon:
   `drain_once` executes every leasable approved action in a pass; failures back off
   (`next_retry_at`) so they retry on a later pass instead of spinning, and exhaust to
