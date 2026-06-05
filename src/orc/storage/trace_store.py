@@ -7,6 +7,7 @@ current version, the supported version set, and the version history.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -90,7 +91,16 @@ def insert_run_evidence(
 def write_trace_json(workspace: str, run_id: str, started_at: str, payload: dict[str, Any]) -> Path:
     path = trace_json_path(workspace, run_id, started_at)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=False))
+    # Write-then-rename: os.replace is atomic on POSIX, so a crash mid-write can
+    # never leave a truncated trace — either the new file lands whole or the prior
+    # one is preserved. The temp file is removed if the commit fails.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=False))
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     return path
 
 

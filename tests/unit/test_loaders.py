@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from orc.ingest.loaders import load_file, sha256_bytes
+from orc.ingest.loaders import load_file, load_url, sha256_bytes
 
 
 def test_load_markdown_extracts_h1_title(tmp_path: Path) -> None:
@@ -36,3 +36,25 @@ def test_load_unsupported_extension_raises(tmp_path: Path) -> None:
 def test_sha256_is_stable() -> None:
     assert sha256_bytes(b"hello") == sha256_bytes(b"hello")
     assert sha256_bytes(b"hello") != sha256_bytes(b"world")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "file:///etc/passwd",
+        "ftp://example.com/x",
+        "gopher://example.com/x",
+        "http://169.254.169.254/latest/meta-data/",  # cloud metadata (link-local)
+        "http://localhost:8080/admin",
+        "http://127.0.0.1/secret",
+        "http://[::1]/secret",
+        "http://10.0.0.5/internal",
+        "http://192.168.1.1/router",
+        "http://0.0.0.0/",
+    ],
+)
+def test_load_url_refuses_ssrf_targets(url: str) -> None:
+    # Must reject before any network call: bad scheme, or a host resolving to a
+    # private / loopback / link-local / unspecified address.
+    with pytest.raises(ValueError):
+        load_url(url)

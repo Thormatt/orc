@@ -113,16 +113,31 @@ def test_verify_golden_claims_use_prompt_cache(orc_home: Path) -> None:
 def test_golden_framework_with_fakes(orc_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Same plumbing, fake client. Always runs — exercises the test framework itself."""
     from orc.llm import client as client_module
+    from orc.paths import workspace_db_path
+    from orc.storage.db import open_connection
     from tests._fake_llm import FakeAnthropic, make_verdict_response
 
     name = _setup_workspace(orc_home)
     ws = ws_module.resolve(name)
 
-    # Pre-build canned responses keyed to expected verdicts. Each call gets the next.
+    # Pass every workspace chunk_id back as supporting/contradicting so the
+    # citation guard (which downgrades labels that lose all valid citations
+    # after filtering by what BM25 actually retrieved) is satisfied regardless
+    # of which subset retrieval surfaces for any given claim.
+    with open_connection(workspace_db_path(name)) as conn:
+        all_chunk_ids = [r["chunk_id"] for r in conn.execute("SELECT chunk_id FROM chunk").fetchall()]
+
     claims = _load_claims()
-    fake = FakeAnthropic(
-        responses=[make_verdict_response(label=c["expected"], confidence=0.85) for c in claims]
-    )
+
+    def _resp_for(label: str):
+        return make_verdict_response(
+            label=label,
+            confidence=0.85,
+            supporting_chunk_ids=all_chunk_ids if label == "supported" else [],
+            contradicting_chunk_ids=all_chunk_ids if label == "contradicted" else [],
+        )
+
+    fake = FakeAnthropic(responses=[_resp_for(c["expected"]) for c in claims])
     monkeypatch.setattr(client_module, "_client", fake)
     monkeypatch.setattr(client_module, "_factory", None)
 

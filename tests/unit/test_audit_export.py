@@ -131,6 +131,235 @@ def test_export_manifest_hashes_match_file_contents(
         assert actual == expected_hash, f"hash mismatch for {path}"
 
 
+def test_export_default_bundle_does_not_include_workspace_db_or_evidence(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default export must stay light — no workspace DB, no evidence files.
+    Compliance buyers opt in to self-contained bundles with --include-evidence."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit.tar.gz"
+    manifest = export_workspace(name, output_path=out)
+
+    members = _untar(out)
+    workspace_members = [m for m in members if m.startswith("workspace/")]
+    assert workspace_members == []
+    assert manifest.self_contained is False
+
+
+def test_export_include_evidence_bundles_db_and_evidence(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With --include-evidence the tarball must carry workspace/orc.db plus
+    every ingested evidence file, all hashed in manifest.files."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-full.tar.gz"
+    manifest = export_workspace(name, output_path=out, include_evidence=True)
+
+    assert manifest.self_contained is True
+    members = _untar(out)
+    assert "workspace/orc.db" in members
+    evidence_members = [m for m in members if m.startswith("workspace/evidence/")]
+    assert len(evidence_members) >= 1, f"no evidence files in bundle: {list(members)}"
+
+    # Every workspace/* file is hashed and the hashes match the actual bytes.
+    for path in [*evidence_members, "workspace/orc.db"]:
+        assert path in manifest.files, f"{path} missing from manifest.files"
+        actual = hashlib.sha256(members[path]).hexdigest()
+        assert actual == manifest.files[path], f"hash mismatch for {path}"
+
+
+def test_self_contained_bundle_places_traces_under_workspace(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression for the high-severity finding: a self-contained bundle puts
+    traces under workspace/traces/ so that `orc replay` (which resolves via
+    workspace_traces_dir) actually finds them after the auditor extracts the
+    workspace/ subtree into ~/.orc/workspaces/<name>/."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-self-contained.tar.gz"
+    manifest = export_workspace(name, output_path=out, include_evidence=True)
+
+    members = _untar(out)
+    top_level_traces = [
+        m for m in members if m.startswith("traces/") and not m.startswith("workspace/")
+    ]
+    workspace_traces = [m for m in members if m.startswith("workspace/traces/")]
+
+    assert workspace_traces, "self-contained bundle must have traces under workspace/"
+    assert not top_level_traces, (
+        f"self-contained bundle should not duplicate traces at top level: {top_level_traces}"
+    )
+    # All workspace traces are listed in manifest.files.
+    for path in workspace_traces:
+        assert path in manifest.files, f"{path} missing from manifest.files"
+
+
+def test_inspectable_bundle_keeps_traces_at_top_level(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When --include-evidence is NOT set, traces stay at the top level so the
+    bundle reads naturally as an inspection artifact."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-inspect.tar.gz"
+    export_workspace(name, output_path=out)
+
+    members = _untar(out)
+    top_level_traces = [m for m in members if m.startswith("traces/")]
+    workspace_traces = [m for m in members if m.startswith("workspace/traces/")]
+    assert top_level_traces, "inspectable bundle should have traces at top level"
+    assert not workspace_traces, "inspectable bundle should not put traces under workspace/"
+
+
+def test_self_contained_downgraded_when_evidence_file_missing(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bundle must NOT claim self_contained=True if an expected evidence file
+    is missing from disk. The manifest records the missing paths so an
+    auditor can see exactly what's incomplete."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+
+    # Delete one ingested evidence file to simulate corruption / accidental
+    # cleanup between ingest and export.
+    from orc.paths import workspace_evidence_dir
+
+    ev_dir = workspace_evidence_dir(name)
+    ev_files = list(ev_dir.rglob("*"))
+    ev_files = [p for p in ev_files if p.is_file()]
+    assert ev_files, "fixture should have at least one evidence file"
+    ev_files[0].unlink()
+
+    out = tmp_path / "audit-incomplete.tar.gz"
+    manifest = export_workspace(name, output_path=out, include_evidence=True)
+
+    assert manifest.self_contained is False, (
+        "bundle missing source files must not claim self_contained=True"
+    )
+    assert len(manifest.missing_evidence_files) >= 1
+
+
+def test_self_contained_bundle_actually_replays_in_fresh_orc_home(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End-to-end: produce a self-contained bundle, extract it into a brand-new
+    ORC_HOME, and run replay against the run_id. This is the load-bearing
+    promise of `--include-evidence` — if it doesn't pass, the audit pitch
+    is overselling.
+    """
+    name = _seed_workspace(orc_home, tmp_path)
+    run_id = _make_verify_run(name, monkeypatch)
+
+    # Produce the self-contained bundle.
+    bundle = tmp_path / "bundle.tar.gz"
+    manifest = export_workspace(name, output_path=bundle, include_evidence=True)
+    assert manifest.self_contained is True
+
+    # Extract into a fresh ORC_HOME tree, following the bundle README's
+    # instructions: workspace/ subtree → ORC_HOME/workspaces/<original-name>/.
+    replay_home = tmp_path / "replay-home"
+    target_ws = replay_home / "workspaces" / name
+    target_ws.mkdir(parents=True)
+
+    with tarfile.open(bundle, "r:gz") as tar:
+        for m in tar.getmembers():
+            if not m.name.startswith("workspace/"):
+                continue
+            # Strip the leading "workspace/" so files land directly under the
+            # target workspace dir.
+            stripped = m.name[len("workspace/"):]
+            if not stripped:
+                continue
+            dest = target_ws / stripped
+            if m.isdir():
+                dest.mkdir(parents=True, exist_ok=True)
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            f = tar.extractfile(m)
+            assert f is not None
+            dest.write_bytes(f.read())
+
+    # Re-point ORC_HOME and the verify client (so replay re-runs without
+    # making a real LLM call — same fake we used for the original run).
+    monkeypatch.setenv("ORC_HOME", str(replay_home))
+    from tests._fake_llm import FakeAnthropic, make_verdict_response
+
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    from orc.llm import client as client_module
+
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    # `ws_module.resolve(name)` must succeed against the extracted workspace.
+    # If the path layout is wrong, replay will fail here.
+    ws_module._reset_cache_for_tests() if hasattr(ws_module, "_reset_cache_for_tests") else None
+    from orc.runs.replay import replay as do_replay
+
+    result = do_replay(run_id)
+
+    # The replay produces a new run with the original as parent. The original
+    # verdict was not_found (corpus is small, claim is unrelated) — replay
+    # should produce the same shape of result.
+    assert result["original_run_id"] == run_id
+    assert "new_run_id" in result
+    assert result["new_run_id"] != run_id
+    assert result["mode"] in {"frozen", "live"}
+
+
+def test_db_backup_via_sqlite_api_not_torn_read(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bundled orc.db must be a transactionally consistent copy — the
+    SQLite Online Backup API guarantees this even if the source DB is in
+    WAL mode with pending writes. Sanity-check: the copy opens cleanly and
+    has the expected schema."""
+    import sqlite3
+
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit-db.tar.gz"
+    export_workspace(name, output_path=out, include_evidence=True)
+    members = _untar(out)
+
+    extracted = tmp_path / "orc-copy.db"
+    extracted.write_bytes(members["workspace/orc.db"])
+    conn = sqlite3.connect(str(extracted))
+    try:
+        # Workspace + run tables should be queryable.
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        assert "workspace" in tables
+        assert "run" in tables
+        # The run we created during the test should be present.
+        n_runs = conn.execute("SELECT count(*) FROM run").fetchone()[0]
+        assert n_runs >= 1
+    finally:
+        conn.close()
+
+
+def test_export_manifest_hashes_cover_every_tar_member_except_manifest(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression for the audit-export README's integrity claim: every file in
+    the tarball except manifest.json (which can't hash itself) must be listed
+    in manifest.files. README.md was previously omitted."""
+    name = _seed_workspace(orc_home, tmp_path)
+    _make_verify_run(name, monkeypatch)
+    out = tmp_path / "audit.tar.gz"
+    export_workspace(name, output_path=out)
+
+    members = _untar(out)
+    manifest = json.loads(members["manifest.json"])
+    hashed = set(manifest["files"].keys())
+    in_tar = set(members.keys()) - {"manifest.json"}
+    missing = in_tar - hashed
+    assert missing == set(), f"these tar members are not hashed: {missing}"
+
+
 def test_export_refuses_when_trace_schema_unsupported(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

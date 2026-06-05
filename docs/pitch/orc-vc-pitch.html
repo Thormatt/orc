@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orc — make AI decisions defensible</title>
+<meta name="description" content="The verification runtime for AI that has to be defensible. F1 0.864 on HaluBench, above Lynx-70B home-court. Open source." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper:      #efe5cf;
+    --paper-2:    #e6dcc4;
+    --paper-3:    #dccfb2;
+    --ink:        #1d1611;
+    --ink-2:      #3a2e23;
+    --ink-mute:   #6b5d4d;
+    --ink-faint:  #a3957e;
+    --crimson:    #a8281e;
+    --crimson-dk: #7a1d16;
+    --cobalt:     #1b3a6b;
+    --cobalt-tint:#dde4f1;
+    --rule:       #c9bb9d;
+    --rule-soft:  #d8cdb1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, serif;
+    font-size: 19px;
+    line-height: 1.55;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* paper-grain SVG */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.085 0 0 0 0 0.065 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+  }
+
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: 'ss01' 1, 'cv02' 1; }
+  .display { font-family: 'DM Serif Display', Georgia, serif; }
+  .serif { font-family: 'Spectral', Georgia, serif; }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* === NAV === */
+  nav {
+    padding: 22px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(239, 229, 207, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 100;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  nav .container { display: flex; justify-content: space-between; align-items: baseline; }
+  .brand {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 26px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .brand::after {
+    content: ".";
+    color: var(--crimson);
+    font-style: normal;
+  }
+  .nav-links a {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-mute);
+    text-decoration: none;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-left: 28px;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--crimson); }
+
+  /* === HERO === */
+  .hero {
+    padding: 140px 0 100px;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero-meta-top {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .hero-meta-top::before {
+    content: "";
+    width: 36px;
+    height: 1px;
+    background: var(--crimson);
+  }
+  h1.hero-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(54px, 9vw, 96px);
+    font-weight: 400;
+    line-height: 0.96;
+    letter-spacing: -0.02em;
+    margin-bottom: 48px;
+    color: var(--ink);
+  }
+  h1.hero-title em {
+    font-style: italic;
+    color: var(--crimson);
+  }
+  h1.hero-title .break { display: block; }
+
+  .hero .lede {
+    font-size: 22px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 600px;
+    margin-bottom: 52px;
+    font-weight: 400;
+  }
+  .hero .lede .dropcap {
+    float: left;
+    font-family: 'DM Serif Display', serif;
+    font-size: 82px;
+    line-height: 0.82;
+    color: var(--crimson);
+    padding: 6px 14px 0 0;
+    font-style: italic;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 36px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-mute);
+    padding-top: 36px;
+    border-top: 1px solid var(--rule);
+    flex-wrap: wrap;
+  }
+  .hero-meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* First-edition seal in corner */
+  .seal {
+    position: absolute;
+    top: 130px;
+    right: -30px;
+    width: 180px;
+    height: 180px;
+    pointer-events: none;
+    opacity: 0.78;
+    transform: rotate(8deg);
+  }
+  .seal svg { width: 100%; height: 100%; }
+  @media (max-width: 940px) { .seal { display: none; } }
+
+  /* === SECTIONS === */
+  section { padding: 110px 0; position: relative; }
+  section + section { border-top: 1px solid var(--rule); }
+
+  /* === ELI5 PANELS === */
+  .eli5 {
+    padding: 80px 0 100px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eli5 .super {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--crimson);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .eli5 .super::before {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: var(--crimson);
+  }
+  .eli5 h2.eli5-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(30px, 4vw, 42px);
+    line-height: 1.15;
+    margin-bottom: 48px;
+    color: var(--ink);
+    font-weight: 400;
+  }
+  .eli5 h2.eli5-title em {
+    font-style: italic;
+    color: var(--crimson);
+  }
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .panel {
+    padding: 36px 28px 32px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+    background: var(--paper-2);
+  }
+  .panel:last-child { border-right: none; }
+  .panel-no {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--crimson);
+    line-height: 1;
+  }
+  .panel-art {
+    width: 100%;
+    height: 180px;
+    margin: 14px 0 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .panel-art svg { width: 100%; height: 100%; max-width: 220px; }
+  .panel-caption {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 10px;
+    min-height: 54px;
+  }
+  .panel-caption em { font-style: italic; color: var(--crimson); }
+  .panel-sub {
+    font-family: 'Spectral', serif;
+    font-size: 14.5px;
+    color: var(--ink-mute);
+    line-height: 1.5;
+  }
+  .panel-connector {
+    position: absolute;
+    top: 50%;
+    right: -14px;
+    transform: translateY(-50%);
+    background: var(--paper);
+    color: var(--crimson);
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    padding: 0 6px;
+    z-index: 2;
+    line-height: 1;
+  }
+  .panel:last-child .panel-connector { display: none; }
+
+  /* SVG animations — line art elements that loop gently */
+  @keyframes bubble-pop {
+    0%, 80%, 100% { opacity: 1; transform: scale(1); }
+    40% { opacity: 1; transform: scale(1.05); }
+  }
+  @keyframes shake-side {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-4deg); }
+    50% { transform: rotate(4deg); }
+    80% { transform: rotate(-3deg); }
+  }
+  @keyframes bob-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @keyframes stamp-land {
+    0%, 100% { transform: translate(0,0) scale(1); opacity: 0.95; }
+    30% { transform: translate(0,-30px) scale(1.4); opacity: 0; }
+    50% { transform: translate(0,-30px) scale(1.4); opacity: 0; }
+    65% { transform: translate(0,0) scale(1.15); opacity: 1; }
+    75% { transform: translate(0,0) scale(0.92); opacity: 1; }
+    85% { transform: translate(0,0) scale(1); opacity: 1; }
+  }
+  @keyframes paper-slide {
+    0% { transform: translateX(-8px); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes eyes-blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+  }
+  @keyframes pulse-faint {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  @keyframes shrug {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(2px); }
+  }
+
+  .svg-bubble { animation: bubble-pop 3s ease-in-out infinite; transform-origin: center; }
+  .svg-shake { animation: shake-side 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+  .svg-bob { animation: bob-up 2.2s ease-in-out infinite; transform-origin: center; }
+  .svg-stamp { animation: stamp-land 3.2s ease-in-out infinite; transform-origin: center; }
+  .svg-paper { animation: paper-slide 3s ease-out infinite; }
+  .svg-eyes { animation: eyes-blink 4s ease-in-out infinite; transform-origin: center; }
+  .svg-pulse { animation: pulse-faint 2s ease-in-out infinite; }
+  .svg-shrug { animation: shrug 2.6s ease-in-out infinite; transform-origin: center; }
+
+  @media (max-width: 740px) {
+    .panels { grid-template-columns: 1fr; border-bottom: 1px solid var(--ink); }
+    .panel { border-right: none; border-bottom: 1px solid var(--rule); padding: 32px 24px; }
+    .panel:last-child { border-bottom: none; }
+    .panel-connector {
+      top: auto; right: 50%; bottom: -14px;
+      transform: translateX(50%) rotate(90deg);
+    }
+    .panel-art { height: 150px; }
+  }
+
+  .section-no {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--crimson);
+    margin-bottom: 24px;
+    letter-spacing: 0.02em;
+  }
+  .section-no .roman {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    font-style: normal;
+    color: var(--crimson);
+    margin-right: 14px;
+    border-bottom: 2px solid var(--crimson);
+    padding-bottom: 2px;
+  }
+
+  h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.08;
+    margin-bottom: 36px;
+    color: var(--ink);
+  }
+  h2 em {
+    font-style: italic;
+    color: var(--crimson);
+  }
+  h3 {
+    font-family: 'Spectral', serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 44px;
+    margin-bottom: 14px;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  p {
+    margin-bottom: 22px;
+    color: var(--ink-2);
+  }
+  p:last-child { margin-bottom: 0; }
+  p strong { color: var(--ink); font-weight: 600; }
+  p em { color: var(--ink); font-style: italic; }
+  p.large {
+    font-size: 23px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  /* Pull-quote — magazine style */
+  .pull {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    line-height: 1.18;
+    color: var(--ink);
+    font-weight: 400;
+    margin: 48px 0;
+    text-align: center;
+    padding: 24px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+    font-style: italic;
+  }
+  .pull::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 1px;
+    background: var(--crimson);
+  }
+
+  /* Marginalia */
+  .margin-note {
+    background: var(--cobalt-tint);
+    border-left: 3px solid var(--cobalt);
+    padding: 16px 20px;
+    margin: 28px 0;
+    font-family: 'Spectral', serif;
+    font-size: 15px;
+    color: var(--ink-2);
+    line-height: 1.55;
+    font-style: italic;
+  }
+  .margin-note .tag {
+    color: var(--cobalt);
+    font-weight: 600;
+    margin-right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-style: normal;
+  }
+
+  /* Bullet lists — bookish */
+  ul.styled {
+    list-style: none;
+    margin: 32px 0;
+    padding: 0;
+  }
+  ul.styled li {
+    color: var(--ink-2);
+    margin-bottom: 20px;
+    padding-left: 36px;
+    position: relative;
+    line-height: 1.55;
+  }
+  ul.styled li::before {
+    content: "›";
+    font-family: 'DM Serif Display', serif;
+    color: var(--crimson);
+    position: absolute;
+    left: 4px;
+    font-size: 26px;
+    line-height: 1;
+    top: 0;
+    font-style: italic;
+  }
+  ul.styled li strong { color: var(--ink); }
+
+  /* === HEADLINE METRIC — print-magazine pull === */
+  .metric-block {
+    margin: 48px 0;
+    padding: 56px 40px 48px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    position: relative;
+    text-align: center;
+  }
+  .metric-block::before {
+    content: "—";
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--paper);
+    color: var(--crimson);
+    padding: 0 16px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px;
+    line-height: 1;
+    top: -14px;
+  }
+
+  .metric-block .compare-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 56px;
+    flex-wrap: wrap;
+  }
+  .metric-cell .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-mute);
+    margin-bottom: 16px;
+  }
+  .metric-cell .numeral {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(80px, 14vw, 130px);
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    line-height: 0.85;
+    color: var(--ink);
+    font-feature-settings: 'lnum' 1, 'tnum' 1;
+  }
+  .metric-cell.win .numeral { color: var(--crimson); }
+  .metric-cell .caption {
+    font-family: 'Spectral', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-mute);
+    margin-top: 18px;
+    line-height: 1.5;
+  }
+  .metric-cell .vs {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    color: var(--ink-faint);
+    font-size: 20px;
+    align-self: center;
+    padding-top: 60px;
+  }
+  .metric-block .footnote {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* === SCENARIO COMPARISON === */
+  .scenario {
+    margin: 40px 0;
+  }
+  .scenario-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .scenario-tab {
+    background: transparent;
+    border: none;
+    color: var(--ink-mute);
+    padding: 14px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+    font-weight: 500;
+  }
+  .scenario-tab:hover { color: var(--ink); }
+  .scenario-tab.active {
+    color: var(--crimson);
+    border-bottom-color: var(--crimson);
+  }
+  .scenario-prompt {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-top: none;
+    padding: 26px 30px;
+    margin-bottom: 24px;
+  }
+  .scenario-prompt .ask {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-mute);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 10px;
+  }
+  .scenario-prompt #prompt-text {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 21px;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+  .scenario-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .compare-col {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .compare-col.bad {
+    /* hand-drawn red strike-through diagonal */
+    background-image: linear-gradient(135deg, transparent 49.6%, var(--crimson) 49.6%, var(--crimson) 50.4%, transparent 50.4%);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    opacity: 0.95;
+  }
+  .compare-col.good { border-color: var(--crimson); border-width: 2px; box-shadow: 4px 4px 0 var(--crimson-dk); }
+  .compare-header {
+    padding: 14px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-3);
+    font-weight: 500;
+  }
+  .compare-col.bad .compare-header {
+    color: var(--ink-mute);
+  }
+  .compare-col.good .compare-header {
+    color: var(--crimson);
+    background: var(--paper);
+  }
+  .compare-body {
+    padding: 24px;
+    font-size: 15px;
+    line-height: 1.6;
+    flex-grow: 1;
+  }
+  .compare-body .answer {
+    color: var(--ink);
+    margin-bottom: 16px;
+    font-family: 'Spectral', serif;
+    font-size: 15.5px;
+  }
+  .compare-body .meta-row {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--rule);
+    line-height: 1.9;
+  }
+  .compare-body .meta-row .missing {
+    color: var(--crimson);
+    opacity: 0.7;
+    display: block;
+    font-weight: 500;
+  }
+  .compare-body .meta-row .missing::before {
+    content: "× ";
+    font-weight: 700;
+  }
+  .compare-body .tag {
+    display: inline-block;
+    background: var(--paper);
+    border: 1px solid var(--crimson-dk);
+    color: var(--crimson);
+    padding: 3px 9px;
+    margin: 3px 4px 3px 0;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .compare-body .tag.muted {
+    color: var(--ink-mute);
+    border-color: var(--rule);
+    background: transparent;
+  }
+  .compare-body .verdict {
+    display: inline-block;
+    background: var(--crimson);
+    color: var(--paper);
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-bottom: 16px;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+  }
+  .source-quote {
+    background: var(--paper);
+    border-left: 3px solid var(--crimson);
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-family: 'Spectral', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-2);
+    line-height: 1.6;
+  }
+  .source-quote .ref {
+    display: block;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 10px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* === FLOW DIAGRAM === */
+  .flow-diagram {
+    margin: 44px 0;
+    padding: 40px 26px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    overflow-x: auto;
+  }
+  .flow-row {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+    min-width: 660px;
+  }
+  .flow-node {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink);
+    text-align: center;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    min-width: 100px;
+    justify-content: center;
+    font-weight: 500;
+  }
+  .flow-node.orc {
+    border-color: var(--crimson);
+    border-width: 2px;
+    background: var(--paper);
+    color: var(--crimson);
+    padding: 20px 24px;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 220px;
+    box-shadow: 3px 3px 0 var(--crimson-dk);
+  }
+  .flow-node.orc .label {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 17px;
+    color: var(--crimson);
+    letter-spacing: 0;
+    font-weight: 400;
+    text-transform: lowercase;
+  }
+  .flow-node.orc .sub {
+    color: var(--ink-2);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    line-height: 1.8;
+    text-align: center;
+  }
+  .flow-arrow {
+    color: var(--crimson);
+    font-size: 22px;
+    flex-shrink: 0;
+    align-self: center;
+    font-family: 'DM Serif Display', serif;
+  }
+
+  /* === CODE === */
+  pre {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 0;
+    padding: 28px 30px;
+    overflow-x: auto;
+    margin: 36px 0;
+    font-size: 13.5px;
+    line-height: 1.75;
+    position: relative;
+    box-shadow: 4px 4px 0 var(--ink-2);
+  }
+  pre::before {
+    content: "TERMINAL";
+    position: absolute;
+    top: 10px;
+    right: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-faint);
+    letter-spacing: 0.2em;
+  }
+  pre code { color: var(--paper); font-family: 'JetBrains Mono', monospace; }
+  .c { color: var(--ink-faint); font-style: italic; }
+  .s { color: #e8b46a; }
+  .k { color: var(--crimson); font-weight: 600; }
+
+  /* === USE-CASE LIST — bibliographic === */
+  .usecases {
+    margin: 36px 0;
+    border-top: 2px solid var(--ink);
+  }
+  .usecase {
+    padding: 28px 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 32px;
+    align-items: baseline;
+  }
+  .usecase:last-child { border-bottom: 2px solid var(--ink); }
+  .usecase .who {
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    color: var(--crimson);
+    font-size: 17px;
+    line-height: 1.3;
+  }
+  .usecase h3 { margin: 0 0 6px 0; font-size: 20px; font-weight: 600; }
+  .usecase p { font-size: 16px; margin: 0; line-height: 1.55; }
+  @media (max-width: 640px) {
+    .usecase { grid-template-columns: 1fr; gap: 8px; }
+    .usecase .who { font-size: 15px; }
+  }
+
+  /* === TIMELINE — film/tape-style === */
+  .timeline {
+    margin: 44px 0;
+    padding-left: 28px;
+    border-left: 2px solid var(--ink);
+    position: relative;
+  }
+  .timeline-item {
+    padding: 18px 0 18px 24px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -34px;
+    top: 26px;
+    width: 12px;
+    height: 12px;
+    background: var(--crimson);
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 2px var(--crimson);
+  }
+  .timeline-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--crimson);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .timeline-headline {
+    font-family: 'DM Serif Display', serif;
+    font-size: 21px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+  .timeline-body {
+    font-size: 15.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+
+  /* === CTA === */
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 44px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 16px 30px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--crimson);
+    color: var(--paper);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .btn-primary:hover {
+    background: var(--ink);
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--crimson);
+  }
+  .btn-secondary {
+    border: 2px solid var(--ink);
+    color: var(--ink);
+  }
+  .btn-secondary:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  a { color: var(--crimson); text-decoration-color: var(--crimson-dk); text-underline-offset: 3px; }
+  a:hover { color: var(--cobalt); }
+
+  /* === FOOTER === */
+  footer {
+    padding: 64px 0 100px;
+    border-top: 2px solid var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  footer .colophon {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--ink);
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 16px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  footer .colophon::before {
+    content: "❦";
+    color: var(--crimson);
+    font-size: 18px;
+  }
+
+  /* Reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    body { font-size: 17px; }
+    h1.hero-title { font-size: 46px; }
+    .hero { padding: 100px 0 60px; }
+    .scenario-compare { grid-template-columns: 1fr; }
+    .scenario-tab { padding: 12px 14px; font-size: 10px; letter-spacing: 0.08em; }
+    .nav-links a { margin-left: 14px; font-size: 10px; }
+    .metric-block { padding: 40px 20px; }
+    .metric-block .compare-row { gap: 24px; }
+    .metric-cell .vs { display: none; }
+    .pull { font-size: 24px; }
+    .hero-meta { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="brand">orc</div>
+    <div class="nav-links">
+      <a href="./orc-how-it-works.html">Picture book</a>
+      <a href="#problem">Why this exists</a>
+      <a href="#proof">Proof</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="hero-meta-top">A field paper · v0.1.4 · open source · <a href="./orc-how-it-works.html" style="color: var(--crimson); text-decoration: underline;">prefer pictures? start here →</a></div>
+    <h1 class="hero-title">
+      AI is now making decisions <span class="break">you can't take back.</span>
+      <span class="break"><em>Orc makes them defensible.</em></span>
+    </h1>
+    <p class="lede">
+      <span class="dropcap">A</span>small open-source runtime that binds every AI claim to evidence you own — and produces an audit trail a regulator can replay months later.
+    </p>
+    <div class="hero-meta">
+      <span><strong>F1 0.864</strong> on HaluBench</span>
+      <span>Above <strong>Lynx-70B</strong> home-court</span>
+      <span><strong>MIT</strong> · no fine-tuning</span>
+    </div>
+
+    <div class="seal">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <path id="circle-path" d="M 100, 100 m -76, 0 a 76,76 0 1,1 152,0 a 76,76 0 1,1 -152,0" />
+        </defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#a8281e" stroke-width="2.5" />
+        <circle cx="100" cy="100" r="83" fill="none" stroke="#a8281e" stroke-width="0.7" />
+        <text font-family="JetBrains Mono" font-size="9" fill="#a8281e" letter-spacing="3.4" font-weight="600">
+          <textPath href="#circle-path">CITED · REPLAYABLE · AUDIT-READY · VERIFIED · </textPath>
+        </text>
+        <text x="100" y="88" font-family="DM Serif Display" font-size="28" fill="#a8281e" text-anchor="middle" font-style="italic">orc</text>
+        <text x="100" y="108" font-family="DM Serif Display" font-size="11" fill="#a8281e" text-anchor="middle" font-style="italic">first edition</text>
+        <line x1="44" y1="118" x2="156" y2="118" stroke="#a8281e" stroke-width="0.7" />
+        <text x="100" y="135" font-family="JetBrains Mono" font-size="9" fill="#a8281e" text-anchor="middle" letter-spacing="2.4" font-weight="600">MMXXVI</text>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<!-- ELI5 PANELS -->
+<section class="eli5">
+  <div class="container">
+    <div class="super">The whole idea, in 30 seconds</div>
+    <h2 class="eli5-title">Here's the problem Orc solves, with no jargon. <em>Read the pictures.</em></h2>
+
+    <div class="panels">
+      <!-- PANEL 1 -->
+      <div class="panel">
+        <div class="panel-no">i</div>
+        <div class="panel-art">
+          <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <!-- AI box -->
+            <rect x="60" y="60" width="100" height="80" rx="8" stroke="#1d1611" stroke-width="2"/>
+            <!-- antenna -->
+            <line x1="110" y1="60" x2="110" y2="44" stroke="#1d1611" stroke-width="2"/>
+            <circle cx="110" cy="40" r="4" fill="#a8281e"/>
+            <!-- eyes (blink) -->
+            <g class="svg-eyes" style="transform-origin: 90px 90px;">
+              <circle cx="90" cy="90" r="5" fill="#1d1611"/>
+            </g>
+            <g class="svg-eyes" style="transform-origin: 130px 90px; animation-delay: 0.1s;">
+              <circle cx="130" cy="90" r="5" fill="#1d1611"/>
+            </g>
+            <!-- mouth -->
+            <path d="M 90 118 Q 110 128 130 118" stroke="#1d1611" stroke-width="2" stroke-linecap="round"/>
+            <!-- speech bubble (pulse) -->
+            <g class="svg-bubble" style="transform-origin: 200px 70px;">
+              <ellipse cx="200" cy="70" rx="34" ry="22" fill="#a8281e"/>
+              <path d="M 180 84 L 168 100 L 184 88 Z" fill="#a8281e"/>
+              <text x="200" y="76" text-anchor="middle" font-family="DM Serif Display" font-size="18" font-style="italic" fill="#efe5cf">yes.</text>
+            </g>
+            <!-- person below -->
+            <circle cx="36" cy="146" r="10" stroke="#1d1611" stroke-width="2"/>
+            <line x1="36" y1="156" x2="36" y2="180" stroke="#1d1611" stroke-width="2"/>
+            <line x1="36" y1="166" x2="46" y2="174" stroke="#1d1611" stroke-width="2"/>
+            <line x1="36" y1="166" x2="26" y2="174" stroke="#1d1611" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="panel-caption">AI gives you an answer.</div>
+        <div class="panel-sub">No source. No proof. Just words on a screen — and you have to decide whether to trust it.</div>
+        <div class="panel-connector">→</div>
+      </div>
+
+      <!-- PANEL 2 -->
+      <div class="panel">
+        <div class="panel-no">ii</div>
+        <div class="panel-art">
+          <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <!-- auditor with magnifying glass -->
+            <circle cx="60" cy="60" r="14" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="74" x2="60" y2="130" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="96" x2="44" y2="116" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="96" x2="84" y2="86" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="130" x2="48" y2="160" stroke="#1d1611" stroke-width="2"/>
+            <line x1="60" y1="130" x2="72" y2="160" stroke="#1d1611" stroke-width="2"/>
+            <!-- magnifying glass at arm end (shakes) -->
+            <g class="svg-shake" style="transform-origin: 90px 80px;">
+              <circle cx="98" cy="78" r="13" stroke="#a8281e" stroke-width="2.5"/>
+              <line x1="107" y1="87" x2="116" y2="96" stroke="#a8281e" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+            <!-- big question mark (bobs) -->
+            <g class="svg-bob" style="transform-origin: 175px 70px;">
+              <text x="175" y="100" text-anchor="middle" font-family="DM Serif Display" font-size="72" font-style="italic" fill="#a8281e">?</text>
+            </g>
+            <!-- frozen person -->
+            <circle cx="200" cy="140" r="10" stroke="#1d1611" stroke-width="2"/>
+            <line x1="200" y1="150" x2="200" y2="178" stroke="#1d1611" stroke-width="2"/>
+            <line x1="200" y1="158" x2="188" y2="158" stroke="#1d1611" stroke-width="2"/>
+            <line x1="200" y1="158" x2="212" y2="158" stroke="#1d1611" stroke-width="2"/>
+            <!-- empty hand marks -->
+            <g class="svg-shrug" style="transform-origin: 200px 158px;">
+              <circle cx="188" cy="158" r="2" fill="#1d1611"/>
+              <circle cx="212" cy="158" r="2" fill="#1d1611"/>
+            </g>
+            <!-- thought dots (pulse) -->
+            <g class="svg-pulse">
+              <circle cx="218" cy="128" r="2.5" fill="#a8281e"/>
+              <circle cx="224" cy="120" r="2" fill="#a8281e"/>
+              <circle cx="228" cy="114" r="1.5" fill="#a8281e"/>
+            </g>
+          </svg>
+        </div>
+        <div class="panel-caption">Someone asks: <em>"where did you get that?"</em></div>
+        <div class="panel-sub">Six months later. A regulator, an examiner, your own legal team. You need to show your work — and you can't.</div>
+        <div class="panel-connector">→</div>
+      </div>
+
+      <!-- PANEL 3 -->
+      <div class="panel">
+        <div class="panel-no">iii</div>
+        <div class="panel-art">
+          <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <!-- AI box with orc badge -->
+            <rect x="40" y="50" width="80" height="64" rx="6" stroke="#1d1611" stroke-width="2"/>
+            <line x1="80" y1="50" x2="80" y2="36" stroke="#1d1611" stroke-width="2"/>
+            <circle cx="80" cy="32" r="3.5" fill="#a8281e"/>
+            <!-- eyes -->
+            <circle cx="64" cy="78" r="4" fill="#1d1611"/>
+            <circle cx="96" cy="78" r="4" fill="#1d1611"/>
+            <!-- smile -->
+            <path d="M 64 96 Q 80 108 96 96" stroke="#1d1611" stroke-width="2" stroke-linecap="round"/>
+            <!-- orc badge -->
+            <circle cx="118" cy="58" r="11" fill="#a8281e"/>
+            <text x="118" y="62" text-anchor="middle" font-family="DM Serif Display" font-size="11" font-style="italic" fill="#efe5cf">orc</text>
+            <!-- document (slides in) -->
+            <g class="svg-paper">
+              <rect x="140" y="76" width="74" height="92" fill="#efe5cf" stroke="#1d1611" stroke-width="2"/>
+              <line x1="148" y1="92" x2="206" y2="92" stroke="#1d1611" stroke-width="1.2"/>
+              <line x1="148" y1="100" x2="200" y2="100" stroke="#a8281e" stroke-width="1.2"/>
+              <line x1="148" y1="108" x2="195" y2="108" stroke="#1d1611" stroke-width="1"/>
+              <line x1="148" y1="116" x2="206" y2="116" stroke="#1d1611" stroke-width="1"/>
+              <line x1="148" y1="124" x2="192" y2="124" stroke="#1d1611" stroke-width="1"/>
+              <line x1="148" y1="132" x2="200" y2="132" stroke="#1d1611" stroke-width="1"/>
+              <!-- footer / page ref -->
+              <line x1="148" y1="148" x2="206" y2="148" stroke="#1d1611" stroke-width="0.6"/>
+              <text x="151" y="160" font-family="JetBrains Mono" font-size="6" fill="#6b5d4d">§3 · p.12</text>
+            </g>
+            <!-- stamp (lands rhythmically) -->
+            <g class="svg-stamp" style="transform-origin: 188px 138px;">
+              <circle cx="188" cy="138" r="18" stroke="#a8281e" stroke-width="2" fill="none"/>
+              <circle cx="188" cy="138" r="14" stroke="#a8281e" stroke-width="0.8" fill="none"/>
+              <text x="188" y="135" text-anchor="middle" font-family="DM Serif Display" font-size="9" font-style="italic" fill="#a8281e">orc</text>
+              <text x="188" y="145" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#a8281e" letter-spacing="1">VERIFIED</text>
+            </g>
+          </svg>
+        </div>
+        <div class="panel-caption">With Orc, <em>the answer comes with the receipt.</em></div>
+        <div class="panel-sub">Every claim cited. Every step recorded. Hand the file to anyone — they replay the exact decision themselves.</div>
+        <div class="panel-connector"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- I. THE SHIFT -->
+<section id="problem">
+  <div class="container">
+    <div class="section-no"><span class="roman">I</span>The shift</div>
+    <h2>The first generation of AI was about producing answers.<br>The next is about <em>defending them.</em></h2>
+
+    <p class="large">For three years the question was: <em>can I get the model to give me a useful answer?</em> Companies wired up ChatGPT, Claude, Copilot. The wins were obvious and the stakes were low.</p>
+
+    <p>Then AI moved from "draft an email" to "approve a loan." From "summarize this meeting" to "decide which patient gets the trial." From "explain this clause" to "flag this transaction as suspicious." The model started touching decisions that affect people's lives and money — and the people responsible for those decisions started getting asked a different question:</p>
+
+    <p class="pull">Show me what the model said, why it said it, and prove no one can change the answer after the fact.</p>
+
+    <p>That question is being asked everywhere now. By bank examiners. By healthcare compliance officers. By EU regulators. By plaintiffs' lawyers. By the company's own auditors, six months after the decision was made. And the current AI stack has no good answer.</p>
+  </div>
+</section>
+
+<!-- II. THE GAP -->
+<section>
+  <div class="container">
+    <div class="section-no"><span class="roman">II</span>Why current tools fail this test</div>
+    <h2>The AI you're using today wasn't built to be defensible.</h2>
+
+    <p>Every existing tool was built to solve a different problem:</p>
+
+    <ul class="styled">
+      <li><strong>The generation tools</strong> (ChatGPT, Claude, Copilot) produce answers. They don't produce evidence.</li>
+      <li><strong>The agent frameworks</strong> (LangChain, LlamaIndex, AutoGen) compose calls. Verification is bolted on as an afterthought.</li>
+      <li><strong>The observability platforms</strong> (LangSmith, Langfuse, Phoenix) record traces — but for engineers debugging, not for regulators auditing.</li>
+      <li><strong>The faithfulness judges</strong> (Patronus, RAGAS, Vectara) score answers after the fact. They don't produce the trail of what was verified against what.</li>
+    </ul>
+
+    <p>Each of these is good at what it was built for. None of them, on its own, gives the bank compliance officer or the EU AI Act auditor what they actually need: <strong>a single artifact, produced at decision time, that proves what the AI was told, what it concluded, and what evidence it used — that a third party can verify independently months later.</strong></p>
+
+    <div class="margin-note">
+      <span class="tag">Documented</span>
+      LangChain GitHub Issue #35357 (2025) explicitly requests EU AI Act Article 12-compliant logging. MCP's 2026 roadmap names enterprise audit as a known gap. This isn't speculation — the gap is acknowledged industry-wide.
+    </div>
+
+    <p>That artifact doesn't exist in today's stack. That's the gap Orc fills.</p>
+  </div>
+</section>
+
+<!-- III. VISUAL DIFF -->
+<section>
+  <div class="container">
+    <div class="section-no"><span class="roman">III</span>See the difference</div>
+    <h2>The same AI claim, with and without a <em>verification runtime</em>.</h2>
+
+    <p>Pick a scenario. The left column shows what your AI gives you today. The right column shows the Orc-verified output — the artifact a regulator or auditor needs.</p>
+
+    <div class="scenario">
+      <div class="scenario-tabs" role="tablist">
+        <button class="scenario-tab active" data-scenario="bank" role="tab" aria-selected="true">Bank credit memo</button>
+        <button class="scenario-tab" data-scenario="health" role="tab">Clinical evidence</button>
+        <button class="scenario-tab" data-scenario="legal" role="tab">Contract review</button>
+      </div>
+
+      <div class="scenario-prompt">
+        <div class="ask">Analyst asks the AI</div>
+        <div id="prompt-text">"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."</div>
+      </div>
+
+      <div class="scenario-compare">
+        <div class="compare-col bad">
+          <div class="compare-header">Without verification</div>
+          <div class="compare-body">
+            <div class="answer" id="bad-answer">
+              "Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."
+            </div>
+            <div class="meta-row">
+              <span class="missing">no source citation</span>
+              <span class="missing">no way to replay this</span>
+              <span class="missing">no audit trail</span>
+              <span class="missing">no way to verify tomorrow</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="compare-col good">
+          <div class="compare-header">With Orc — runtime-verified</div>
+          <div class="compare-body">
+            <div class="verdict" id="good-verdict">SUPPORTED · 0.91</div>
+            <div class="answer" id="good-answer">
+              "Computed 1,247 / 6,783 × 100 = 18.38%. Matches the claim within rounding."
+            </div>
+            <div class="source-quote" id="good-source">
+              "Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023."
+              <span class="ref">filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT…</span>
+            </div>
+            <div class="meta-row">
+              <span class="tag">cited</span>
+              <span class="tag">replayable</span>
+              <span class="tag">audit-bundle</span>
+              <span class="tag muted">run_id 01KS0QT1…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Where Orc sits in the call</h3>
+    <p>Orc is a thin layer between the LLM and whatever consumes its output. The model still does the language work. Orc owns the retrieval, the verdict structure, and the trail.</p>
+
+    <div class="flow-diagram">
+      <div class="flow-row">
+        <div class="flow-node">Claim</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node orc">
+          <div class="label">orc · runtime</div>
+          <div class="sub">retrieve · cite · verify<br>trace · approve · audit</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Verdict</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-node">Citations</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-node">Audit&nbsp;bundle</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- IV. HOW -->
+<section>
+  <div class="container">
+    <div class="section-no"><span class="roman">IV</span>What it looks like</div>
+    <h2>One command. <em>Every artifact.</em></h2>
+
+    <pre><code><span class="c"># 1. Create a workspace and ingest evidence you own</span>
+<span class="k">$</span> orc workspace create credit-memos
+<span class="k">$</span> orc ingest ./Q3-filings -w credit-memos
+
+<span class="c"># 2. Verify a claim against the corpus</span>
+<span class="k">$</span> orc verify <span class="s">"FY2023 EBITDA margin was 18.4%"</span> -w credit-memos
+
+<span class="c"># → SUPPORTED  confidence=0.91</span>
+<span class="c">#   reasoning: Computed 1247/6783 = 18.4%, matches.</span>
+<span class="c">#   evidence:  filing-2023-Q4.pdf §3 · p.12</span>
+<span class="c">#   run_id:    01KS0QT1MSV3NZA8ZSJK6VKJ7H</span>
+
+<span class="c"># 3. Months later, hand a regulator a self-contained tarball</span>
+<span class="k">$</span> orc audit export -w credit-memos --include-evidence
+<span class="c"># → audit-credit-memos-20260520.tar.gz</span>
+<span class="c">#   every decision · every retrieval · every prompt</span>
+<span class="c">#   every approval — all hashed, all reproducible.</span>
+
+<span class="c"># 4. The regulator opens the tarball on their own machine and replays it</span>
+<span class="k">$</span> tar xzf audit-credit-memos-20260520.tar.gz
+<span class="k">$</span> ORC_HOME=$(pwd)/orc-replay-home orc replay 01KS0QT1MSV3NZA8ZSJK6VKJ7H
+<span class="c"># → re-executes the exact decision against the frozen corpus snapshot</span>
+<span class="c"># → produces the same verdict, byte-for-byte reproducible</span>
+<span class="c"># → no access to the operator's infrastructure required</span></code></pre>
+
+    <p>That's the whole loop. Workspace, ingest, verify, audit. Also exposed as a Claude Code / Codex MCP server for teams already in those workflows.</p>
+  </div>
+</section>
+
+<!-- V. PROOF -->
+<section id="proof">
+  <div class="container">
+    <div class="section-no"><span class="roman">V</span>Does the verification work?</div>
+    <h2>On the benchmark commercial faithfulness models compete on,<br><em>Orc just beat the leader.</em></h2>
+
+    <p>HaluBench is the public benchmark Patronus AI built to evaluate their Lynx-70B faithfulness classifier — the current open-source SOTA. On a 504-item stratified subsample:</p>
+
+    <div class="metric-block">
+      <div class="compare-row">
+        <div class="metric-cell win">
+          <div class="label">Orc · v0.1.4</div>
+          <div class="numeral" data-target="0.864">0.864</div>
+          <div class="caption">general-purpose Sonnet<br>+ safe calculator tool</div>
+        </div>
+        <div class="metric-cell vs"><em>vs.</em></div>
+        <div class="metric-cell">
+          <div class="label">Lynx-70B · Patronus</div>
+          <div class="numeral" data-target="0.850">0.850</div>
+          <div class="caption">dedicated 70B<br>fine-tuned classifier</div>
+        </div>
+      </div>
+      <div class="footnote">HaluBench · N=503 evaluated · 2026-05-19 · reproducible · <span class="mono">uv run python -m benchmarks.faithfulness.run --variant source_routed</span></div>
+    </div>
+
+    <p>Orc lands above the dedicated fine-tuned model — with a general-purpose Claude call plus a 200-line safe arithmetic evaluator the model can invoke when a claim requires computation. The benchmark is fully reproducible (one command, ~$7 of API spend) and the per-source breakdown is public.</p>
+
+    <p class="pull">The point isn't the F1 number. It's that you can hit competitive verdict quality and produce the audit artifacts in the same call.</p>
+  </div>
+</section>
+
+<!-- VI. WHO -->
+<section>
+  <div class="container">
+    <div class="section-no"><span class="roman">VI</span>Who needs this</div>
+    <h2>Anyone whose AI work has to survive <em>a second reviewer</em>.</h2>
+
+    <div class="usecases">
+      <div class="usecase">
+        <div class="who">Banks & fintech</div>
+        <div>
+          <h3>Credit decisions, transaction monitoring</h3>
+          <p>SR 11-7 model risk management requires reproducing the exact decision a model made. With Orc, the examiner gets a tarball and runs it themselves.</p>
+        </div>
+      </div>
+
+      <div class="usecase">
+        <div class="who">Healthcare</div>
+        <div>
+          <h3>Clinical evidence, regulatory submissions</h3>
+          <p>Every claim about a study traces to the paragraph it came from. Pharma teams stop debating whether the AI hallucinated — they can show, byte for byte, what it read.</p>
+        </div>
+      </div>
+
+      <div class="usecase">
+        <div class="who">EU enterprises</div>
+        <div>
+          <h3>EU AI Act high-risk systems</h3>
+          <p>Articles 12, 13, 14 require automatic event logging, transparency to deployers, and named-human oversight. Orc's runtime invariants map directly to the regulatory text.</p>
+        </div>
+      </div>
+
+      <div class="usecase">
+        <div class="who">Legal & professional</div>
+        <div>
+          <h3>Contract review, e-discovery, opinions</h3>
+          <p>AI-assisted review needs to cite the exact clause, not "the document says." Orc's chunk citations + workspace isolation give privileged work a chain of custody.</p>
+        </div>
+      </div>
+
+      <div class="usecase">
+        <div class="who">Newsrooms</div>
+        <div>
+          <h3>Fact-checking and source verification</h3>
+          <p>When an AI-drafted story claims something, the editor can replay the verification against the archive and see exactly which sources were consulted.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VII. WHY NOW -->
+<section>
+  <div class="container">
+    <div class="section-no"><span class="roman">VII</span>Why now</div>
+    <h2>The preparation window <em>is open</em>.</h2>
+
+    <p>The EU AI Act runs in stages. The honest read is "the preparation window is open" — not "deadline tomorrow." But teams that show up in mid-2027 with no audit trail in place will not be comfortable.</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">2 Feb 2025</div>
+        <div class="timeline-headline">Prohibited practices banned</div>
+        <div class="timeline-body">First wave of the AI Act in force — bans on social-scoring, real-time public biometric ID, etc. AI literacy obligations begin.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2 Aug 2026</div>
+        <div class="timeline-headline">Broad applicability + GPAI obligations</div>
+        <div class="timeline-body">The regulation becomes broadly applicable. GPAI-model obligations and the governance / enforcement infrastructure (national authorities, AI Office) activate.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2 Dec 2027</div>
+        <div class="timeline-headline">High-risk obligations land</div>
+        <div class="timeline-body">Annex III high-risk categories — biometrics, critical infrastructure, education, employment, migration / asylum / border control. <em>This is the date most regulated AI deployers need to be ready for.</em> Articles 12, 13, 14 (event logging, transparency to deployers, human oversight) are binding.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2 Aug 2028</div>
+        <div class="timeline-headline">Product-integrated high-risk</div>
+        <div class="timeline-body">Per the simplification agreement, AI components built into regulated products (medical devices, vehicles, etc.) covered under sectoral law fall fully under the AI Act.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Parallel · US</div>
+        <div class="timeline-headline">NIST AI RMF + sector regulators</div>
+        <div class="timeline-body">Fed, OCC, CFPB, FDA, EEOC publishing AI-specific guidance based on the framework. "Model risk management" now applies to everything an LLM touches in regulated industries.</div>
+      </div>
+    </div>
+
+    <p style="margin-top: 32px;">Every CRO, GC, and head of regulated AI is being asked the same question by their board right now: <em>"show me what the model said, why it said it, and prove no one can change the answer after the fact."</em> Orc is the shortest credible path to "we have an answer."</p>
+  </div>
+</section>
+
+<!-- VIII. STATUS -->
+<section>
+  <div class="container">
+    <div class="section-no"><span class="roman">VIII</span>Where it is today</div>
+    <h2>Shipped. Open-source. In production locally.</h2>
+
+    <p><strong>v0.1.4</strong> · May 2026. CLI + MCP server. <strong>188 tests passing</strong>, deterministic replay, hashed audit export, multi-approver workflow. MIT licensed. The full benchmark, every line of the runtime, and the compliance mapping live in public.</p>
+
+    <ul class="styled">
+      <li><a href="https://github.com/Thormatt/orc">github.com/Thormatt/orc</a> — code + benchmarks</li>
+      <li><a href="https://orc-ebon.vercel.app">orc-ebon.vercel.app</a> — live site with the compliance walkthrough</li>
+      <li>One <span class="mono">uv pip install</span> away from running on a laptop</li>
+    </ul>
+
+    <p>Roadmap: hosted runtime for teams, additional verification modes (a calculator was first; a comparator and a lookup are next), and pilot deployments with one or two EU-regulated financial-services or healthcare teams.</p>
+  </div>
+</section>
+
+<!-- IX. CONTACT -->
+<section id="contact">
+  <div class="container">
+    <div class="section-no"><span class="roman">IX</span>Get in touch</div>
+    <h2>If any of this matches <em>a problem you have</em>.</h2>
+
+    <p><strong>Design partners</strong> — a bank, a hospital system, a law firm, an EU-deployed AI team — I'd rather hear what you're verifying today and how it gets reviewed than send you a deck. Email me with the shape of the problem; I'll respond with a 15-minute call.</p>
+
+    <p><strong>VC or strategic investors</strong> — not actively running a process. The next 90 days are about getting one regulated-industry customer into production. If that timeline aligns with your thesis, the conversation starts there.</p>
+
+    <p><strong>Developers and contributors</strong> — the repo is MIT, the tests run in two seconds, the docs are in the repo. PRs welcome.</p>
+
+    <div class="cta-row">
+      <a href="mailto:thormatt@gmail.com" class="btn btn-primary">Email →</a>
+      <a href="https://github.com/Thormatt/orc" class="btn btn-secondary">GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="colophon">orc · set in DM Serif Display & Spectral · built by Thor Matthíasson</div>
+    <div>MIT · v0.1.4 · MMXXVI</div>
+  </div>
+</footer>
+
+<script>
+  const SCENARIOS = {
+    bank: {
+      prompt: '"Verify the FY2023 EBITDA margin in this credit memo: 18.4%."',
+      badAnswer: '"Yes, the 18.4% EBITDA margin appears to be supported by the document. The financial statements show strong margins for the fiscal year."',
+      verdict: 'SUPPORTED · 0.91',
+      goodAnswer: '"Computed 1,247 / 6,783 × 100 = 18.38%. Matches the claim within rounding."',
+      sourceText: '"Adjusted EBITDA of $1,247M on revenue of $6,783M for fiscal year ended Dec 31, 2023."',
+      sourceRef: 'filing-2023-Q4.pdf §3 · p.12 · chunk 01KS0QT…',
+    },
+    health: {
+      prompt: '"Does the trial data show Drug X reduced LDL by more than 30% vs placebo at week 12?"',
+      badAnswer: '"Yes, the trial appears to show a significant reduction in LDL cholesterol compared to placebo at the week 12 endpoint."',
+      verdict: 'SUPPORTED · 0.94',
+      goodAnswer: '"LDL-C reduction of 38.2% (Drug X) vs 4.1% (placebo) at week 12, p<0.001. The 30% threshold is met."',
+      sourceText: '"At week 12, mean LDL-C reduction was 38.2% in the Drug X arm (n=412) vs 4.1% in the placebo arm (n=408); p < 0.001."',
+      sourceRef: 'trial-NCT04xxxxxx.pdf §Results 4.2 · chunk 01KS0QT…',
+    },
+    legal: {
+      prompt: '"Does the master service agreement contain a unilateral termination clause for the customer?"',
+      badAnswer: '"It looks like the MSA does allow the customer to terminate. There appears to be language permitting cancellation."',
+      verdict: 'SUPPORTED · 0.88',
+      goodAnswer: '"Section 12.3 grants the Customer right to terminate for convenience on 30 days notice. Supplier has no equivalent right — termination is unilateral."',
+      sourceText: '"Customer may terminate this Agreement for convenience at any time upon thirty (30) days prior written notice to Supplier..."',
+      sourceRef: 'msa-acme-2024.pdf §12.3 · p.18 · chunk 01KS0QT…',
+    },
+  };
+
+  const tabs = document.querySelectorAll('.scenario-tab');
+  const promptEl = document.getElementById('prompt-text');
+  const badAnswerEl = document.getElementById('bad-answer');
+  const verdictEl = document.getElementById('good-verdict');
+  const goodAnswerEl = document.getElementById('good-answer');
+  const sourceEl = document.getElementById('good-source');
+
+  function applyScenario(key) {
+    const s = SCENARIOS[key];
+    if (!s) return;
+    promptEl.textContent = s.prompt;
+    badAnswerEl.textContent = s.badAnswer;
+    verdictEl.textContent = s.verdict;
+    goodAnswerEl.textContent = s.goodAnswer;
+    sourceEl.innerHTML = s.sourceText + '<span class="ref">' + s.sourceRef + '</span>';
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      applyScenario(tab.dataset.scenario);
+    });
+  });
+
+  // Animated count-up on the headline numerals.
+  function animateNumeral(el, target, duration) {
+    const start = 0;
+    const startTime = performance.now();
+    function tick(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const val = start + (target - start) * eased;
+      el.textContent = val.toFixed(3);
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = target.toFixed(3);
+    }
+    requestAnimationFrame(tick);
+  }
+  const numerals = document.querySelectorAll('[data-target]');
+  const numeralObs = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const target = parseFloat(entry.target.dataset.target);
+        animateNumeral(entry.target, target, 1400);
+        numeralObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  numerals.forEach(n => { n.textContent = "0.000"; numeralObs.observe(n); });
+
+  // Section reveal.
+  const revealObs = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('section').forEach(s => {
+    s.classList.add('reveal');
+    revealObs.observe(s);
+  });
+</script>
+
+</body>
+</html>

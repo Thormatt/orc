@@ -11,18 +11,30 @@
 >
 > **What to do with this doc.** If you're a compliance officer, DPO, or counsel
 > evaluating whether Orc helps you meet your obligations under Articles 9–15, 26,
-> and 72 ahead of the 2 August 2026 enforcement deadline, read on. If you're a
-> developer wiring Orc into a regulated workflow, the "Runbook" section at the end
-> is for you.
+> and 72, read on. If you're a developer wiring Orc into a regulated workflow,
+> the "Runbook" section at the end is for you.
+>
+> **Timeline reality check.** The AI Act became broadly applicable on **2 August
+> 2026**. High-risk obligations for the Annex III categories (biometrics, critical
+> infrastructure, education, employment, migration/asylum/border control) apply
+> from **2 December 2027**. Product-integrated high-risk systems are governed
+> from **2 August 2028** under the simplification agreement. The right frame is
+> "the preparation window is open," not "deadline is tomorrow." A team that has
+> a defensible audit trail by mid-2027 is comfortably positioned.
 
 ---
 
 ## Scope of this mapping
 
 - **EU AI Act (Regulation (EU) 2024/1689)**: Articles 9, 10, 11, 12, 13, 14, 15, 26, 72.
-- **Orc version**: 0.1.0, released 2026-05-13. Source: `github.com/Thormatt/orc`.
-- **Deadline**: 2 August 2026 (Annex III), 2 December 2027 (biometrics, critical
-  infrastructure, education, employment, migration, asylum, border control).
+- **Orc version**: 0.1.4. Source: `github.com/Thormatt/orc`.
+- **Applicability dates**:
+  - 2 February 2025 — prohibited-practices ban + AI literacy obligations (already in force).
+  - 2 August 2026 — broad applicability of the regulation; GPAI-model obligations and most procedural duties.
+  - **2 December 2027** — high-risk obligations under Annex III categories (biometrics, critical
+    infrastructure, education, employment, migration/asylum/border control). *This is the date most
+    deployers need to be ready for.*
+  - 2 August 2028 — product-integrated high-risk systems governed under sectoral law (simplification agreement).
 - **Penalty**: up to €15M or 3% of worldwide annual turnover.
 
 This document is itself an artifact your auditors can review. Every "How Orc

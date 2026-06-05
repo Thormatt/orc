@@ -7,6 +7,32 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed (hardening)
+
+- **Replay determinism** — LLM sampling is now pinned to `temperature=0` at the
+  `messages_create` chokepoint, so `orc replay` re-issues the recorded decision
+  rather than a fresh sample. (`src/orc/llm/client.py`)
+- **Citation guard now covers prose and `partial`** — hallucinated chunk IDs are
+  stripped from the free-text `reasoning`, not just the structured arrays, and a
+  `partial` verdict with no valid grounding is downgraded to `not_found` like
+  `supported`/`contradicted`. (`src/orc/directives/research/skills/verify_claim.py`)
+- **Atomic writes for traces and ingested evidence** — both use write-temp +
+  `os.replace`, so a crash mid-write can never leave a truncated trace or an
+  evidence file orphaned without its DB row. (`trace_store.py`, `ingest/pipeline.py`)
+- **Workspace path-traversal fix** — `resolve()` validates the workspace name
+  before touching the filesystem and no longer echoes the resolved path in its
+  error (closes a traversal/probe vector reachable from the MCP server).
+  (`src/orc/storage/workspace.py`)
+- **SSRF guard on URL ingestion** — `load_url` rejects non-HTTP(S) schemes and
+  hosts resolving to private/loopback/link-local/reserved addresses, re-validating
+  every redirect hop, with a response-size cap. (`src/orc/ingest/loaders.py`)
+- **Decomposed-mode vote fix** — a `0.0`-confidence atom no longer counts as
+  `0.5` (falsy-coalescing bug that could flip the majority verdict).
+- **CJK retrieval** — single non-ASCII query tokens (e.g. a lone CJK ideograph)
+  are kept instead of being dropped as noise. (`src/orc/retrieval/bm25.py`)
+- README invariants reworded to match what the code enforces (approval-queue
+  isolation flagged as roadmap, not yet implemented).
+
 ### Planned
 
 - `gads` directive (Google Ads agentic analysis: lens-based decomposition,
@@ -15,6 +41,54 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 - Voyage-AI or local-`sentence-transformers` embeddings + hybrid retrieval (RRF over BM25 + vector).
 - PDF ingestion.
 - Hosted runtime (scheduled triggers, web dashboard, team workspaces).
+- Decomposition + arithmetic combined for DROP-shaped multi-step claims.
+
+## [0.1.4] — 2026-05-19
+
+### Added
+
+- **`mode="arithmetic"` on `verify_claim`** — multi-turn LLM loop with a
+  safe AST-walking calculator (`src/orc/llm/tools/calculate.py`). The model
+  can invoke the calculator mid-verification for numeric claims; every
+  expression and its result is recorded in the trace. Targets
+  FinanceBench-style claims where the answer is a derived value.
+  **FinanceBench F1 climbed 0.736 → 0.916; aggregate F1 0.832 → 0.864**,
+  above Patronus AI's Lynx-70B home-court F1 of 0.85 on the same
+  HaluBench 504-item subsample.
+- **`src/orc/llm/agentic.py`** — tool-agnostic multi-turn loop primitive
+  with `on_tool_call` and `on_llm_call` callbacks for trace streaming.
+- **`domain=` parameter on `verify_claim`** — promotes source-aware routing
+  from benchmark-only into the runtime. `DOMAIN_TO_MODE` lives at
+  `src/orc/directives/research/routing.py`. CLI: `orc verify --domain pubmedQA`.
+  MCP: `orc_verify_claim(claim, domain="DROP")`. Unknown domains raise
+  `UnknownDomainError` rather than falling through silently.
+- **`--include-evidence` flag on `orc audit export`** — optional opt-in for
+  self-contained bundles. Includes the workspace SQLite DB + every ingested
+  evidence file under `workspace/`, so an external auditor can extract the
+  subtree and run `orc replay` against it with no access to the operator's
+  infra. Manifest gains a `self_contained: bool` field.
+- **`mode="decomposed"`** — Haiku decomposes a claim into 1–4 atoms, each
+  verified in binary mode against the same staged passage, then aggregated
+  by confidence-weighted majority vote. Available as an opt-in mode; not
+  default-routed (binary outperformed it on HaluBench DROP at full N).
+
+### Changed
+
+- **Citation guard for evidence mode** — a `supported` verdict can no
+  longer ship with zero valid citations after hallucinated chunk IDs are
+  filtered. The label downgrades to `not_found` and the dropped IDs land
+  in the trace as `dropped_chunk_ids` + `label_downgraded: true`.
+- **Binary mode `faithful=false` mapping** — now maps to `not_found`
+  rather than `contradicted`. The binary prompt defines unfaithful as
+  *either* contradiction or corpus silence; conflating both into
+  `contradicted` was wrong for audit consumers. Use `evidence` mode if
+  the two must be distinguished.
+- **Audit-export README in the bundle** is conditional: strong
+  "self-contained" framing when `--include-evidence` was used, softened
+  "inspectable handoff" framing otherwise.
+- **Manifest hashing covers `README.md`** in the bundle — the integrity
+  claim ("every file is hashed") was previously false because the
+  bundle's README was added after the hashing loop ran.
 
 ## [0.1.2] — 2026-05-18
 

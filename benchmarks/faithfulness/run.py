@@ -178,19 +178,13 @@ def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     return res
 
 
-# Optimal mode per source_ds, derived from the per-source benchmark
-# breakdowns (default, judgment, lynx_style) on the 504-item stratified
-# HaluBench subsample. Prose-heavy sources where corpus citations help →
-# evidence mode. Single-passage numeric/extraction tasks → binary mode.
-# Mixed natural-language Q+A → judgment mode.
-SOURCE_TO_MODE = {
-    "covidQA": "evidence",
-    "RAGTruth": "evidence",
-    "halueval": "judgment",
-    "pubmedQA": "binary",
-    "FinanceBench": "binary",
-    "DROP": "binary",
-}
+# Routing lives in the runtime (src/orc/directives/research/routing.py) so the
+# benchmark and the production verify_claim never drift. The mapping was
+# derived from per-source-ds breakdowns on the 504-item stratified HaluBench
+# subsample. Prose-heavy sources where corpus citations help → evidence mode.
+# Single-passage numeric/extraction tasks → binary mode. Mixed natural-language
+# Q+A → judgment mode.
+from orc.directives.research.routing import DOMAIN_TO_MODE as SOURCE_TO_MODE  # noqa: E402
 
 
 def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResult:
@@ -217,13 +211,20 @@ def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResul
         do_ingest(ws, str(corpus_dir))
         claim = f"Q: {item['question']}\nA: {item['answer']}"
         skill = directives.get("research").skills["verify_claim"]
+        # Allow env-driven max_tokens override for benchmarking verbose models
+        # like Gemini that occasionally exceed the 2048 default.
+        skill_kwargs: dict[str, Any] = {"claim": claim, "mode": mode}
+        if (env_max := os.environ.get("ORC_MAX_TOKENS")):
+            skill_kwargs["max_tokens"] = int(env_max)
         with open_run(
             ws, directive="research", skill="verify_claim", inputs={"claim": claim, "mode": mode}
         ) as run:
             run.record_effective_kwargs(
-                {"claim": claim, "model": "halubench", "mode": mode}
+                {"claim": claim, "model": "halubench", "mode": mode, **(
+                    {"max_tokens": skill_kwargs["max_tokens"]} if "max_tokens" in skill_kwargs else {}
+                )}
             )
-            out = skill.run(workspace=ws, run=run, claim=claim, mode=mode)
+            out = skill.run(workspace=ws, run=run, **skill_kwargs)
             run.close(output=out)
         res.run_id = run.run_id
         res.orc_verdict = out["label"]
@@ -243,6 +244,16 @@ def _run_judgment_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
 def _run_binary_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
     """Production path in `mode="binary"` — uses the simpler binary tool schema."""
     return _run_with_mode(item, orc_home, "binary")
+
+
+def _run_decomposed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Production path in `mode="decomposed"` — decompose then verify each atom in binary mode."""
+    return _run_with_mode(item, orc_home, "decomposed")
+
+
+def _run_arithmetic_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
+    """Production path in `mode="arithmetic"` — calculator tool + binary verdict."""
+    return _run_with_mode(item, orc_home, "arithmetic")
 
 
 def _run_source_routed_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
@@ -460,15 +471,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hhem", action="store_true", help="Also score with self-hosted HHEM")
     parser.add_argument(
         "--variant",
-        choices=["default", "lynx_style", "judgment", "binary", "source_routed"],
+        choices=[
+            "default",
+            "lynx_style",
+            "judgment",
+            "binary",
+            "decomposed",
+            "arithmetic",
+            "source_routed",
+        ],
         default="default",
         help=(
             "Verification variant. "
             "`default` = Orc verify_claim, mode=evidence (BM25 + 4-label). "
             "`lynx_style` = direct Sonnet call with Lynx's binary prompt, no Orc pipeline. "
-            "`judgment` = Orc verify_claim, mode=judgment (no BM25, lighter prompt, full moat). "
-            "`binary` = Orc verify_claim, mode=binary (no BM25, binary tool schema, full trace+replay+audit). "
-            "`source_routed` = pick best mode per item's source_ds (uses caller-provided domain hint in production)."
+            "`judgment` = mode=judgment (no BM25, lighter prompt, full moat). "
+            "`binary` = mode=binary (no BM25, binary tool schema, full trace+replay+audit). "
+            "`decomposed` = mode=decomposed (Haiku decompose → binary atoms → confidence-weighted aggregate). "
+            "`arithmetic` = mode=arithmetic (binary + calculator tool, multi-turn loop). "
+            "`source_routed` = pick best mode per item's source_ds (caller-provided domain hint in production)."
         ),
     )
     parser.add_argument("--out", type=Path, default=None)
@@ -539,6 +560,8 @@ def main(argv: list[str] | None = None) -> int:
         "lynx_style": _run_lynx_style_one,
         "judgment": _run_judgment_one,
         "binary": _run_binary_one,
+        "decomposed": _run_decomposed_one,
+        "arithmetic": _run_arithmetic_one,
         "source_routed": _run_source_routed_one,
     }
     runner = runners[args.variant]

@@ -102,7 +102,9 @@ def _fts_query_from_user_text(text: str) -> str:
     For v1 we keep this simple: tokenize on word characters, drop empties, OR-join.
     """
     tokens = re.findall(r"\w+", text.lower())
-    tokens = [t for t in tokens if len(t) > 1]
+    # Drop single-character ASCII tokens (English noise like "a"), but keep
+    # single non-ASCII tokens — a lone CJK ideograph is a real query term.
+    tokens = [t for t in tokens if len(t) > 1 or not t.isascii()]
     if not tokens:
         return ""
     return " OR ".join(f'"{t}"' for t in tokens)

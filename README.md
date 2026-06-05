@@ -10,14 +10,14 @@ Bind every claim to evidence you own. Cite real sources only. Replay every decis
 
 ## What is this
 
-`orc` is a CLI + MCP server that runs LLM verification against a corpus you control. The architecture enforces four invariants by construction:
+`orc` is a CLI + MCP server that runs LLM verification against a corpus you control. The architecture is built around four invariants:
 
 | | Invariant |
 |---|---|
-| **Citations** | The runtime *structurally cannot* return a citation that doesn't exist in retrieval. Hallucinated chunk IDs are dropped before the verdict reaches you. |
-| **Architecture** | Skills are pure functions with explicit I/O contracts. No agent identities, no personas, no emergent coordination. Persistence lives in the workspace, not the agents. |
-| **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. `orc replay <run_id>` re-executes the exact decision against the same corpus snapshot. |
-| **Approval** | Anything that would mutate the outside world lands in the approval queue first. Write paths run as separate processes with separate tokens. Blast radius from a compromised agent is zero by design. |
+| **Citations** | A verdict can only cite chunks that exist in the retrieval set. Hallucinated chunk IDs are filtered from both the structured citations *and* the free-text reasoning before the verdict reaches you, and a verdict left with no valid grounding is downgraded to `not_found`. |
+| **Architecture** | Skills are stateless callables with explicit I/O contracts — no agent identities, no personas, no emergent coordination. Side effects are funneled through an injected run/workspace; persistence lives in the workspace, not the agents. |
+| **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. LLM sampling is pinned to `temperature=0` and the corpus is pinned by version, so `orc replay <run_id>` re-issues the original decision against the same snapshot rather than a fresh sample (best-effort against residual model nondeterminism). |
+| **Approval** | Anything that would mutate the outside world is routed to an approval queue first — write paths drain only from approved entries, never directly from skill outputs. *(Today orc ships read/verify paths only; process- and token-level isolation of write paths is on the roadmap, not yet implemented.)* |
 
 Built for **research analysts, editorial teams, legal & compliance, agentic-workflow engineers** — anyone whose AI work product has to survive a second reviewer six months later.
 
@@ -88,7 +88,7 @@ orc mcp serve                          start the MCP stdio server
     └── traces/<YYYY>/<MM>/<run_id>.json    full per-run trace payloads
 ```
 
-- **Stateless skills + durable context.** Skills are pure functions. Workspaces, evidence, runs, and traces persist; agents do not.
+- **Stateless skills + durable context.** Skills are stateless callables — their side effects flow through an injected run/workspace, never module-level state. Workspaces, evidence, runs, and traces persist; agents do not.
 - **Verification bound to owned evidence.** `verify_claim` retrieves K=10 chunks via BM25 (SQLite FTS5), sends them in one LLM call with `cache_control: ephemeral` on the corpus block, and parses a structured verdict via tool use.
 - **Trace-and-replay from day one.** Every CLI/MCP call writes a `run` row + a JSON file containing the full retrieval, every LLM call's usage (including `cache_read_input_tokens`), and the structured output. `orc replay` re-executes against the corpus snapshot referenced by `corpus_version`.
 - **Directive registry.** `directives.get(name).skills[skill_name]` is the only dispatch path. Adding a new directive (e.g. `marketing`, `legal`, `db-doctor`) is a `register(DirectiveSpec(...))` call + a manifest — no surface code changes.
@@ -111,9 +111,30 @@ A `.env` file in the repo root or at `$ORC_HOME/.env` is auto-loaded. Shell-expo
 
 ## Project status
 
-`v0.1.0` — first public release. The four-command loop (workspace / ingest / verify / replay) is stable and tested. MCP server stable. Approval queue and bounded-orchestration primitives shipped but the gads / marketing / legal directives that consume them are not yet released — those land in subsequent versions.
+`v0.1.4` — current. Faithfulness benchmark headline (HaluBench, stratified 504-item subsample, source-aware routing):
 
-See [CHANGELOG.md](./CHANGELOG.md) for details.
+| Metric | Score |
+|---|---:|
+| **F1 (PASS)** | **0.864** |
+| Precision | 0.897 |
+| Recall | 0.833 |
+| Accuracy | 0.869 |
+
+> **0.864 sits above Patronus AI's Lynx-70B home-court F1 of 0.85** on the same benchmark — achieved with a general-purpose Claude Sonnet 4.6 call (no fine-tuning) plus a safe arithmetic evaluator the model can invoke for numeric claims. Orc additionally produces chunk-level citations, deterministic replay against a frozen corpus snapshot, audit-export bundles that can be self-contained (`--include-evidence`), and a multi-approver gate for high-risk verdicts. The competitive set of post-hoc faithfulness judges does not produce these artifacts.
+
+What shipped in this version:
+
+- `domain=` parameter on `verify_claim` + `--domain` CLI flag → source-aware routing is a real product feature, not a benchmark variant.
+- `--include-evidence` flag on `orc audit export` → optional self-contained bundles (workspace DB + evidence files included) for offline regulator handoff.
+- `mode="arithmetic"` for numeric claims — multi-turn LLM loop with a safe AST-walking calculator. FinanceBench F1 climbed 0.736 → 0.916.
+- Citation guard: an evidence-mode verdict can no longer ship as `supported` with zero valid citations (downgraded to `not_found` and the dropped IDs land in the trace).
+- Self-hosting any open-weight 70B judge: the runtime is model-agnostic — pass `model="llama-3.3-70b-instruct"` (or even Lynx itself) at any compatible endpoint and every artifact above is unchanged.
+
+Live walkthrough: **[pagenta.app/p/thorm/orc-how-it-works](https://pagenta.app/p/thorm/orc-how-it-works)** — six-scene visual explainer. Full pitch: **[pagenta.app/p/thorm/orc-pitch](https://pagenta.app/p/thorm/orc-pitch)**.
+
+Full per-source breakdown + reproducing instructions: [`docs/benchmarks/results-2026-05-19-phase2-arithmetic.md`](./docs/benchmarks/results-2026-05-19-phase2-arithmetic.md). Multi-model portability (Sonnet, Haiku, GPT-4o, Gemini Flash, Llama 3.3 70B): [`docs/benchmarks/results-2026-05-19-multi-model.md`](./docs/benchmarks/results-2026-05-19-multi-model.md). Competitive positioning: [`docs/positioning/competitive.md`](./docs/positioning/competitive.md). EU AI Act mapping: [`docs/compliance/eu-ai-act.md`](./docs/compliance/eu-ai-act.md). Business model + stage-by-stage roadmap: [`docs/business/roadmap.md`](./docs/business/roadmap.md). Cost economics across all tested models (Sonnet, Haiku, GPT-4o, Gemini Flash, Llama, Qwen, Gemma): [`docs/business/cost-economics.md`](./docs/business/cost-economics.md).
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full version history.
 
 ## Development
 

@@ -40,12 +40,23 @@ def audit_group() -> None:
     default=None,
     help="Upper bound on Run.started_at (ISO 8601, inclusive)",
 )
+@click.option(
+    "--include-evidence",
+    "include_evidence",
+    is_flag=True,
+    help=(
+        "Include the workspace DB + every ingested evidence file in the bundle. "
+        "Produces a self-contained tarball an external auditor can replay against "
+        "with no access to the operator's infra. Increases bundle size; default off."
+    ),
+)
 @click.option("--json", "as_json", is_flag=True, help="Emit raw manifest JSON.")
 def export_command(
     workspace: str | None,
     output_path: str | None,
     range_from: str | None,
     range_to: str | None,
+    include_evidence: bool,
     as_json: bool,
 ) -> None:
     """Bundle a workspace's traces, run rows, evidence manifest, approvals,
@@ -71,6 +82,7 @@ def export_command(
             output_path=out,
             range_from=range_from,
             range_to=range_to,
+            include_evidence=include_evidence,
         )
     except AuditExportError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -96,6 +108,10 @@ def export_command(
     for k, v in sorted(manifest.counts.items()):
         console.print(f"  {k:<26} = {v}")
     console.print(f"  files in bundle            = {len(manifest.files)}")
+    console.print(
+        f"  self_contained             = "
+        f"{'yes (workspace DB + evidence included)' if manifest.self_contained else 'no (inspectable only)'}"
+    )
     console.print(
         "[dim]integrity: `manifest.json` carries sha256 for every file in the bundle.[/dim]"
     )
