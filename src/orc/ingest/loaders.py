@@ -1,8 +1,14 @@
-"""File and URL loaders. Each returns a `LoadedDoc` with raw bytes + decoded text."""
+"""File and URL loaders. Each returns a `LoadedDoc` with raw bytes + extracted text.
+
+Supported formats: the text mimes in SUPPORTED_TEXT_MIMES (markdown, plain text,
+HTML, reST, JSON) plus application/pdf, whose text is extracted with pypdf.
+Scanned/image-only PDFs are rejected — OCR is not supported.
+"""
 
 from __future__ import annotations
 
 import hashlib
+import io
 import ipaddress
 import mimetypes
 import socket
@@ -11,9 +17,14 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from pypdf import PdfReader
+
+from orc import __version__
 
 MAX_URL_BYTES = 25 * 1024 * 1024
 MAX_REDIRECTS = 5
+
+PDF_MIME = "application/pdf"
 
 SUPPORTED_TEXT_MIMES = {
     "text/markdown",
@@ -37,6 +48,15 @@ class LoadedDoc:
 def load_file(path: Path) -> LoadedDoc:
     raw_bytes = path.read_bytes()
     mime = _guess_mime(path)
+    if mime == PDF_MIME:
+        text, pdf_title = _extract_pdf(raw_bytes, source=str(path))
+        return LoadedDoc(
+            source_uri=str(path.resolve()),
+            title=pdf_title or _extract_title(text, fallback=path.stem),
+            mime_type=mime,
+            text=text,
+            raw_bytes=raw_bytes,
+        )
     if mime not in SUPPORTED_TEXT_MIMES and not mime.startswith("text/"):
         raise ValueError(f"Unsupported file type for ingest: {mime} ({path})")
     text = raw_bytes.decode("utf-8", errors="replace")
@@ -133,7 +153,7 @@ def load_url(
     with httpx.Client(
         timeout=timeout,
         follow_redirects=False,
-        headers={"User-Agent": "orc/0.1.0"},
+        headers={"User-Agent": f"orc/{__version__}"},
         transport=transport,
     ) as http:
         for _ in range(MAX_REDIRECTS + 1):
@@ -151,6 +171,15 @@ def load_url(
     if len(raw_bytes) > MAX_URL_BYTES:
         raise ValueError(f"URL response exceeds {MAX_URL_BYTES} byte limit: {url!r}")
     mime = response.headers.get("content-type", "application/octet-stream").split(";")[0].strip()
+    if mime == PDF_MIME:
+        text, pdf_title = _extract_pdf(raw_bytes, source=url)
+        return LoadedDoc(
+            source_uri=url,
+            title=pdf_title or _extract_title(text, fallback=url),
+            mime_type=mime,
+            text=text,
+            raw_bytes=raw_bytes,
+        )
     if mime not in SUPPORTED_TEXT_MIMES and not mime.startswith("text/"):
         raise ValueError(f"Unsupported URL content-type for ingest: {mime} ({url})")
     text = raw_bytes.decode(response.encoding or "utf-8", errors="replace")
@@ -161,6 +190,40 @@ def load_url(
         text=text,
         raw_bytes=raw_bytes,
     )
+
+
+def _extract_pdf(raw_bytes: bytes, *, source: str) -> tuple[str, str | None]:
+    """Extract (text, metadata /Title) from a PDF in a single parse.
+
+    Pages are joined with blank lines, skipping empty ones. The metadata title
+    is surfaced because PDF corpora (credit memos, contracts) rarely contain
+    the markdown-style headings _extract_title scans for.
+    """
+    try:
+        reader = PdfReader(io.BytesIO(raw_bytes))
+        # Owner-password-locked PDFs with an empty user password (common for
+        # distributed contracts/memos) open with decrypt(""); only PDFs that
+        # truly require a password are refused.
+        if reader.is_encrypted and not reader.decrypt(""):
+            raise ValueError(f"Could not extract text from PDF (encrypted): {source}")
+        page_texts = (page.extract_text() for page in reader.pages)
+        text = "\n\n".join(page_text for page_text in page_texts if page_text.strip())
+        meta = reader.metadata
+        title = (meta.title or "").strip() if meta is not None else ""
+    except ValueError:
+        raise
+    except Exception as exc:
+        # pypdf raises its own hierarchy (PdfReadError, PdfStreamError, ...);
+        # callers should see one stable, actionable error type instead.
+        raise ValueError(f"Could not extract text from PDF: {source} ({exc})") from exc
+    if not text:
+        # Silently ingesting an empty corpus would produce confident
+        # not_found verdicts downstream, so refuse loudly instead.
+        raise ValueError(
+            "Could not extract text from PDF (scanned/image-only? "
+            f"OCR is not supported): {source}"
+        )
+    return text, title or None
 
 
 def sha256_bytes(data: bytes) -> str:

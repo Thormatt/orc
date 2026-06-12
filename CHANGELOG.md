@@ -7,8 +7,39 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Planned
+
+- `gads` directive (Google Ads agentic analysis: lens-based decomposition,
+  read-only MCP integration, evidence-bound recommendation verification).
+- `orc eval consistency|perturb|retrieval|regression` reliability commands.
+- Voyage-AI or local-`sentence-transformers` embeddings + hybrid retrieval (RRF over BM25 + vector).
+- Hosted runtime (scheduled triggers, web dashboard, team workspaces).
+- Decomposition + arithmetic combined for DROP-shaped multi-step claims.
+
+## [0.2.0] — 2026-06-11
+
+First PyPI release. The distribution is named **`orc-ai`** — `orc` is taken on
+PyPI by an unrelated project — but the import package (`import orc`) and the
+CLI command (`orc`) are unchanged.
+
 ### Added
 
+- **PDF ingestion** — `orc ingest report.pdf` now works alongside markdown,
+  text, json, and URLs. Text is extracted page-by-page via `pypdf`, and the
+  PDF metadata title is used when the body carries no markdown-style heading
+  (typical for credit memos and contracts). (`src/orc/ingest/loaders.py`)
+- **Product domain routing** — `--domain` / `domain=` on `verify_claim` takes
+  product domains (`general`, `legal`, `clinical`, `biomedical`, `financial`,
+  `numeric`), each mapped to the verify mode that scored best on the benchmark
+  family the domain generalizes. The HaluBench `source_ds` names stay accepted
+  as benchmark-only aliases (`BENCHMARK_SOURCE_TO_MODE`) so the published F1
+  numbers remain reproducible, but dataset names are no longer the product
+  surface. Unknown domains still raise `UnknownDomainError`.
+  (`src/orc/directives/research/routing.py`)
+- **CI + release workflows** — `.github/workflows/ci.yml` runs `pytest` +
+  `ruff` on pushes to `main` and on pull requests; `.github/workflows/release.yml`
+  builds sdist + wheel with uv on `v*` tags and publishes to PyPI via Trusted
+  Publishing (OIDC, no long-lived token in the repo).
 - **Isolated write paths (Phase 1)** — the effect plane that makes the Approval
   invariant enforceable rather than aspirational (see
   `docs/design/0001-isolated-write-paths.md`):
@@ -36,6 +67,28 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed (hardening)
 
+- **SSRF guard hardened against DNS rebinding** — `load_url` now connects to
+  the exact IP it vetted (re-pinned on every redirect hop) instead of letting
+  the HTTP client re-resolve the hostname at request time, closing the
+  validate-then-connect TOCTOU window a low-TTL DNS record could exploit. A
+  `transport` injection seam keeps the loader testable without real sockets.
+  (`src/orc/ingest/loaders.py`)
+- **Decomposed-mode negative voting** — atoms run in binary mode, which can
+  only say faithful or unfaithful; the negative vote now keys off `not_found`
+  and a negative net aggregates back to `not_found` instead of `contradicted`
+  — a distinction the atoms never actually made.
+  (`src/orc/directives/research/skills/verify_claim.py`)
+- **Citation guard covers judgment mode** — judgment-mode verdicts pass
+  through the same hallucinated-chunk-ID filter and no-valid-grounding
+  downgrade as evidence mode, instead of shipping unguarded citations.
+- **UTF-8-exact chunking** — chunk windows are computed at the byte level and
+  snapped forward to UTF-8 character starts, so a cl100k token boundary that
+  falls inside a multi-byte character (routine for CJK and emoji) can no
+  longer corrupt chunk text. (`src/orc/ingest/chunker.py`)
+- **Offline guard covers the full credential surface** — the autouse test
+  fixture strips `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, *and*
+  `ORC_PROVIDER`, so a developer's shell environment can't leak live LLM
+  calls into the default suite. (`tests/conftest.py`)
 - **Replay determinism** — LLM sampling is now pinned to `temperature=0` at the
   `messages_create` chokepoint, so `orc replay` re-issues the recorded decision
   rather than a fresh sample. (`src/orc/llm/client.py`)
@@ -59,16 +112,6 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
   are kept instead of being dropped as noise. (`src/orc/retrieval/bm25.py`)
 - README invariants reworded to match what the code enforces (approval-queue
   isolation flagged as roadmap, not yet implemented).
-
-### Planned
-
-- `gads` directive (Google Ads agentic analysis: lens-based decomposition,
-  read-only MCP integration, evidence-bound recommendation verification).
-- `orc eval consistency|perturb|retrieval|regression` reliability commands.
-- Voyage-AI or local-`sentence-transformers` embeddings + hybrid retrieval (RRF over BM25 + vector).
-- PDF ingestion.
-- Hosted runtime (scheduled triggers, web dashboard, team workspaces).
-- Decomposition + arithmetic combined for DROP-shaped multi-step claims.
 
 ## [0.1.4] — 2026-05-19
 
