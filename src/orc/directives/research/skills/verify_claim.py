@@ -299,8 +299,11 @@ class _VerifyClaim:
           - "decomposed": decompose the claim into 1-4 atomic sub-claims via
             Haiku, then verify each atom in binary mode against the same
             staged passage. Aggregates by confidence-weighted majority vote:
-            sum signed confidences (supported = +c, contradicted = −c) and
-            take the sign. The trace records the decomposition + each atom's
+            sum signed confidences (supported = +c, unfaithful/not_found = −c);
+            net > 0 → supported, net < 0 → not_found (binary atoms can't
+            distinguish contradiction from silence, so the aggregate stays
+            conservative), net == 0 → partial. The trace records the
+            decomposition + each atom's
             verdict so an auditor can re-check the reasoning. Available for
             multi-part answers; not the default route in production (binary
             mode wins on HaluBench DROP at full N).
@@ -443,24 +446,35 @@ class _VerifyClaim:
             (set(raw_supporting) | set(raw_contradicting)) - candidate_ids
         )
 
-        # Citation guard: in evidence mode, if the adjudicator returned a grounded
-        # label but every cited chunk was hallucinated, the verdict has no grounding
-        # — downgrade to not_found rather than ship a label with empty citations.
-        # `partial` is included: with neither valid supporting nor contradicting
-        # chunks it is just as ungrounded as a bare "supported".
-        if mode == "evidence":
-            label_raw = verdict_input.get("label")
-            if (
-                (label_raw == "supported" and not supporting)
-                or (label_raw == "contradicted" and not contradicting)
-                or (label_raw == "partial" and not supporting and not contradicting)
-            ):
-                verdict_input["label"] = "not_found"
+        # Capture pre-guard label unconditionally (binary mode included) so the
+        # downgrade flag recorded below is a plain comparison with no
+        # mode-dependent NameError hazard.
+        label_raw = verdict_input.get("label")
 
-        # Strip hallucinated chunk IDs that the model slipped into prose reasoning;
-        # the structured arrays above are already filtered, but free text is not.
+        # Citation guard: if the adjudicator returned a grounded label but every
+        # cited chunk was hallucinated, the verdict has no grounding — downgrade
+        # to not_found rather than ship a label with empty citations. Applies to
+        # both 4-label citation modes: judgment mode emits the same verdict shape
+        # as evidence mode (and is reachable publicly via domain="halueval"), so
+        # exempting it would let ungrounded verdicts through. `partial` is
+        # included: with neither valid supporting nor contradicting chunks it is
+        # just as ungrounded as a bare "supported".
+        if mode in {"evidence", "judgment"} and (
+            (label_raw == "supported" and not supporting)
+            or (label_raw == "contradicted" and not contradicting)
+            or (label_raw == "partial" and not supporting and not contradicting)
+        ):
+            verdict_input["label"] = "not_found"
+
+        # Strip hallucinated chunk IDs that the model slipped into prose;
+        # the structured arrays above are already filtered, but free text is
+        # not — and `missing_information` is just as much free text as
+        # `reasoning`, so both must pass through redaction.
         verdict_input["reasoning"] = _redact_unlisted_ids(
             verdict_input.get("reasoning", ""), candidate_ids
+        )
+        verdict_input["missing_information"] = _redact_unlisted_ids(
+            verdict_input.get("missing_information", "") or "", candidate_ids
         )
 
         # 5. Record LLM call usage.
@@ -480,12 +494,7 @@ class _VerifyClaim:
                 "stop_reason": getattr(response, "stop_reason", None),
                 "tool_input_keys": sorted(verdict_input.keys()),
                 "dropped_chunk_ids": dropped_ids,
-                "label_downgraded": (
-                    mode == "evidence"
-                    and label_raw != verdict_input["label"]
-                )
-                if mode == "evidence"
-                else False,
+                "label_downgraded": label_raw != verdict_input["label"],
             },
             input_tokens=getattr(usage, "input_tokens", 0) or 0,
             output_tokens=getattr(usage, "output_tokens", 0) or 0,
@@ -536,6 +545,7 @@ def _run_decomposed(
     run.record("decomposition", {"claim": claim, "atoms": atoms, "n_atoms": len(atoms)})
 
     atom_results: list[dict[str, Any]] = []
+    valid_ids: set[str] = set()
     for i, atom in enumerate(atoms):
         # Re-enter verify_claim in binary mode for each atom against the SAME
         # workspace + same retrieved chunks. Each atom's verdict is recorded
@@ -553,6 +563,7 @@ def _run_decomposed(
             mode="binary",
             evidence_id=evidence_id,
         )
+        valid_ids.update(sub_result.get("retrieval_chunk_ids") or [])
         atom_results.append(
             {
                 "atom": atom,
@@ -563,31 +574,43 @@ def _run_decomposed(
         )
         run.record(f"decomposed_atom_{i}", atom_results[-1])
 
-    # Majority aggregation, confidence-weighted. Sum signed confidences:
-    # supported atoms contribute +confidence, contradicted contribute
-    # -confidence, partial/not_found contribute 0. If net > 0, faithful.
-    # Strict-aggregation over-penalized cases where the decomposer split
-    # one fact into several atoms and one was judged wrong with low
-    # confidence; the substantive claim was still right.
+    # Majority aggregation, confidence-weighted. Atoms run in binary mode,
+    # which only ever yields "supported" (faithful) or "not_found"
+    # (unfaithful — contradicted OR silent, indistinguishable without a
+    # different tool schema). So the negative vote keys off "not_found",
+    # and a negative net maps back to "not_found" too: claiming
+    # "contradicted" would assert a distinction the atoms never made.
+    # Sum signed confidences (supported = +c, unfaithful = -c) rather than
+    # strict all-or-nothing: strict aggregation over-penalized cases where
+    # the decomposer split one fact into several atoms and one was judged
+    # wrong with low confidence; the substantive claim was still right.
     score = 0.0
     for a in atom_results:
         c = a["confidence"] if a["confidence"] is not None else 0.5
         if a["label"] == "supported":
             score += c
-        elif a["label"] == "contradicted":
+        elif a["label"] == "not_found":
             score -= c
     if score > 0:
         label = "supported"
     elif score < 0:
-        label = "contradicted"
+        label = "not_found"
     else:
         label = "partial"
     # Confidence: mean of the atoms' confidences.
     confidences = [a["confidence"] for a in atom_results if a["confidence"] is not None]
     overall_confidence = sum(confidences) / len(confidences) if confidences else 0.5
+
+    # The decomposer's atom strings are LLM free text, so they get the same
+    # ULID redaction as every other caller-facing field. The trace records
+    # above keep the raw text — auditors see what the model actually said;
+    # callers only see IDs that exist in the atoms' retrieval set.
+    redacted_atoms = [
+        {**a, "atom": _redact_unlisted_ids(a["atom"], valid_ids)} for a in atom_results
+    ]
     reasoning = (
-        f"Decomposed into {len(atom_results)} atoms: "
-        + "; ".join(f"{a['atom']!r} → {a['label']}" for a in atom_results)
+        f"Decomposed into {len(redacted_atoms)} atoms: "
+        + "; ".join(f"{a['atom']!r} → {a['label']}" for a in redacted_atoms)
     )
 
     return {
@@ -600,7 +623,7 @@ def _run_decomposed(
         "missing_information": None,
         "model": resolve_verify_model(model),
         "retrieval_chunk_ids": [],
-        "atoms": atom_results,
+        "atoms": redacted_atoms,
     }
 
 
@@ -749,12 +772,17 @@ def _run_arithmetic(
     verdict = dict(verdict_use.input)
     faithful = bool(verdict.get("faithful"))
     label = "supported" if faithful else "not_found"
+    # The binary verdict's reasoning is free text from the model and bypasses
+    # the evidence-path redaction — apply the same ULID guard here so a
+    # fabricated chunk ID can't ride along in arithmetic-mode output.
+    candidate_ids = {c.chunk_id for c in candidates}
+    reasoning = _redact_unlisted_ids(verdict.get("reasoning", ""), candidate_ids)
 
     return {
         "claim": claim,
         "label": label,
         "confidence": float(verdict.get("confidence", 1.0)),
-        "reasoning": verdict.get("reasoning", ""),
+        "reasoning": reasoning,
         "supporting_chunks": [],
         "contradicting_chunks": [],
         "missing_information": None,
