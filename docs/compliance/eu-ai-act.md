@@ -1,6 +1,6 @@
 # Orc · EU AI Act Compliance Mapping
 
-> **What this is.** A claim-by-claim mapping of `orc` v0.1.0 features to the EU AI Act
+> **What this is.** A claim-by-claim mapping of `orc` v0.1.4 features to the EU AI Act
 > requirements most relevant to operators of high-risk AI systems (Annex III).
 >
 > **What this isn't.** A legal opinion, a conformity assessment, or a certification.
@@ -83,9 +83,9 @@ intended purpose, and logging.
 | §1      | Sufficient transparency to interpret output                 | Every verdict ships with: structured label, confidence score, reasoning text, chunk-level citations to source evidence, and the full retrieval set.| `src/orc/directives/research/skills/verify_claim.py` |
 | §3(b)(ii) | Capabilities and limitations of performance               | Documented in `README.md` and in this file. Limitations include: BM25-only retrieval today, no PDF ingestion, no embedding-based retrieval.    | `README.md`, `docs/compliance/eu-ai-act.md`       |
 | §3(b)(iii) | Foreseeable circumstances likely to lead to harm         | The runtime structurally prevents hallucinated citations (chunk IDs validated against retrieval). `not_found` is preferred over confabulation.| `src/orc/directives/research/skills/verify_claim.py:run()` |
-| §3(b)(iv) | Performance regarding specific groups                     | Out of scope for the v0.1.0 `research` directive (no demographic features). Future directives operating on personal data must add this.       | n/a today                                       |
+| §3(b)(iv) | Performance regarding specific groups                     | Out of scope for the v0.1.4 `research` directive (no demographic features). Future directives operating on personal data must add this.       | n/a today                                       |
 | §3(b)(v)| Input data specs and training data characteristics          | The workspace **is** the input-data spec. Corpus contents are inspectable via `orc search`. Corpus version is recorded with every run.       | `src/orc/storage/workspace.py`, `evidence` table  |
-| §3(d)   | Human oversight measures (links to Article 14)              | `orc approve` queue + multi-approver workflow (planned, see Article 14 below).                                                                 | `src/orc/queue/approval.py`                       |
+| §3(d)   | Human oversight measures (links to Article 14)              | `orc approve` queue + multi-approver workflow (see Article 14 below).                                                                          | `src/orc/queue/approval.py`                       |
 | §3(e)   | Computational and hardware resources, expected lifetime     | Python 3.11+, runs on any machine that can run CPython. No GPU required.                                                                       | `README.md` / `pyproject.toml`                    |
 | §3(f)   | Logging mechanisms                                          | This document. Plus `docs/compliance/eu-ai-act.md` §"Article 12".                                                                              | here                                            |
 
@@ -113,7 +113,7 @@ persons** with appropriate competence, training, and authority.
 | §4(c)   | Correctly interpret the output                             | Every claim is grounded in a chunk citation that can be opened and read.                                                                       | chunk citations                                   |
 | §4(d)   | Decide not to use the output, or override it               | `orc approve reject <id>` records the override with a free-text reason. The rejection is preserved in the trace.                              | `src/orc/cli_commands/approve.py`                  |
 | §4(e)   | Intervene or interrupt                                     | Approval queue blocks any action-taking output from leaving Orc until a human accepts. Rejection drops the proposal cleanly.                  | `src/orc/queue/approval.py`                        |
-| §5      | Two natural persons verify (some Annex III systems)        | **Planned for v0.2 — multi-approver workflow.** Track at github.com/Thormatt/orc issue #TBD.                                                  | Phase 2 roadmap                                   |
+| §5      | Two natural persons verify (some Annex III systems)        | Shipped. Each approval item carries `approvers_required` (set ≥ 2 for these systems); status flips to `approved` only once that many distinct approvers accept, and every per-approver decision is recorded. | `src/orc/queue/approval.py`                        |
 
 **What's still on you (the deployer):**
 
@@ -195,9 +195,10 @@ their lifecycle.
 - **Robustness**: `orc eval consistency / perturb / regression` is planned (Phase 3)
   to provide R(k, ε, λ) reliability instrumentation — repeated runs, ε-perturbed
   inputs, frozen-corpus regression. Will produce auditor-ready metrics.
-- **Cybersecurity**: dependencies pinned in `pyproject.toml`; local-first by
-  default (no telemetry, no outbound calls beyond the configured LLM provider);
-  approval queue prevents autonomous mutation. SOC 2 Type II and ISO/IEC 42001
+- **Cybersecurity**: dependency versions locked in the committed `uv.lock`
+  (`pyproject.toml` declares version ranges; the lockfile pins exact versions);
+  local-first by default (no telemetry, no outbound calls beyond the configured
+  LLM provider); approval queue prevents autonomous mutation. SOC 2 Type II and ISO/IEC 42001
   conformance are on the Phase 4 roadmap.
 
 ---
@@ -249,7 +250,7 @@ Honest framing matters here.
    system. Orc can produce most of the evidence Annex IV expects, but the
    assessment itself is not something a tool can perform.
 
-3. **Orc is not certified.** As of v0.1.0 there is no SOC 2 Type II, no
+3. **Orc is not certified.** As of v0.1.4 there is no SOC 2 Type II, no
    ISO/IEC 42001 attestation, no independent security audit. Those are on the
    Phase 4 roadmap. Until then, Orc is open-source, MIT-licensed, fully
    inspectable code — which is a different (and in some respects stronger) form

@@ -14,7 +14,7 @@ Bind every claim to evidence you own. Cite real sources only. Replay every decis
 
 | | Invariant |
 |---|---|
-| **Citations** | A verdict can only cite chunks that exist in the retrieval set. Hallucinated chunk IDs are filtered from both the structured citations *and* the free-text reasoning before the verdict reaches you, and a verdict left with no valid grounding is downgraded to `not_found`. |
+| **Citations** | A verdict can only cite chunks that exist in the retrieval set. Hallucinated chunk IDs are filtered from both the structured citations *and* the free-text reasoning before the verdict reaches you, and a verdict left with no valid grounding is downgraded to `not_found`. The guard covers evidence and judgment modes; binary, arithmetic, and decomposed modes return verdicts without per-claim citations (the trace still records every input chunk, and free-text fields are redacted in every mode). |
 | **Architecture** | Skills are stateless callables with explicit I/O contracts — no agent identities, no personas, no emergent coordination. Side effects are funneled through an injected run/workspace; persistence lives in the workspace, not the agents. |
 | **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. LLM sampling is pinned to `temperature=0` and the corpus is pinned by version, so `orc replay <run_id>` re-issues the original decision against the same snapshot rather than a fresh sample (best-effort against residual model nondeterminism). |
 | **Approval** | Anything that would mutate the outside world is routed to an approval queue first. Skills can only *propose* a typed, schema-validated, allow-listed action; a **separate process** holding the write credentials — which the analysis plane never sees — carries out human-approved actions and records the result, either one-shot (`orc execute`) or via the auto-drain daemon (`orc worker`, with leasing + idempotency + retry/backoff). *(Hosted row-level authz per plane is Phase 3; see [docs/design/0001-isolated-write-paths.md](docs/design/0001-isolated-write-paths.md).)* |
@@ -120,7 +120,7 @@ A `.env` file in the repo root or at `$ORC_HOME/.env` is auto-loaded. Shell-expo
 | Recall | 0.833 |
 | Accuracy | 0.869 |
 
-> **0.864 sits above Patronus AI's Lynx-70B home-court F1 of 0.85** on the same benchmark — achieved with a general-purpose Claude Sonnet 4.6 call (no fine-tuning) plus a safe arithmetic evaluator the model can invoke for numeric claims. Orc additionally produces chunk-level citations, deterministic replay against a frozen corpus snapshot, audit-export bundles that can be self-contained (`--include-evidence`), and a multi-approver gate for high-risk verdicts. The competitive set of post-hoc faithfulness judges does not produce these artifacts.
+> **0.864 is competitive with Patronus AI's Lynx-70B published home-court F1 of 0.85** — not a same-set head-to-head: orc's number comes from a stratified 504-item HaluBench subsample, with source-aware routing tuned on that same subsample, while Lynx reported on the full benchmark. It is achieved with a general-purpose Claude Sonnet 4.6 call (no fine-tuning) plus a safe arithmetic evaluator the model can invoke for numeric claims. Orc additionally produces chunk-level citations, deterministic replay against a frozen corpus snapshot, audit-export bundles that can be self-contained (`--include-evidence`), and a multi-approver gate for high-risk verdicts — artifacts the competitive set of post-hoc faithfulness judges does not produce.
 
 What shipped in this version:
 
@@ -143,7 +143,7 @@ git clone https://github.com/Thormatt/orc.git
 cd orc
 uv sync --extra dev
 
-uv run pytest                           # 115+ tests, 1s
+uv run pytest                           # 260+ tests, <5s
 uv run ruff check src tests
 uv run orc --version
 ```
