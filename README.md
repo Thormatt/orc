@@ -79,6 +79,7 @@ orc verify "<claim>" [-w <name>]       verify a single claim
 orc verify --file <path>               extract + verify every claim in a draft
 orc verify --url <url>                 same, from a URL
 orc research "<topic>" [-w <name>]     corpus-grounded synthesis with citations
+orc report <run_id>... [-o out.html]   render trace(s) as a shareable HTML report
 orc trace show <run_id>                full trace JSON
 orc trace list [-w <name>]             recent runs
 orc replay <run_id> [--live]           re-execute a recorded run
