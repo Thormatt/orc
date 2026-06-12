@@ -260,6 +260,14 @@ Honest gaps, kept current so prospects know what they're buying:
   will publish ours once the HHEM tokenizer-load issue is resolved.
 - **No multi-tenancy or team workspace primitives in 0.1.x.** Each
   workspace is owned by one filesystem.
+- **Truth of the corpus.** The runtime guarantee is "every claim is
+  traceable to a cited source," not "every claim is true." Hallucinated
+  citations are caught structurally; unsupported claims are caught at
+  LLM-judge accuracy (the F1 numbers above); faithful-but-wrong corpus
+  content — wrong, stale, or poisoned sources cited faithfully — is not
+  caught at all. Corpus provenance and freshness controls are the
+  mitigation. Post-hoc judges share the same ceiling: they score
+  consistency with the provided context, not the truth of the context.
 
 ---
 
@@ -291,4 +299,4 @@ Updates land via PR with the rationale captured in the commit message.
 The latest reproducible benchmark numbers always live in
 [`docs/benchmarks/`](../benchmarks/).
 
-Last updated: 2026-05-19 (Orc 0.1.4).
+Last updated: 2026-06-12 (Orc 0.2.0).

@@ -261,6 +261,17 @@ Honest framing matters here.
    obligations fall on Anthropic; Orc passes through whatever transparency
    information the upstream provider supplies.
 
+5. **Orc verifies traceability, not truth.** The guarantee is "every claim is
+   traceable to a cited source," not "every claim is true." Three failure
+   modes, three different coverages: hallucinated citations are caught
+   reliably (fabricated chunk IDs are structurally filtered, ungrounded
+   verdicts downgraded); unsupported claims are caught partially (an
+   LLM-judge decision, with LLM-judge error rates — see the faithfulness
+   benchmarks); faithful-but-wrong corpus content is not caught at all — if
+   the corpus is wrong, stale, or poisoned, a claim that cites it faithfully
+   will pass. The mitigation is the Article 10 data-governance work above:
+   corpus provenance, freshness, and review remain the deployer's obligation.
+
 ---
 
 ## Runbook for deployers
@@ -336,5 +347,5 @@ For procurement, conformity-assessment, or compliance-pilot inquiries:
 [thormatt@gmail.com](mailto:thormatt@gmail.com)
 
 Source: [github.com/Thormatt/orc](https://github.com/Thormatt/orc) · Last updated:
-2026-05-17. This document is part of the repository and is versioned with the
+2026-06-12. This document is part of the repository and is versioned with the
 runtime it describes.

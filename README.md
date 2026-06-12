@@ -19,6 +19,16 @@ Bind every claim to evidence you own. Cite real sources only. Replay every decis
 | **Replay** | Every call writes a trace: retrieval set, every LLM call's tokens and cache hits, the structured output. LLM sampling is pinned to `temperature=0` and the corpus is pinned by version, so `orc replay <run_id>` re-issues the original decision against the same snapshot rather than a fresh sample (best-effort against residual model nondeterminism). |
 | **Approval** | Anything that would mutate the outside world is routed to an approval queue first. Skills can only *propose* a typed, schema-validated, allow-listed action; a **separate process** holding the write credentials — which the analysis plane never sees — carries out human-approved actions and records the result, either one-shot (`orc execute`) or via the auto-drain daemon (`orc worker`, with leasing + idempotency + retry/backoff). *(Hosted row-level authz per plane is Phase 3; see [docs/design/0001-isolated-write-paths.md](docs/design/0001-isolated-write-paths.md).)* |
 
+### What the gate does and does not catch
+
+Orc's guarantee is **"every claim is traceable to a cited source"** — not "every claim is true." Three failure modes, three different answers:
+
+| Failure mode | Coverage |
+|---|---|
+| **Hallucinated citations** — the model cites a chunk that doesn't exist | **Caught reliably.** Fabricated chunk IDs are filtered structurally before the verdict ships; a verdict left with no valid grounding is downgraded to `not_found`. |
+| **Unsupported claims** — the model says `supported` when the cited evidence doesn't actually back the claim | **Caught partially.** This is an LLM-judge decision, with LLM-judge limits — the faithfulness benchmark (F1 0.864) is the measured error rate, not a guarantee. |
+| **Faithful-but-wrong** — the corpus itself is wrong, stale, or poisoned, and the claim cites it faithfully | **Not caught.** Orc verifies against your corpus, not against the world. Mitigate with corpus provenance and freshness controls: ingest only sources you trust (sha256 + source path are recorded automatically) and re-verify with `orc replay --live` after corpus updates. |
+
 Built for **research analysts, editorial teams, legal & compliance, agentic-workflow engineers** — anyone whose AI work product has to survive a second reviewer six months later.
 
 ## Quickstart
