@@ -8,8 +8,12 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from tests._fake_embedder import FakeEmbedder
 
 # Every env var that lets orc.llm.client.get_client() construct a live provider.
 # get_client() PREFERS OPENROUTER_API_KEY over ANTHROPIC_API_KEY, and ORC_PROVIDER
@@ -31,3 +35,19 @@ def _no_live_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
     if not os.environ.get("ORC_TEST_ALLOW_LIVE_LLM"):
         for var in _LIVE_LLM_ENV_VARS:
             monkeypatch.delenv(var, raising=False)
+
+
+@pytest.fixture
+def fake_embedder() -> Iterator[FakeEmbedder]:
+    """Install a deterministic FakeEmbedder via the embedder factory hook.
+
+    Tests script semantic hits through fake.vocabulary (keyword -> dimension).
+    The factory is reset afterwards so the cache never leaks across tests.
+    """
+    from orc.retrieval.embedder import set_embedder_factory
+    from tests._fake_embedder import FakeEmbedder
+
+    fake = FakeEmbedder(dim=8)
+    set_embedder_factory(lambda model_id: fake)
+    yield fake
+    set_embedder_factory(None)
