@@ -321,8 +321,28 @@ class _VerifyClaim:
             raise ValueError("claim must be a non-empty string")
         if mode is None:
             mode = route_to_mode(domain) or "evidence"
-        if mode not in {"evidence", "judgment", "binary", "decomposed", "arithmetic"}:
+        if mode not in {"evidence", "judgment", "binary", "decomposed", "arithmetic", "tiered"}:
             raise ValueError(f"unknown verify mode: {mode!r}")
+
+        # Tiered mode is a meta-strategy: a cheap Tier-1 judge on every claim,
+        # escalating to an expensive (optionally cross-family) Tier-2 only below
+        # the calibrated threshold. Like decomposed, it delegates via self.run.
+        if mode == "tiered":
+            from orc.directives.research.skills.modes.tiered import run_tiered
+
+            return run_tiered(
+                self=self,
+                workspace=workspace,
+                run=run,
+                claim=claim,
+                model=model,
+                k=k,
+                retrieval_pool=retrieval_pool,
+                max_tokens=max_tokens,
+                client=client,
+                corpus_version=corpus_version,
+                evidence_id=evidence_id,
+            )
 
         # Decomposed mode is a meta-strategy: it decomposes the claim then
         # delegates each atom to a binary verify. Handle it before the regular

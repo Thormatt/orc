@@ -17,7 +17,7 @@ from orc.storage.db import open_connection
 def test_create_makes_dirs_and_db(orc_home: Path) -> None:
     ws = ws_module.create("demo")
     assert ws.name == "demo"
-    assert ws.schema_version == 1
+    assert ws.schema_version == 2
     assert ws.corpus_version == 0
     assert ws.embedding_model is None
     assert workspace_db_path("demo").exists()

@@ -113,37 +113,27 @@ def _load_dataset(n: int, source_filter: str | None) -> list[dict[str, Any]]:
 
 
 def _confusion(results: list[ItemResult], binary_attr: str) -> dict[str, int]:
-    tp = fp = tn = fn = 0
-    for r in results:
-        if getattr(r, binary_attr) is None:
-            continue
-        pred = getattr(r, binary_attr)
-        gt = r.ground_truth
-        if pred == "PASS" and gt == "PASS":
-            tp += 1
-        elif pred == "PASS" and gt == "FAIL":
-            fp += 1
-        elif pred == "FAIL" and gt == "FAIL":
-            tn += 1
-        elif pred == "FAIL" and gt == "PASS":
-            fn += 1
-    return {"tp": tp, "fp": fp, "tn": tn, "fn": fn}
+    # Thin adapter over orc.metrics.scoring (PASS as the positive class) so the
+    # benchmark and `orc eval` share one implementation. Skips items whose
+    # binary attr is None (errored/unscored), same as before.
+    labeled = [
+        LabeledResult(predicted=getattr(r, binary_attr), expected=r.ground_truth)
+        for r in results
+    ]
+    return _confusion_lib(labeled, positive="PASS")
 
 
 def _scores(cm: dict[str, int]) -> dict[str, float]:
-    """Treat PASS as the positive class. Reviewers may re-score with FAIL-positive."""
-    tp, fp, tn, fn = cm["tp"], cm["fp"], cm["tn"], cm["fn"]
-    n = tp + fp + tn + fn
-    if n == 0:
-        return {"accuracy": 0.0, "precision_pass": 0.0, "recall_pass": 0.0, "f1_pass": 0.0}
-    precision = tp / (tp + fp) if (tp + fp) else 0.0
-    recall = tp / (tp + fn) if (tp + fn) else 0.0
-    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
+    """Treat PASS as the positive class. Reviewers may re-score with FAIL-positive.
+
+    Adapts the shared library's generic keys to this report's `*_pass` keys so
+    the downstream report assembly is untouched."""
+    s = _scores_lib(cm)
     return {
-        "accuracy": (tp + tn) / n,
-        "precision_pass": precision,
-        "recall_pass": recall,
-        "f1_pass": f1,
+        "accuracy": s["accuracy"],
+        "precision_pass": s["precision"],
+        "recall_pass": s["recall"],
+        "f1_pass": s["f1"],
     }
 
 
@@ -187,6 +177,9 @@ def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
 from orc.directives.research.routing import (  # noqa: E402
     BENCHMARK_SOURCE_TO_MODE as SOURCE_TO_MODE,
 )
+from orc.metrics.scoring import LabeledResult  # noqa: E402
+from orc.metrics.scoring import confusion as _confusion_lib  # noqa: E402
+from orc.metrics.scoring import scores as _scores_lib  # noqa: E402
 
 
 def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResult:

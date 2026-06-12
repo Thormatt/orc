@@ -17,6 +17,17 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
   CLI (the approval queue's producer surface); `orc approve list --json`.
 - **`orc report <run_id>...`** — render trace(s) into a self-contained HTML
   artifact reusing the trace design language.
+- **Gold set + `orc eval`** — measure the gate on a user-owned labelled gold
+  set: judge accuracy, confidence calibration (reliability bins + ECE), and
+  retrieval recall. `orc eval import` seeds from YAML; `orc eval label`
+  promotes/corrects a real verdict into gold (frozen to its corpus version).
+- **Tiered verification** (`verify --mode tiered`) — a cheap Tier-1 binary
+  judge on every claim, escalating to a stronger (optionally cross-family)
+  Tier-2 judge only below a calibrated confidence threshold; the deciding
+  tier and reason are recorded in the trace.
+- **`orc eval calibrate`** — derive the tiered escalation threshold from the
+  gold set (lowest cutoff meeting `--target`, default 0.95), with an
+  achievability guard that refuses to silently configure always-escalate.
 
 ### Planned
 

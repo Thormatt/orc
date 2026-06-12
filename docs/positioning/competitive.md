@@ -268,6 +268,10 @@ Honest gaps, kept current so prospects know what they're buying:
   caught at all. Corpus provenance and freshness controls are the
   mitigation. Post-hoc judges share the same ceiling: they score
   consistency with the provided context, not the truth of the context.
+  `orc eval` measures the unsupported-claims row against a user-owned
+  labelled gold set (judge accuracy, calibration, retrieval recall), so the
+  ceiling is quantified per corpus rather than asserted — but it cannot
+  measure the faithful-but-wrong row, because no gold set can.
 
 ---
 

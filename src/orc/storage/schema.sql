@@ -134,3 +134,39 @@ CREATE TABLE IF NOT EXISTS approval_decision (
 );
 
 CREATE INDEX IF NOT EXISTS idx_approval_decision_approval ON approval_decision(approval_id);
+
+-- v2: gold set, eval runs, and tiered-verification calibration.
+CREATE TABLE IF NOT EXISTS gold_claim (
+    gold_id            TEXT PRIMARY KEY,
+    workspace          TEXT NOT NULL,
+    claim              TEXT NOT NULL,
+    expected_label     TEXT NOT NULL,
+    corpus_version     INTEGER NOT NULL,
+    relevant_chunk_ids TEXT,
+    source             TEXT NOT NULL,
+    source_run_id      TEXT,
+    note               TEXT,
+    added_at           TEXT NOT NULL,
+    added_by           TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_gold_claim_workspace ON gold_claim(workspace);
+
+CREATE TABLE IF NOT EXISTS eval_run (
+    eval_id      TEXT PRIMARY KEY,
+    workspace    TEXT NOT NULL,
+    created_at   TEXT NOT NULL,
+    config_json  TEXT NOT NULL,
+    metrics_json TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tiered_policy (
+    workspace                  TEXT PRIMARY KEY,
+    tier1_model                TEXT NOT NULL,
+    tier2_model                TEXT NOT NULL,
+    top_judge_model            TEXT,
+    escalation_threshold       REAL NOT NULL,
+    target                     REAL NOT NULL,
+    calibrated_at              TEXT NOT NULL,
+    calibrated_against_eval_id TEXT,
+    n_gold                     INTEGER NOT NULL
+);

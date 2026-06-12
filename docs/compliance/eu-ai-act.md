@@ -271,6 +271,10 @@ Honest framing matters here.
    the corpus is wrong, stale, or poisoned, a claim that cites it faithfully
    will pass. The mitigation is the Article 10 data-governance work above:
    corpus provenance, freshness, and review remain the deployer's obligation.
+   `orc eval` lets a deployer quantify the unsupported-claims coverage on
+   their own labelled gold set (judge accuracy, calibration, retrieval
+   recall) — evidence of accuracy and robustness for Article 15 — but it
+   cannot measure faithful-but-wrong corpus content; no gold set can.
 
 ---
 

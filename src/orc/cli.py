@@ -3,6 +3,7 @@ import click
 from orc import __version__
 from orc.cli_commands import approve as approve_cmd
 from orc.cli_commands import audit as audit_cmd
+from orc.cli_commands import eval_cmd
 from orc.cli_commands import execute as execute_cmd
 from orc.cli_commands import ingest as ingest_cmd
 from orc.cli_commands import mcp as mcp_cmd
@@ -36,6 +37,7 @@ main.add_command(propose_cmd.propose_command)
 main.add_command(execute_cmd.execute_command)
 main.add_command(worker_cmd.worker_command)
 main.add_command(audit_cmd.audit_group)
+main.add_command(eval_cmd.eval_group)
 main.add_command(mcp_cmd.mcp)
 
 

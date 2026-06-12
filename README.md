@@ -29,6 +29,8 @@ Orc's guarantee is **"every claim is traceable to a cited source"** — not "eve
 | **Unsupported claims** — the model says `supported` when the cited evidence doesn't actually back the claim | **Caught partially.** This is an LLM-judge decision, with LLM-judge limits — the faithfulness benchmark (F1 0.864) is the measured error rate, not a guarantee. |
 | **Faithful-but-wrong** — the corpus itself is wrong, stale, or poisoned, and the claim cites it faithfully | **Not caught.** Orc verifies against your corpus, not against the world. Mitigate with corpus provenance and freshness controls: ingest only sources you trust (sha256 + source path are recorded automatically) and re-verify with `orc replay --live` after corpus updates. |
 
+Don't take the partial-coverage row on faith: **`orc eval`** measures judge accuracy, confidence calibration, and retrieval recall against *your own* labelled gold set, so you can quantify how well the gate matches your corpus instead of trusting a headline number. It cannot detect faithful-but-wrong corpus content either — no gold set can.
+
 Built for **research analysts, editorial teams, legal & compliance, agentic-workflow engineers** — anyone whose AI work product has to survive a second reviewer six months later.
 
 ## Quickstart
@@ -80,6 +82,11 @@ orc verify --file <path>               extract + verify every claim in a draft
 orc verify --url <url>                 same, from a URL
 orc research "<topic>" [-w <name>]     corpus-grounded synthesis with citations
 orc report <run_id>... [-o out.html]   render trace(s) as a shareable HTML report
+orc verify "<claim>" --mode tiered     cheap judge first, escalate only when unsure
+orc eval import <file.yaml> [-w <n>]   seed a labelled gold set
+orc eval label <run_id> --verdict <v>  promote/correct a real verdict into gold
+orc eval run [-w <name>] [--json]      score the gate (accuracy, calibration, recall)
+orc eval calibrate [-w <name>]         tune the tiered escalation threshold
 orc trace show <run_id>                full trace JSON
 orc trace list [-w <name>]             recent runs
 orc replay <run_id> [--live]           re-execute a recorded run
