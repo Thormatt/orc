@@ -11,6 +11,11 @@ from pathlib import Path
 
 import pytest
 
+# Every env var that lets orc.llm.client.get_client() construct a live provider.
+# get_client() PREFERS OPENROUTER_API_KEY over ANTHROPIC_API_KEY, and ORC_PROVIDER
+# can force either path, so stripping only the Anthropic key is not enough.
+_LIVE_LLM_ENV_VARS = ("ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "ORC_PROVIDER")
+
 
 @pytest.fixture
 def orc_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
@@ -21,7 +26,8 @@ def orc_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
 
 
 @pytest.fixture(autouse=True)
-def _no_real_anthropic_key(monkeypatch: pytest.MonkeyPatch) -> None:
+def _no_live_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Block accidental network calls in tests that don't explicitly opt in."""
     if not os.environ.get("ORC_TEST_ALLOW_LIVE_LLM"):
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        for var in _LIVE_LLM_ENV_VARS:
+            monkeypatch.delenv(var, raising=False)

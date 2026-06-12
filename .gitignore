@@ -24,7 +24,6 @@ htmlcov/
 
 # Tooling
 .python-version
-uv.lock
 
 # Editor
 .vscode/

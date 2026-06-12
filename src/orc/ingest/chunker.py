@@ -7,6 +7,13 @@ Strategy:
 3. For each section, if the body fits in `target_tokens`, emit one chunk; otherwise
    slide a token window across with `step = target_tokens - overlap_tokens`.
 
+Window boundaries are computed at the byte level and snapped forward to UTF-8
+character starts. cl100k_base is byte-level BPE, so a token boundary can fall
+inside a multi-byte character (routine for CJK/emoji); decoding each window
+independently would inject U+FFFD (tiktoken decodes with errors='replace') and
+make char offsets drift. Byte slices snapped to char starts decode strictly and
+keep `body[start_offset:end_offset] == chunk.text` exact.
+
 Tokenization uses tiktoken cl100k_base. The Anthropic tokenizer is similar within ~5%
 for sizing purposes; for billing-accurate counts at LLM-call time we use the API's
 token usage instead.
@@ -17,6 +24,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
+from itertools import accumulate
 
 import tiktoken
 
@@ -140,6 +148,24 @@ def _build_heading_index(body: str) -> list[tuple[int, list[str]]]:
     return out
 
 
+def _snap_to_char_start(data: bytes, pos: int) -> int:
+    """Advance pos past UTF-8 continuation bytes (0b10xxxxxx).
+
+    Token boundaries can land mid-character; snapping forward to the next
+    character start lets adjacent windows tile without splitting any character.
+    """
+    while pos < len(data) and (data[pos] & 0xC0) == 0x80:
+        pos += 1
+    return pos
+
+
+def _stripped_span(text: str) -> tuple[int, int]:
+    """Return (start, end) of text.strip() within text, so offsets match the
+    stripped chunk text exactly instead of the raw decoded window."""
+    leading = len(text) - len(text.lstrip())
+    return leading, leading + len(text.strip())
+
+
 def _chunk_section(
     section_body: str,
     *,
@@ -154,38 +180,53 @@ def _chunk_section(
         return []
 
     if len(tokens) <= target_tokens:
+        text_start, text_end = _stripped_span(section_body)
         return [
             Chunk(
                 seq=0,
                 text=section_body.strip(),
                 token_count=len(tokens),
                 headings_path=headings_path,
-                start_offset=base_offset,
-                end_offset=base_offset + len(section_body),
+                start_offset=base_offset + text_start,
+                end_offset=base_offset + text_end,
             )
         ]
 
+    section_bytes = section_body.encode("utf-8")
+    # cl100k_base byte-level BPE round-trips bytes exactly, so cumulative
+    # per-token byte lengths give each window's byte span without re-decoding
+    # full prefixes (which would be O(n^2) and inject U+FFFD at split chars).
+    byte_starts = list(
+        accumulate((len(enc.decode_single_token_bytes(t)) for t in tokens), initial=0)
+    )
+
     out: list[Chunk] = []
     step = max(1, target_tokens - overlap_tokens)
+    prev_byte = 0
+    prev_char = 0
     i = 0
     while i < len(tokens):
-        window = tokens[i : i + target_tokens]
-        if not window:
-            break
-        chunk_text_value = enc.decode(window).strip()
+        window_end = min(i + target_tokens, len(tokens))
+        start_byte = _snap_to_char_start(section_bytes, byte_starts[i])
+        end_byte = _snap_to_char_start(section_bytes, byte_starts[window_end])
+        # Boundaries sit on character starts, so a strict decode failing here
+        # would be a bug in the snapping logic — let it raise.
+        window_text = section_bytes[start_byte:end_byte].decode("utf-8")
+        chunk_text_value = window_text.strip()
         if not chunk_text_value:
             i += step
             continue
-        prefix_len = len(enc.decode(tokens[:i])) if i > 0 else 0
-        body_segment_len = len(enc.decode(window))
+        start_char = prev_char + len(section_bytes[prev_byte:start_byte].decode("utf-8"))
+        prev_byte, prev_char = start_byte, start_char
+        text_start, text_end = _stripped_span(window_text)
         out.append(
             Chunk(
                 seq=len(out),
                 text=chunk_text_value,
-                token_count=len(window),
+                token_count=window_end - i,
                 headings_path=headings_path,
-                start_offset=base_offset + prefix_len,
-                end_offset=base_offset + prefix_len + body_segment_len,
+                start_offset=base_offset + start_char + text_start,
+                end_offset=base_offset + start_char + text_end,
             )
         )
         if i + target_tokens >= len(tokens):

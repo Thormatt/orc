@@ -12,6 +12,7 @@ from __future__ import annotations
 from orc.directives.base import DirectiveSpec, Skill, SkillResult
 
 _REGISTRY: dict[str, DirectiveSpec] = {}
+_loaded = False
 
 
 def register(spec: DirectiveSpec) -> None:
@@ -33,9 +34,16 @@ def list_directives() -> list[DirectiveSpec]:
 
 
 def _ensure_loaded() -> None:
-    """Force-import bundled directive packages so they self-register on first use."""
-    if _REGISTRY:
+    """Force-import bundled directive packages so they self-register on first use.
+
+    Uses a dedicated flag (mirroring orc.effects.registry) rather than `if _REGISTRY`:
+    a third-party register() before the first get() would otherwise make the registry
+    non-empty and silently skip loading the bundled directives.
+    """
+    global _loaded
+    if _loaded:
         return
+    _loaded = True
     import orc.directives.research  # noqa: F401  (registers as side effect)
 
 

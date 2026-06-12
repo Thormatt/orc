@@ -7,8 +7,10 @@ validated against real customer demand. Stage 0 is "land 3 pilots and learn
 what to charge for"; everything past Stage 1 will be revised based on what
 those pilots teach us.
 
-Last updated: 2026-05-19. Code state: v0.1.4 (F1 = 0.864 on HaluBench, above
-Lynx-70B home-court).
+Last updated: 2026-05-19. Code state: v0.1.4 (F1 = 0.864 on a stratified
+504-item HaluBench subsample — competitive with Lynx-70B's published
+home-court 0.85, not a same-set head-to-head; see
+[competitive.md](../positioning/competitive.md) for caveats).
 
 ---
 
@@ -17,7 +19,7 @@ Lynx-70B home-court).
 **Engineering: strong.** v0.1.4 ships a complete verification runtime: five
 verify modes, source-aware routing, multi-turn calculator tool, deterministic
 replay, self-contained audit bundles, multi-approver workflow, MCP server,
-CLI. 194 tests, MIT-licensed, public on GitHub.
+CLI. 260+ tests, MIT-licensed, public on GitHub.
 
 **Distribution: zero.** No paying customers. No design partners. No PyPI
 release. The benchmark validates the technical moat but nobody outside this
@@ -129,7 +131,10 @@ Every business decision below leans into this.
   bundle-invariants runners.
 - Local-file ingestion (markdown, txt, URL).
 - The full SQLite + FTS5 + sqlite-vec storage layer.
-- **Cryptographic signing of audit bundles** — this is part of the trust
+- **SHA-256 hashed audit bundles** — `manifest.json` records a hash of every
+  file in the export so a reviewer can verify integrity offline
+  (`src/orc/audit/export.py`). Cryptographic *signing* of bundles is planned,
+  not shipped; when it lands it stays open-source — it's part of the trust
   story, not a paywall. Gating it would weaken the open-source credibility.
 
 The OSS has to be production-grade on its own. A single regulated team
