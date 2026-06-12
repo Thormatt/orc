@@ -113,3 +113,37 @@ def test_eval_run_with_no_gold_fails_cleanly(orc_home) -> None:
     res = CliRunner().invoke(main, ["eval", "run", "-w", "demo"])
     assert res.exit_code != 0
     assert "gold" in res.output.lower()
+
+
+def test_eval_calibrate_writes_policy_and_tiered_reads_it(orc_home, tmp_path, monkeypatch) -> None:
+    from orc.eval.policy import load_policy
+
+    ws = ws_module.create("demo")
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "doc.md").write_text("# Doc\n\nThe sky is blue on a clear day.\n")
+    do_ingest(ws, str(corpus))
+    cv = ws_module.resolve("demo").corpus_version
+    gold.add("demo", claim="The sky is blue", expected_label="supported", corpus_version=cv, source="import")
+    gold.add("demo", claim="The grass is blue", expected_label="not_found", corpus_version=cv, source="import")
+
+    from tests._fake_llm import FakeContentBlock, FakeResponse
+
+    def _binary(faithful, confidence):
+        return FakeResponse(content=[FakeContentBlock(
+            type="tool_use", name="record_binary_verdict",
+            input={"faithful": faithful, "confidence": confidence, "reasoning": "r"})])
+
+    # Tier-1 binary: claim 1 supported@0.97 (correct), claim 2 unfaithful@0.96 (correct).
+    fake = FakeAnthropic(responses=[_binary(True, 0.97), _binary(False, 0.96)])
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    res = CliRunner().invoke(main, ["eval", "calibrate", "-w", "demo", "--target", "0.95"])
+    assert res.exit_code == 0, res.output
+    assert "Calibrated" in res.output
+
+    policy = load_policy("demo")
+    assert policy is not None
+    assert policy.target == 0.95
+    assert 0.0 < policy.escalation_threshold <= 0.97

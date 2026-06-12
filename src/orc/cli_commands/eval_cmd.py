@@ -143,6 +143,61 @@ def _report_json(report: object) -> str:
     return json_lib.dumps(d, indent=2)
 
 
+@eval_group.command("calibrate")
+@click.option("--workspace", "-w", default=None)
+@click.option("--target", type=float, default=0.95, show_default=True,
+              help="Required Tier-1-accepted accuracy")
+@click.option("--tier1-model", default=None, help="Cheap Tier-1 judge model")
+@click.option("--tier2-model", default=None, help="Expensive Tier-2 judge model")
+@click.option("--top-judge", default=None,
+              help="Tier-2 model override (e.g. a cross-family judge via OpenRouter)")
+def calibrate_command(
+    workspace: str | None,
+    target: float,
+    tier1_model: str | None,
+    tier2_model: str | None,
+    top_judge: str | None,
+) -> None:
+    """Derive the tiered escalation threshold from the gold set and store it."""
+    from orc.eval.calibrate import DEFAULT_TIER1_MODEL, DEFAULT_TIER2_MODEL, calibrate
+    from orc.eval.policy import save_policy
+
+    ws = _resolve(workspace)
+    t1 = tier1_model or DEFAULT_TIER1_MODEL
+    t2 = tier2_model or DEFAULT_TIER2_MODEL
+    result = calibrate(ws.name, target=target, tier1_model=t1)
+    if result.n == 0:
+        raise click.ClickException(
+            f"{ws.name} has no gold claims to calibrate against — `orc eval import` first"
+        )
+
+    save_policy(
+        ws.name,
+        tier1_model=t1,
+        tier2_model=t2,
+        top_judge_model=top_judge,
+        escalation_threshold=result.threshold,
+        target=target,
+        calibrated_against_eval_id=None,
+        n_gold=result.n,
+    )
+    if result.achievable:
+        click.echo(
+            f"Calibrated on {result.n} gold claim(s): escalate below confidence "
+            f"{result.threshold:.3f} (Tier-1 accepts {1 - result.escalation_rate:.0%}, "
+            f"escalates {result.escalation_rate:.0%}; accepted accuracy "
+            f"{result.accepted_accuracy:.3f})."
+        )
+    else:
+        click.echo(
+            f"Tier 1 cannot reach {target:.2f} accuracy at any cutoff on this gold "
+            f"set (max {result.max_accuracy:.2f}). Stored threshold "
+            f"{result.threshold:.3f} (escalates {result.escalation_rate:.0%}); "
+            f"lower --target or improve the gold set.",
+            err=True,
+        )
+
+
 @eval_group.command("gold")
 @click.argument("action", type=click.Choice(["list"]))
 @click.option("--workspace", "-w", default=None)
