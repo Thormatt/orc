@@ -52,3 +52,6 @@ benchmarks/*/results/
 # Local-only benchmark data: third-party datasets we re-fetch via bootstrap scripts
 benchmarks/faithfulness/*.jsonl
 # HHEM model cache lives under HF_HOME by default; not in this repo.
+
+# Playwright MCP browser-verification artifacts
+.playwright-mcp/
