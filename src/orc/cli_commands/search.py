@@ -50,7 +50,7 @@ def search_command(query: str, workspace: str | None, k: int, as_json: bool) -> 
         console.print("[yellow]No chunks matched[/yellow]")
         return
 
-    table = Table(title=f"BM25 results for '{query}'")
+    table = Table(title=f"Retrieval results for '{query}'")
     table.add_column("Rank", justify="right")
     table.add_column("Score", justify="right")
     table.add_column("Title")

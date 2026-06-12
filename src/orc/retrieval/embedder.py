@@ -48,7 +48,13 @@ class SentenceTransformerEmbedder:
             ) from exc
         self.model_id = model_id
         self._model = sentence_transformers.SentenceTransformer(model_id)
-        self.dim = int(self._model.get_sentence_embedding_dimension())
+        # Renamed in sentence-transformers 5.x; support both spellings.
+        get_dim = getattr(
+            self._model,
+            "get_embedding_dimension",
+            self._model.get_sentence_embedding_dimension,
+        )
+        self.dim = int(get_dim())
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         # Normalized embeddings make L2 distance rank-equivalent to cosine.
