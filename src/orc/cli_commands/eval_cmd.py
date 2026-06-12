@@ -80,6 +80,69 @@ def label_command(
     click.echo(f"Labelled run {run_id} as {verdict} in {trace['workspace']}")
 
 
+@eval_group.command("run")
+@click.option("--workspace", "-w", default=None)
+@click.option("--mode", default="evidence", help="Verify mode to evaluate")
+@click.option("--k", type=int, default=10, help="Retrieval depth for recall@k")
+@click.option("--json", "as_json", is_flag=True)
+def run_command(workspace: str | None, mode: str, k: int, as_json: bool) -> None:
+    """Score the gate against the workspace's gold set."""
+    from orc.eval.runner import run_eval
+
+    ws = _resolve(workspace)
+    try:
+        report = run_eval(ws.name, mode=mode, k=k)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if as_json:
+        click.echo(_report_json(report))
+        return
+    click.echo(f"eval {report.eval_id}  mode={report.mode}  n={report.n}")
+    click.echo(f"  judge accuracy : {report.accuracy:.3f}")
+    click.echo(
+        f"  supported P/R/F1: {report.supported_precision:.3f} / "
+        f"{report.supported_recall:.3f} / {report.supported_f1:.3f}"
+    )
+    click.echo(f"  calibration ECE: {report.calibration_ece:.3f}  (lower = better calibrated)")
+    if report.retrieval_recall is not None:
+        click.echo(
+            f"  retrieval recall: {report.retrieval_recall:.3f}  "
+            f"({report.n_retrieval_labeled} labelled)"
+        )
+    if report.stale_entries:
+        click.echo(
+            f"  warning: {report.stale_entries} gold entr(ies) have chunk labels "
+            f"older than the current corpus — recall measured frozen.",
+            err=True,
+        )
+
+
+@eval_group.command("show")
+@click.argument("eval_id")
+@click.option("--workspace", "-w", default=None)
+@click.option("--json", "as_json", is_flag=True)
+def show_command(eval_id: str, workspace: str | None, as_json: bool) -> None:
+    """Reprint a persisted eval report."""
+    from orc.eval.runner import load_eval
+
+    ws = _resolve(workspace)
+    try:
+        report = load_eval(ws.name, eval_id)
+    except KeyError as exc:
+        raise click.ClickException(f"No eval {eval_id} in {ws.name}") from exc
+    click.echo(_report_json(report) if as_json else
+               f"eval {report.eval_id}  mode={report.mode}  n={report.n}  "
+               f"accuracy={report.accuracy:.3f}  ECE={report.calibration_ece:.3f}")
+
+
+def _report_json(report: object) -> str:
+    from dataclasses import asdict
+
+    d = asdict(report)
+    d["reliability"] = [asdict(b) for b in report.reliability]  # type: ignore[attr-defined]
+    return json_lib.dumps(d, indent=2)
+
+
 @eval_group.command("gold")
 @click.argument("action", type=click.Choice(["list"]))
 @click.option("--workspace", "-w", default=None)

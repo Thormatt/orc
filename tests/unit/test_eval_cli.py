@@ -73,3 +73,43 @@ def test_eval_gold_list_json(orc_home) -> None:
     [item] = json.loads(res.output)
     assert item["expected_label"] == "supported"
     assert item["stale_chunk_labels"] is False
+
+
+def test_eval_run_and_show_roundtrip(orc_home, tmp_path, monkeypatch) -> None:
+    import json as json_lib
+
+    from orc.paths import workspace_db_path
+    from orc.storage.db import open_connection
+
+    ws = ws_module.create("demo")
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "doc.md").write_text("# Doc\n\nThe sky is blue on a clear day.\n")
+    do_ingest(ws, str(corpus))
+    with open_connection(workspace_db_path("demo")) as conn:
+        chunk_id = conn.execute("SELECT chunk_id FROM chunk ORDER BY seq LIMIT 1").fetchone()["chunk_id"]
+    cv = ws_module.resolve("demo").corpus_version
+    gold.add("demo", claim="The sky is blue", expected_label="supported", corpus_version=cv, source="import")
+
+    fake = FakeAnthropic(responses=[
+        make_verdict_response(label="supported", confidence=0.9, supporting_chunk_ids=[chunk_id]),
+    ])
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    res = CliRunner().invoke(main, ["eval", "run", "-w", "demo", "--json"])
+    assert res.exit_code == 0, res.output
+    payload = json_lib.loads(res.output)
+    assert payload["n"] == 1
+    assert payload["accuracy"] == 1.0
+
+    res2 = CliRunner().invoke(main, ["eval", "show", payload["eval_id"], "-w", "demo"])
+    assert res2.exit_code == 0, res2.output
+    assert payload["eval_id"] in res2.output
+
+
+def test_eval_run_with_no_gold_fails_cleanly(orc_home) -> None:
+    ws_module.create("demo")
+    res = CliRunner().invoke(main, ["eval", "run", "-w", "demo"])
+    assert res.exit_code != 0
+    assert "gold" in res.output.lower()
