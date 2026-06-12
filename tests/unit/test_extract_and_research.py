@@ -230,3 +230,64 @@ def test_cli_verify_requires_input(orc_home: Path, tmp_path: Path) -> None:
     result = runner.invoke(main, ["verify", "--workspace", "demo"])
     assert result.exit_code != 0
     assert "Provide" in result.output or "Provide" in str(result.exception)
+
+
+def _claims_response(n_claims: int, stop_reason: str) -> FakeResponse:
+    return FakeResponse(
+        content=[
+            FakeContentBlock(
+                type="tool_use",
+                name="record_claims",
+                input={"claims": [{"text": f"claim {i}"} for i in range(n_claims)]},
+            )
+        ],
+        stop_reason=stop_reason,
+    )
+
+
+def test_extract_claims_retries_with_bigger_budget_when_truncated(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """stop_reason=max_tokens means the tool call was cut off mid-emission —
+    the observed failure was a truncated call parsing as zero claims and the
+    gate passing vacuously. Truncation must trigger a retry, not an empty OK."""
+    name = _seed(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            _claims_response(0, stop_reason="max_tokens"),
+            _claims_response(2, stop_reason="tool_use"),
+        ]
+    )
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["extract_claims"]
+    with open_run(ws, directive="research", skill="extract_claims", inputs={}) as run:
+        result = skill.run(workspace=ws, run=run, document="Some long document.")
+        run.close(output=result)
+
+    assert len(result["claims"]) == 2
+    assert len(fake.calls) == 2
+    # Retry must actually raise the budget, not replay the same request.
+    assert fake.calls[1]["max_tokens"] > fake.calls[0]["max_tokens"]
+
+
+def test_extract_claims_raises_when_truncated_at_final_budget(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If every escalation still truncates, fail loudly: a partial claim list
+    would let unextracted claims bypass verification silently."""
+    name = _seed(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responder=lambda kwargs: _claims_response(1, stop_reason="max_tokens")
+    )
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+
+    ws = ws_module.resolve(name)
+    skill = directives.get("research").skills["extract_claims"]
+    with open_run(ws, directive="research", skill="extract_claims", inputs={}) as run:
+        with pytest.raises(RuntimeError, match="truncated"):
+            skill.run(workspace=ws, run=run, document="Some long document.")
+        run.close(output={})
