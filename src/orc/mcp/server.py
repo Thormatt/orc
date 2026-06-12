@@ -121,8 +121,8 @@ def build_server() -> FastMCP:
         description=(
             "Verify a claim against the workspace's evidence corpus. "
             "Omit `workspace` to use ORC_DEFAULT_WORKSPACE (or the literal 'default' workspace). "
-            "Optionally pass `domain` (e.g. 'pubmedQA', 'DROP') to route to an empirically "
-            "best verify mode for that domain — see DOMAIN_TO_MODE in the runtime."
+            "Optionally pass `domain` (e.g. 'financial', 'clinical', 'legal') to route to "
+            "the empirically best verify mode for that domain — see DOMAIN_TO_MODE in the runtime."
         )
     )
     def orc_verify_claim(

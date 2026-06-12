@@ -184,7 +184,9 @@ def _run_lynx_style_one(item: dict[str, Any], orc_home: Path) -> ItemResult:
 # subsample. Prose-heavy sources where corpus citations help → evidence mode.
 # Single-passage numeric/extraction tasks → binary mode. Mixed natural-language
 # Q+A → judgment mode.
-from orc.directives.research.routing import DOMAIN_TO_MODE as SOURCE_TO_MODE  # noqa: E402
+from orc.directives.research.routing import (  # noqa: E402
+    BENCHMARK_SOURCE_TO_MODE as SOURCE_TO_MODE,
+)
 
 
 def _run_with_mode(item: dict[str, Any], orc_home: Path, mode: str) -> ItemResult:

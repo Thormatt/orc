@@ -43,7 +43,7 @@ _LABEL_STYLE = {
 @click.option(
     "--domain",
     default=None,
-    help="Route mode by domain hint (e.g. 'pubmedQA', 'DROP', 'FinanceBench')",
+    help="Route mode by domain hint (e.g. 'financial', 'clinical', 'legal')",
 )
 @click.option("--yes", "-y", is_flag=True, help="Skip the confirmation prompt for batch verify")
 @click.option("--json", "as_json", is_flag=True, help="Emit raw JSON instead of formatted output")

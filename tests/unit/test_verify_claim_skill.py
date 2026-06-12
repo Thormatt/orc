@@ -391,7 +391,7 @@ def test_verify_explicit_mode_wins_over_domain(
         )
         run.close(output={})
 
-    # DROP routes to binary in DOMAIN_TO_MODE; explicit mode="evidence"
+    # DROP routes to binary via the benchmark alias map; explicit mode="evidence"
     # must override that, so the record_verdict (evidence) tool was used.
     assert fake.calls[0]["tool_choice"] == {"type": "tool", "name": "record_verdict"}
 

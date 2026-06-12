@@ -279,7 +279,9 @@ class _VerifyClaim:
 
         Mode selection:
           - explicit `mode=` always wins
-          - else `domain=` (e.g. "pubmedQA", "DROP") routes via DOMAIN_TO_MODE
+          - else `domain=` (e.g. "financial", "clinical", "legal") routes via
+            DOMAIN_TO_MODE; HaluBench source names remain as benchmark-only
+            aliases in BENCHMARK_SOURCE_TO_MODE
           - else default = "evidence"
 
         Modes:
