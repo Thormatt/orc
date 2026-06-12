@@ -67,6 +67,9 @@ def label_command(
     claim = (trace.get("inputs") or {}).get("claim") or (trace.get("output") or {}).get("claim")
     if not claim:
         raise click.ClickException(f"Run {run_id} has no claim to label")
+    # Resolve the workspace (not just read its name from the trace) so a
+    # workspace whose db predates schema v2 gets migrated before we write gold.
+    _resolve(trace["workspace"])
     gold.add(
         trace["workspace"],
         claim=claim,
