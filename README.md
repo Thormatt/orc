@@ -176,7 +176,7 @@ git clone https://github.com/Thormatt/orc.git
 cd orc
 uv sync --extra dev
 
-uv run pytest                           # 260+ tests, <5s
+uv run pytest                           # 360+ tests, <5s
 uv run ruff check src tests
 uv run orc --version
 ```
@@ -185,8 +185,8 @@ Live LLM tests are gated behind `ORC_TEST_ALLOW_LIVE_LLM=1` and require a real A
 
 ## Roadmap
 
-- Embedding-based retrieval (hybrid BM25 + vector via `sqlite-vec`)
 - OCR for scanned/image-only PDFs
+- Voyage/OpenAI embedding backends (the `Embedder` protocol is pluggable; local `sentence-transformers` hybrid retrieval shipped as opt-in)
 - Long-running directives (scheduled triggers, cloud execution)
 - `marketing` directive (assisted-only at first, autonomous behind approval gates later)
 - `legal` / `gads` / `code-review` directives — same runtime, new skill packages
