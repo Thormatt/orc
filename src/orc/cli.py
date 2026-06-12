@@ -8,6 +8,7 @@ from orc.cli_commands import ingest as ingest_cmd
 from orc.cli_commands import mcp as mcp_cmd
 from orc.cli_commands import propose as propose_cmd
 from orc.cli_commands import replay as replay_cmd
+from orc.cli_commands import report as report_cmd
 from orc.cli_commands import research as research_cmd
 from orc.cli_commands import search as search_cmd
 from orc.cli_commands import trace as trace_cmd
@@ -29,6 +30,7 @@ main.add_command(verify_cmd.verify_command)
 main.add_command(research_cmd.research_command)
 main.add_command(trace_cmd.trace_group)
 main.add_command(replay_cmd.replay_command)
+main.add_command(report_cmd.report_command)
 main.add_command(approve_cmd.approve_group)
 main.add_command(propose_cmd.propose_command)
 main.add_command(execute_cmd.execute_command)
