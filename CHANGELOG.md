@@ -7,20 +7,32 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added (not yet released)
+
+- **Hybrid retrieval** — opt-in BM25 + dense-vector retrieval fused with
+  Reciprocal Rank Fusion. Local `sentence-transformers` embedder by default
+  (no API key), pluggable `Embedder` protocol. `orc workspace create
+  --embeddings`, `orc workspace embed` backfill. BM25 stays the default.
+- **`orc propose`** — stage an allow-listed effect for human approval from the
+  CLI (the approval queue's producer surface); `orc approve list --json`.
+- **`orc report <run_id>...`** — render trace(s) into a self-contained HTML
+  artifact reusing the trace design language.
+
 ### Planned
 
 - `gads` directive (Google Ads agentic analysis: lens-based decomposition,
   read-only MCP integration, evidence-bound recommendation verification).
 - `orc eval consistency|perturb|retrieval|regression` reliability commands.
-- Voyage-AI or local-`sentence-transformers` embeddings + hybrid retrieval (RRF over BM25 + vector).
+- Voyage-AI / OpenAI embedding backends behind the existing `Embedder` protocol.
 - Hosted runtime (scheduled triggers, web dashboard, team workspaces).
 - Decomposition + arithmetic combined for DROP-shaped multi-step claims.
 
-## [0.2.0] — 2026-06-11
+## [0.2.0] — unreleased
 
-First PyPI release. The distribution is named **`orc-ai`** — `orc` is taken on
-PyPI by an unrelated project — but the import package (`import orc`) and the
-CLI command (`orc`) are unchanged.
+Packaged for PyPI as **`orc-ai`** (`orc` is taken by an unrelated project);
+the import package (`import orc`) and CLI command (`orc`) are unchanged. The
+release workflow publishes on a `v0.2.0` tag once the trusted publisher is
+configured — not yet tagged or published.
 
 ### Added
 

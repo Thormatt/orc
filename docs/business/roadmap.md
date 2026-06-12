@@ -7,7 +7,7 @@ validated against real customer demand. Stage 0 is "land 3 pilots and learn
 what to charge for"; everything past Stage 1 will be revised based on what
 those pilots teach us.
 
-Last updated: 2026-05-19. Code state: v0.1.4 (F1 = 0.864 on a stratified
+Last updated: 2026-05-19. Code state: v0.2.0 — hybrid retrieval, PDF ingest, propose/report CLIs shipped (unreleased). Benchmark F1 = 0.864 on a stratified
 504-item HaluBench subsample — competitive with Lynx-70B's published
 home-court 0.85, not a same-set head-to-head; see
 [competitive.md](../positioning/competitive.md) for caveats).
