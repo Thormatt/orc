@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from orc.retrieval import bm25_search
+from orc.retrieval import retrieve
 from orc.runs.runner import Run
 from orc.storage.workspace import Workspace
 
@@ -22,8 +22,11 @@ class _SearchEvidence:
         corpus_version: int | None = None,
         **_unused: Any,
     ) -> dict[str, Any]:
-        chunks = bm25_search(run.conn, query, limit=k, corpus_version=corpus_version)
-        run.record_retrieval(chunks, method="bm25", candidates_considered=len(chunks))
+        res = retrieve(run.conn, query, workspace=workspace, limit=k, corpus_version=corpus_version)
+        chunks = res.chunks
+        run.record_retrieval(
+            chunks, method=res.method, candidates_considered=res.candidates_considered
+        )
         return {
             "query": query,
             "k": k,

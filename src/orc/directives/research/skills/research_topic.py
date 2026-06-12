@@ -10,7 +10,7 @@ from orc.core.ids import new_id
 from orc.llm.cache import build_verify_messages, format_corpus
 from orc.llm.client import get_client, messages_create, resolve_model_for_provider
 from orc.llm.models import resolve_research_model
-from orc.retrieval import bm25_search
+from orc.retrieval import retrieve
 from orc.runs.runner import Run
 from orc.storage.workspace import Workspace
 
@@ -73,11 +73,13 @@ class _ResearchTopic:
             raise ValueError("topic must be a non-empty string")
 
         resolved_model = resolve_research_model(model)
-        pool = bm25_search(
-            run.conn, topic, limit=retrieval_pool, corpus_version=corpus_version
+        res = retrieve(
+            run.conn, topic, workspace=workspace, limit=retrieval_pool, corpus_version=corpus_version
         )
-        candidates = pool[:k]
-        run.record_retrieval(candidates, method="bm25", candidates_considered=len(pool))
+        candidates = res.chunks[:k]
+        run.record_retrieval(
+            candidates, method=res.method, candidates_considered=res.candidates_considered
+        )
 
         if not candidates:
             return {

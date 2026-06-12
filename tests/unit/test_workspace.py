@@ -145,3 +145,96 @@ def test_cli_workspace_list_after_create(orc_home: Path) -> None:
     result = runner.invoke(main, ["workspace", "list"])
     assert result.exit_code == 0
     assert "demo" in result.output
+
+
+def test_cli_workspace_create_embeddings_sets_default_model(orc_home: Path) -> None:
+    from orc.retrieval.embedder import DEFAULT_EMBEDDING_MODEL
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["workspace", "create", "demo", "--embeddings"])
+    assert result.exit_code == 0, result.output
+    assert ws_module.resolve("demo").embedding_model == DEFAULT_EMBEDDING_MODEL
+
+
+def test_cli_workspace_create_embeddings_custom_model(orc_home: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["workspace", "create", "demo", "--embeddings", "--embedding-model", "my/model"],
+    )
+    assert result.exit_code == 0, result.output
+    assert ws_module.resolve("demo").embedding_model == "my/model"
+
+
+def test_cli_workspace_create_embeddings_warns_but_creates_when_deps_missing(
+    orc_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from orc.cli_commands import workspace as workspace_cli
+
+    monkeypatch.setattr(workspace_cli, "embedder_available", lambda: False)
+    runner = CliRunner()
+    result = runner.invoke(main, ["workspace", "create", "demo", "--embeddings"])
+    assert result.exit_code == 0, result.output
+    assert "orc-ai[embeddings]" in result.output
+    assert ws_module.resolve("demo").embedding_model is not None
+
+
+def test_cli_workspace_create_embedding_model_requires_embeddings_flag(
+    orc_home: Path,
+) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["workspace", "create", "demo", "--embedding-model", "my/model"]
+    )
+    assert result.exit_code != 0
+    assert "--embeddings" in result.output
+
+
+def test_cli_workspace_embed_backfills_and_sets_model(orc_home: Path, tmp_path: Path) -> None:
+    pytest.importorskip("sqlite_vec")
+    from orc.ingest.pipeline import ingest as do_ingest
+    from orc.retrieval.embedder import set_embedder_factory
+    from tests._fake_embedder import FakeEmbedder
+
+    fake = FakeEmbedder(dim=8)
+    set_embedder_factory(lambda model_id: fake)
+    try:
+        ws = ws_module.create("demo")
+        doc = tmp_path / "a.md"
+        doc.write_text("# Doc A\n\nSome content to embed.\n")
+        do_ingest(ws, str(doc))
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["workspace", "embed", "demo", "--model", fake.model_id]
+        )
+        assert result.exit_code == 0, result.output
+        assert f"chunk(s) with {fake.model_id}" in result.output
+        assert "Embedded" in result.output
+        assert ws_module.resolve("demo").embedding_model == fake.model_id
+
+        with open_connection(workspace_db_path("demo")) as conn:
+            from orc.storage.embeddings_store import load_vec_extension
+
+            load_vec_extension(conn)
+            n = conn.execute("SELECT COUNT(*) AS n FROM chunk_vec").fetchone()["n"]
+        assert n >= 1
+    finally:
+        set_embedder_factory(None)
+
+
+def test_cli_workspace_embed_conflicting_model_errors(orc_home: Path) -> None:
+    pytest.importorskip("sqlite_vec")
+    from orc.retrieval.embedder import set_embedder_factory
+    from tests._fake_embedder import FakeEmbedder
+
+    fake = FakeEmbedder(dim=8)
+    set_embedder_factory(lambda model_id: fake)
+    try:
+        ws_module.create("demo", embedding_model="model-a")
+        runner = CliRunner()
+        result = runner.invoke(main, ["workspace", "embed", "demo", "--model", "model-b"])
+        assert result.exit_code != 0
+        assert "model-a" in result.output
+    finally:
+        set_embedder_factory(None)

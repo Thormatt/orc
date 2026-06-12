@@ -28,3 +28,7 @@ class TraceNotFoundError(OrcError):
 
 class IngestError(OrcError):
     pass
+
+
+class EmbeddingsUnavailableError(OrcError):
+    """Embeddings were requested but the optional dependencies are missing."""

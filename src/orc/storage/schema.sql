@@ -55,9 +55,11 @@ CREATE TRIGGER IF NOT EXISTS chunk_au AFTER UPDATE ON chunk BEGIN
     INSERT INTO chunk_fts(rowid, text) VALUES (new.rowid, new.text);
 END;
 
--- chunk_vec is created lazily by storage/embeddings_store.py when embeddings are
--- enabled for a workspace. Schema:
---   CREATE VIRTUAL TABLE chunk_vec USING vec0(chunk_id TEXT PRIMARY KEY, embedding FLOAT[N]);
+-- chunk_vec is created lazily by storage/embeddings_store.py (ensure_chunk_vec)
+-- when embeddings are enabled for a workspace. Requires the sqlite-vec extension.
+-- The vector dimension N is stamped in schema_meta under 'chunk_vec_dim'. Schema:
+--   CREATE VIRTUAL TABLE chunk_vec USING vec0(
+--       chunk_id TEXT PRIMARY KEY, embedding FLOAT[N], corpus_version INTEGER);
 
 CREATE TABLE IF NOT EXISTS run (
     run_id               TEXT PRIMARY KEY,

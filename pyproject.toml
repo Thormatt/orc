@@ -51,11 +51,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-embeddings = ["sqlite-vec>=0.1.6"]
+embeddings = ["sqlite-vec>=0.1.6", "sentence-transformers>=3.0"]
+# sqlite-vec is a tiny wheel; including it in dev lets CI exercise the
+# vector-store tests without pulling in torch via sentence-transformers.
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "ruff>=0.5",
+    "sqlite-vec>=0.1.6",
 ]
 # Heavyweight, optional. Required only by `benchmarks/faithfulness/` which
 # downloads the HaluBench subsample and self-hosts HHEM-2.1-Open for the
