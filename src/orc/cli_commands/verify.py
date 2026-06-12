@@ -45,6 +45,12 @@ _LABEL_STYLE = {
     default=None,
     help="Route mode by domain hint (e.g. 'financial', 'clinical', 'legal')",
 )
+@click.option(
+    "--mode",
+    default=None,
+    type=click.Choice(["evidence", "judgment", "binary", "decomposed", "arithmetic", "tiered"]),
+    help="Verify mode (overrides --domain routing)",
+)
 @click.option("--yes", "-y", is_flag=True, help="Skip the confirmation prompt for batch verify")
 @click.option("--json", "as_json", is_flag=True, help="Emit raw JSON instead of formatted output")
 def verify_command(
@@ -55,6 +61,7 @@ def verify_command(
     from_file: str | None,
     from_url: str | None,
     domain: str | None,
+    mode: str | None,
     yes: bool,
     as_json: bool,
 ) -> None:
@@ -75,12 +82,13 @@ def verify_command(
             model=model,
             k=k,
             domain=domain,
+            mode=mode,
             yes=yes,
             as_json=as_json,
         )
         return
 
-    _verify_one(ws, claim=claim, model=model, k=k, domain=domain, as_json=as_json)
+    _verify_one(ws, claim=claim, model=model, k=k, domain=domain, mode=mode, as_json=as_json)
 
 
 def _verify_one(
@@ -90,6 +98,7 @@ def _verify_one(
     model: str | None,
     k: int | None,
     domain: str | None,
+    mode: str | None,
     as_json: bool,
 ) -> None:
     spec = directives.get("research")
@@ -101,6 +110,8 @@ def _verify_one(
         kwargs["k"] = k
     if domain is not None:
         kwargs["domain"] = domain
+    if mode is not None:
+        kwargs["mode"] = mode
 
     with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
         run.record_effective_kwargs(kwargs)
@@ -124,6 +135,7 @@ def _verify_from_document(
     model: str | None,
     k: int | None,
     domain: str | None,
+    mode: str | None,
     yes: bool,
     as_json: bool,
 ) -> None:
@@ -176,6 +188,8 @@ def _verify_from_document(
             kwargs["k"] = k
         if domain is not None:
             kwargs["domain"] = domain
+        if mode is not None:
+            kwargs["mode"] = mode
         with open_run(ws, directive="research", skill="verify_claim", inputs=dict(kwargs)) as run:
             run.record_effective_kwargs(kwargs)
             try:
