@@ -147,3 +147,35 @@ def test_eval_calibrate_writes_policy_and_tiered_reads_it(orc_home, tmp_path, mo
     assert policy is not None
     assert policy.target == 0.95
     assert 0.0 < policy.escalation_threshold <= 0.97
+
+
+def test_eval_label_migrates_a_pre_v2_workspace(orc_home, tmp_path, monkeypatch) -> None:
+    # A workspace whose db was built by pre-v2 code has no gold_claim table and
+    # is stamped schema_version=1. Labelling a run must migrate it (resolve runs
+    # ensure_schema), not crash with "no such table".
+    from orc.paths import workspace_db_path
+    from orc.storage.db import open_connection
+
+    ws = ws_module.create("legacy")
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "doc.md").write_text("# Doc\n\nThe sky is blue.\n")
+    do_ingest(ws, str(corpus))
+    fake = FakeAnthropic(responses=[make_verdict_response(label="supported", confidence=0.9)])
+    monkeypatch.setattr(client_module, "_client", fake)
+    monkeypatch.setattr(client_module, "_factory", None)
+    skill = directives.get("research").skills["verify_claim"]
+    rws = ws_module.resolve("legacy")
+    with open_run(rws, directive="research", skill="verify_claim", inputs={}) as run:
+        result = skill.run(workspace=rws, run=run, claim="The sky is blue")
+        run.close(output=result)
+    run_id = run.run_id
+
+    # Simulate a genuinely pre-v2 db: drop the v2 tables and reset the stamp.
+    with open_connection(workspace_db_path("legacy")) as conn:
+        conn.execute("DROP TABLE gold_claim")
+        conn.execute("UPDATE schema_meta SET value='1' WHERE key='schema_version'")
+
+    res = CliRunner().invoke(main, ["eval", "label", run_id, "--verdict", "supported", "-w", "legacy"])
+    assert res.exit_code == 0, res.output
+    assert len(gold.list_gold("legacy")) == 1
