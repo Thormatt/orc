@@ -72,10 +72,31 @@ orc research "<topic>" [-w <name>]     corpus-grounded synthesis with citations
 orc trace show <run_id>                full trace JSON
 orc trace list [-w <name>]             recent runs
 orc replay <run_id> [--live]           re-execute a recorded run
-orc approve list [-w <name>]           list pending approval items
+orc propose <executor> --params <json>  stage an action for human approval
+orc approve list [-w <name>] [--json]   list pending approval items
 orc approve accept <id> [--note]       accept a pending recommendation
 orc approve reject <id> [--note]       reject one
 orc mcp serve                          start the MCP stdio server
+```
+
+### Propose from the CLI
+
+Anything that would touch the outside world goes through the approval queue —
+including from the command line:
+
+```bash
+# one-time: enable the executor for the workspace (deny-by-default)
+cat >> ~/.orc/config.toml <<'TOML'
+[workspace.research.effects]
+allowed = ["fs.write_file"]
+TOML
+
+orc propose fs.write_file \
+  --params '{"path": "summary.md", "content": "..."}' \
+  --summary "publish verified summary" -w research
+# -> approval <id> pending; then:
+orc approve accept <id> -w research
+orc execute <id> -w research          # lands in ~/.orc/workspaces/research/out/
 ```
 
 ## Architecture
