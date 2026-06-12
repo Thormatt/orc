@@ -80,6 +80,11 @@ def _ingest_one(workspace: Workspace, doc: LoadedDoc) -> list[str]:
         # Chunk before any disk write so a chunker failure leaves nothing behind.
         chunks = chunk_text(doc.text)
 
+        # Embed BEFORE the write transaction: model inference can be slow and
+        # must not hold the BEGIN IMMEDIATE write lock. The vectors are then
+        # inserted in the same transaction as the chunk rows (atomic).
+        embeddings = _embed_chunks_for_ingest(conn, workspace=workspace, chunks=chunks)
+
         # Stage the evidence bytes to a temp file and only promote it into place
         # once the DB transaction commits. A failure anywhere leaves neither an
         # orphaned file nor a dangling row — the corpus stays consistent.
@@ -95,12 +100,56 @@ def _ingest_one(workspace: Workspace, doc: LoadedDoc) -> list[str]:
                 sha=sha,
                 doc=doc,
                 chunks=chunks,
+                embeddings=embeddings,
             )
         except BaseException:
             tmp_path.unlink(missing_ok=True)
             raise
         os.replace(tmp_path, stored_path)
         return [evidence_id]
+
+
+def _embed_chunks_for_ingest(
+    conn: Any,
+    *,
+    workspace: Workspace,
+    chunks: list,
+) -> list[list[float]] | None:
+    """Embed chunk texts when the workspace opts into embeddings.
+
+    Fail-loud by design: a workspace with embedding_model set has promised
+    hybrid retrieval, so silently ingesting unembedded chunks would corrupt
+    that promise. Missing deps surface as IngestError with an install hint.
+    Also prepares chunk_vec (extension + table) before the write transaction.
+    """
+    if workspace.embedding_model is None or not chunks:
+        return None
+
+    from orc.errors import EmbeddingsUnavailableError
+    from orc.retrieval.embedder import get_embedder
+    from orc.storage.embeddings_store import (
+        ensure_chunk_vec,
+        load_vec_extension,
+        vec_extension_available,
+    )
+
+    try:
+        if not vec_extension_available():
+            raise EmbeddingsUnavailableError(
+                "the sqlite-vec extension is unavailable; "
+                'run: pip install "orc-ai[embeddings]"'
+            )
+        embedder = get_embedder(workspace.embedding_model)
+    except EmbeddingsUnavailableError as exc:
+        raise IngestError(
+            f"Workspace {workspace.name!r} requires embeddings "
+            f"(embedding_model={workspace.embedding_model!r}) but they are "
+            f"unavailable: {exc}"
+        ) from exc
+
+    load_vec_extension(conn)
+    ensure_chunk_vec(conn, embedder.dim)
+    return embedder.embed_texts([c.text for c in chunks])
 
 
 def _commit_evidence(
@@ -112,6 +161,7 @@ def _commit_evidence(
     sha: str,
     doc: LoadedDoc,
     chunks: list,
+    embeddings: list[list[float]] | None = None,
 ) -> None:
     with transaction(conn):
         conn.execute(
@@ -136,12 +186,13 @@ def _commit_evidence(
                 new_corpus_version,
             ),
         )
-        for c in chunks:
+        chunk_ids = [new_chunk_id() for _ in chunks]
+        for chunk_id, c in zip(chunk_ids, chunks, strict=True):
             conn.execute(
                 "INSERT INTO chunk(chunk_id, evidence_id, seq, text, token_count, "
                 "headings_path, start_offset, end_offset) VALUES (?,?,?,?,?,?,?,?)",
                 (
-                    new_chunk_id(),
+                    chunk_id,
                     evidence_id,
                     c.seq,
                     c.text,
@@ -150,6 +201,16 @@ def _commit_evidence(
                     c.start_offset,
                     c.end_offset,
                 ),
+            )
+        if embeddings is not None:
+            from orc.storage.embeddings_store import store_chunk_embeddings
+
+            store_chunk_embeddings(
+                conn,
+                [
+                    (chunk_id, new_corpus_version, vector)
+                    for chunk_id, vector in zip(chunk_ids, embeddings, strict=True)
+                ],
             )
 
 

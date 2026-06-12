@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import sqlite3
 from importlib.util import find_spec
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from orc.retrieval.embedder import Embedder
 
 _DIM_META_KEY = "chunk_vec_dim"
 
@@ -136,6 +140,36 @@ def chunks_missing_embeddings(conn: sqlite3.Connection) -> list[sqlite3.Row]:
         "WHERE chunk.chunk_id NOT IN (SELECT chunk_id FROM chunk_vec) "
         "ORDER BY chunk.chunk_id"
     ).fetchall()
+
+
+def backfill_embeddings(
+    conn: sqlite3.Connection, embedder: Embedder, batch_size: int = 64
+) -> int:
+    """Embed every chunk that has no chunk_vec row yet. Returns rows written.
+
+    Idempotent: only missing chunks are touched, so re-running after a crash
+    (or on an already-complete corpus) is safe. Each vector is stamped with
+    the chunk's ORIGINAL evidence corpus_version so frozen replay filters
+    stay truthful. Batches commit independently — a failure mid-backfill
+    keeps completed batches, and the next run picks up the remainder.
+    """
+    from orc.storage.db import transaction
+
+    missing = chunks_missing_embeddings(conn)
+    written = 0
+    for start in range(0, len(missing), batch_size):
+        batch = missing[start : start + batch_size]
+        vectors = embedder.embed_texts([row["text"] for row in batch])
+        with transaction(conn):
+            store_chunk_embeddings(
+                conn,
+                [
+                    (row["chunk_id"], row["corpus_version"], vector)
+                    for row, vector in zip(batch, vectors, strict=True)
+                ],
+            )
+        written += len(batch)
+    return written
 
 
 def _stamped_dim(conn: sqlite3.Connection) -> int | None:

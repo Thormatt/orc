@@ -182,15 +182,19 @@ def test_retrieve_falls_back_when_chunk_vec_absent(
     from orc.ingest.pipeline import ingest as do_ingest
     from orc.paths import workspace_db_path
 
-    # Model set but chunk_vec never created (e.g. flag flipped on an old corpus
-    # before `orc workspace embed` was run).
-    ws = ws_module.create("novec", embedding_model=fake_embedder.model_id)
+    # Corpus ingested BEFORE embeddings were enabled: chunk_vec never created.
+    # Flipping the model flag afterwards must not break retrieval before
+    # `orc workspace embed` has been run.
+    ws = ws_module.create("novec")
     corpus = tmp_path / "corpus"
     corpus.mkdir()
     (corpus / "a.md").write_text("# Doc\n\nSkills are versioned capabilities.\n")
     do_ingest(ws, str(corpus))
     with open_connection(workspace_db_path(ws.name)) as conn:
-        conn.execute("DROP TABLE IF EXISTS chunk_vec")
+        conn.execute(
+            "UPDATE workspace SET embedding_model = ? WHERE name = ?",
+            (fake_embedder.model_id, ws.name),
+        )
         with pytest.warns(RuntimeWarning, match="orc workspace embed"):
             res = retrieve(conn, "skills", workspace=ws_module.resolve(ws.name), limit=5)
     assert res.method == "bm25"

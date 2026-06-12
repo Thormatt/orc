@@ -35,6 +35,8 @@ def ingest_command(source: str, workspace: str | None, no_recursive: bool) -> No
     console.print(
         f"[green]Ingested[/green] {len(ids)} evidence item(s) into [bold]{ws.name}[/bold]"
     )
+    if ws.has_embeddings:
+        console.print(f"  embeddings: {ws.embedding_model}")
     for eid in ids[:10]:
         console.print(f"  [dim]{eid}[/dim]")
     if len(ids) > 10:
