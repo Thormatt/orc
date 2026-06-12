@@ -177,3 +177,18 @@ def test_inline_css_and_js_are_embedded() -> None:
     assert "resolveVerdicts" in html_doc
     assert 'href="trace.css"' not in html_doc
     assert 'src="trace.js"' not in html_doc
+
+
+def test_report_handles_unbreakable_tokens_and_many_runs() -> None:
+    """Real traces carry long unbreakable tokens (URLs, DOIs, file paths) the
+    mockup never had; without word-breaking overrides the centered grid
+    overflows and clips off the LEFT viewport edge. And a 13-run report must
+    not dump every run id into the topbar."""
+    traces = [make_trace(run_id=f"01KTYCD5EZSNV3APT9DZA9M7Y{i}") for i in range(5)]
+    html = build_report_html(traces)
+    # word-break overrides present after the verbatim asset css
+    assert "overflow-wrap" in html
+    # topbar summarizes instead of listing all five ids
+    head = html[: html.index("<main")]
+    assert "5 runs" in head
+    assert head.count("01KTYCD5EZSNV3APT9DZA9M7Y") <= 1

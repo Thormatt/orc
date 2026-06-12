@@ -44,7 +44,7 @@ def build_report_html(traces: list[dict[str, Any]]) -> str:
         _claim_article(trace, index=i) for i, trace in enumerate(traces, start=1)
     ]
     run_ids = [str(t.get("run_id", "?")) for t in traces]
-    title = _esc("orc — trace " + ", ".join(run_ids))
+    title = _esc(f"orc — {len(run_ids)} runs" if len(run_ids) > 1 else f"orc — trace {run_ids[0]}")
     return "\n".join(
         [
             "<!doctype html>",
@@ -54,6 +54,16 @@ def build_report_html(traces: list[dict[str, Any]]) -> str:
             '<meta name="viewport" content="width=device-width,initial-scale=1">',
             f"<title>{title}</title>",
             f"<style>{_asset('trace.css')}</style>",
+            # Overrides on top of the verbatim mockup asset: real traces carry
+            # long unbreakable tokens (URLs, DOIs, file paths, run ids) the
+            # mockup never had — without word-breaking, the centered .grid's
+            # min-content width exceeds the viewport and clips off the LEFT
+            # edge, unreachable by scrolling.
+            "<style>"
+            ".claim-title,.claim-body,.reasoning .v,.chunk-quote,.src,.cid,"
+            ".tb-meta,.claim-id,.cmd-line{overflow-wrap:anywhere;}"
+            ".grid{grid-template-columns:minmax(0,1fr) minmax(0,var(--led));}"
+            "</style>",
             "</head>",
             "<body>",
             _topbar(traces, run_ids=run_ids),
@@ -81,6 +91,13 @@ def _uniq(values: list[str]) -> str:
     return ", ".join(seen) if seen else "?"
 
 
+def _run_label(run_ids: list[str]) -> str:
+    """Topbar-sized run reference: one id verbatim, a count beyond that."""
+    if len(run_ids) == 1:
+        return f"trace {_esc(run_ids[0])}"
+    return f"{len(run_ids)} runs {_esc(run_ids[0])} +{len(run_ids) - 1}"
+
+
 def _topbar(traces: list[dict[str, Any]], *, run_ids: list[str]) -> str:
     workspaces = _uniq([str(t.get("workspace", "")) for t in traces])
     models = _uniq([str(t.get("model") or "") for t in traces])
@@ -88,7 +105,7 @@ def _topbar(traces: list[dict[str, Any]], *, run_ids: list[str]) -> str:
     sep = '<span class="sep">·</span>'
     meta = sep.join(
         [
-            f"<b>trace {_esc(', '.join(run_ids))}</b>",
+            f"<b>{_run_label(run_ids)}</b>",
             f"workspace={_esc(workspaces)}",
             f"model={_esc(models)}",
             f"corpus v{_esc(corpora)}",
