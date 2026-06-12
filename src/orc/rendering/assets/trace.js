@@ -31,7 +31,10 @@ function resolveVerdicts() {
     pill.classList.remove('pending');
     pill.classList.add(v.cls);
     const scoreTxt = score ? ` · ${score}` : '';
-    pill.innerHTML = `<span class="vt">${v.label}${scoreTxt}</span>`;
+    const vt = document.createElement('span');
+    vt.className = 'vt';
+    vt.textContent = `${v.label}${scoreTxt}`;
+    pill.replaceChildren(vt);
   });
 }
 
@@ -72,11 +75,15 @@ function buildLedger(claims) {
     li.href = `#${c.id}`;
     li.className = `led ${c.kind}`;
     const v = VERDICTS[c.kind];
-    li.innerHTML = `
-      <span class="glyph">${v.glyph}</span>
-      <span class="cid">${c.n}</span>
-      <span class="lbl">${c.title}</span>
-    `;
+    // c.title came from .textContent (entities already decoded) — injecting
+    // it through innerHTML would re-open the XSS the server-side escaping
+    // closed. Build the row with createElement/textContent only.
+    for (const [cls, text] of [["glyph", v.glyph], ["cid", c.n], ["lbl", c.title]]) {
+      const span = document.createElement('span');
+      span.className = cls;
+      span.textContent = text;
+      li.appendChild(span);
+    }
     list.appendChild(li);
   });
   const total = document.getElementById('led-total');

@@ -192,3 +192,16 @@ def test_report_handles_unbreakable_tokens_and_many_runs() -> None:
     head = html[: html.index("<main")]
     assert "5 runs" in head
     assert head.count("01KTYCD5EZSNV3APT9DZA9M7Y") <= 1
+
+
+def test_bundled_js_never_injects_trace_text_via_innerhtml() -> None:
+    """trace.js reads claim titles back via .textContent (entities decoded);
+    re-injecting them through innerHTML re-opens the XSS that server-side
+    escaping closed — demonstrated live before this fix. The only allowed
+    innerHTML uses are bare container clears."""
+    from importlib.resources import files
+
+    js = files("orc.rendering.assets").joinpath("trace.js").read_text(encoding="utf-8")
+    for line in js.splitlines():
+        if "innerHTML" in line and not line.strip().startswith("//"):
+            assert line.strip().endswith("innerHTML = '';"), f"unsafe innerHTML: {line.strip()}"
