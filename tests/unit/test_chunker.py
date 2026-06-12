@@ -76,3 +76,54 @@ def test_chunks_offsets_are_within_body() -> None:
         assert 0 <= c.start_offset <= len(body)
         assert 0 < c.end_offset <= len(body) + 5  # decode rounding may add a couple chars
         assert c.end_offset >= c.start_offset
+
+
+def _cjk_emoji_body() -> str:
+    """Multi-byte heavy document: every char is 3-4 UTF-8 bytes, no whitespace.
+
+    Small token windows routinely land mid-character in byte-level BPE,
+    which is exactly the condition the chunker must survive.
+    """
+    return "".join(f"日本語のテキスト第{i}文。絵文字🎉も含まれます。" for i in range(200))
+
+
+def test_cjk_emoji_chunks_contain_no_replacement_characters() -> None:
+    body = _cjk_emoji_body()
+    chunks = chunk_text(body, target_tokens=50, overlap_tokens=10)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert "�" not in c.text
+
+
+def test_cjk_emoji_chunk_offsets_slice_body_exactly() -> None:
+    body = _cjk_emoji_body()
+    chunks = chunk_text(body, target_tokens=50, overlap_tokens=10)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert body[c.start_offset : c.end_offset] == c.text
+
+
+def test_cjk_chunks_tile_without_gaps_when_no_overlap() -> None:
+    body = _cjk_emoji_body()
+    chunks = chunk_text(body, target_tokens=50, overlap_tokens=0)
+    assert len(chunks) >= 2
+    assert chunks[0].start_offset == 0
+    assert chunks[-1].end_offset == len(body)
+    for prev, nxt in zip(chunks, chunks[1:], strict=False):
+        assert prev.end_offset == nxt.start_offset
+
+
+def test_ascii_windowed_chunk_offsets_slice_body_exactly() -> None:
+    body = ("# Section\n\n" + "Lorem ipsum dolor sit amet. " * 400).strip()
+    chunks = chunk_text(body, target_tokens=100, overlap_tokens=20)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert body[c.start_offset : c.end_offset] == c.text
+
+
+def test_single_chunk_section_offsets_exclude_stripped_whitespace() -> None:
+    body = "# Top\n\nIntro text.\n\n## Sub\n\nDetails here.\n"
+    chunks = chunk_text(body, target_tokens=800)
+    assert len(chunks) == 2
+    for c in chunks:
+        assert body[c.start_offset : c.end_offset] == c.text
