@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from importlib.resources import files
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def schema_sql() -> str:
@@ -43,6 +43,22 @@ def bootstrap_schema(conn: sqlite3.Connection) -> None:
         "INSERT OR REPLACE INTO schema_meta(key, value) VALUES (?, ?)",
         ("schema_version", str(SCHEMA_VERSION)),
     )
+
+
+def ensure_schema(conn: sqlite3.Connection) -> None:
+    """Bring a connection's schema up to SCHEMA_VERSION.
+
+    Every table uses CREATE TABLE IF NOT EXISTS, so re-running the script is the
+    migration for additive bumps (v1 -> v2 added gold_claim/eval_run/
+    tiered_policy). Cheap to no-op when already current, so callers can invoke it
+    on every workspace open without a version probe of their own."""
+    row = conn.execute(
+        "SELECT value FROM schema_meta WHERE key='schema_version'"
+    ).fetchone()
+    stored = int(row["value"]) if row else 1
+    if stored >= SCHEMA_VERSION:
+        return
+    bootstrap_schema(conn)
 
 
 @contextmanager

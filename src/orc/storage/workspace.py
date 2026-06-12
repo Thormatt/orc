@@ -14,7 +14,13 @@ from orc.paths import (
     workspace_traces_dir,
     workspaces_root,
 )
-from orc.storage.db import SCHEMA_VERSION, bootstrap_schema, open_connection, transaction
+from orc.storage.db import (
+    SCHEMA_VERSION,
+    bootstrap_schema,
+    ensure_schema,
+    open_connection,
+    transaction,
+)
 
 
 @dataclass(frozen=True)
@@ -78,6 +84,10 @@ def resolve(name: str | None) -> Workspace:
         raise WorkspaceNotFoundError(f"Workspace {resolved_name!r} not found")
 
     with open_connection(db_path) as conn:
+        # Additive migrations run on open so a workspace created by an older orc
+        # gains new tables (gold_claim/eval_run/tiered_policy) the first time a
+        # newer orc touches it. No-op once current.
+        ensure_schema(conn)
         row = conn.execute(
             "SELECT name, schema_version, created_at, embedding_model, corpus_version "
             "FROM workspace WHERE name = ?",
