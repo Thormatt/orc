@@ -353,3 +353,28 @@ def test_backward_compat_default_single_approver(orc_home: Path) -> None:
     decided = approval_module.accept(name, aid, decided_by="alice")
     assert decided.status == "approved"
     assert decided.progress == "1/1"
+
+
+def test_approve_list_json_emits_machine_readable_array(orc_home: Path) -> None:
+    """Scripts (and baton) need a parseable pending check, not a rich table."""
+    import json as json_lib
+
+    name = _seed_workspace(orc_home)
+    approval_module.enqueue(
+        name,
+        directive="research",
+        skill="t",
+        source_run_id="01HXYZ123",
+        summary="machine readable",
+        payload={},
+    )
+
+    result = CliRunner().invoke(main, ["approve", "list", "-w", name, "--json"])
+    assert result.exit_code == 0, result.output
+    items = json_lib.loads(result.output)
+    assert isinstance(items, list) and len(items) == 1
+    item = items[0]
+    assert item["status"] == "pending"
+    assert item["summary"] == "machine readable"
+    assert {"approval_id", "approvers_required", "accept_count", "reject_count",
+            "directive", "skill", "source_run_id", "created_at"} <= set(item)

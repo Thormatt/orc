@@ -41,7 +41,8 @@ def approve_group() -> None:
     help="Filter by status (default: pending)",
 )
 @click.option("--limit", type=int, default=20)
-def list_command(workspace: str | None, status: str, limit: int) -> None:
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable JSON output")
+def list_command(workspace: str | None, status: str, limit: int, as_json: bool) -> None:
     """List approvals."""
     try:
         ws = ws_module.resolve(workspace)
@@ -50,6 +51,29 @@ def list_command(workspace: str | None, status: str, limit: int) -> None:
     items = approval_module.list_approvals(
         ws.name, status=None if status == "all" else status, limit=limit
     )
+    if as_json:
+        # Plain echo, never rich: scripts (and baton) parse this.
+        click.echo(
+            json_lib.dumps(
+                [
+                    {
+                        "approval_id": a.approval_id,
+                        "status": a.status,
+                        "approvers_required": a.approvers_required,
+                        "accept_count": a.accept_count,
+                        "reject_count": a.reject_count,
+                        "directive": a.directive,
+                        "skill": a.skill,
+                        "summary": a.summary,
+                        "source_run_id": a.source_run_id,
+                        "created_at": a.created_at,
+                    }
+                    for a in items
+                ],
+                indent=2,
+            )
+        )
+        return
     if not items:
         console.print(f"[dim]No approvals with status={status} in {ws.name}[/dim]")
         return
