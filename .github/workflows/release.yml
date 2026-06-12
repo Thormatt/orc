@@ -1,0 +1,55 @@
+# Publishes to PyPI via Trusted Publishing (OIDC) — no API token is stored
+# in this repo. One-time setup on PyPI before the first tagged release:
+#
+#   1. Create (or claim) the "orc-ai" project on https://pypi.org.
+#   2. Under the project's Publishing settings, add a Trusted Publisher:
+#        owner:       Thormatt
+#        repository:  orc
+#        workflow:    release.yml
+#        environment: pypi
+#   3. In this GitHub repo, create an environment named "pypi"
+#      (Settings → Environments) — optionally with required reviewers.
+#
+# Then `git tag v0.2.0 && git push --tags` publishes automatically.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Required for PyPI Trusted Publishing (OIDC token exchange).
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check tag matches pyproject version
+        # Tagging v0.3.0 on a 0.2.0 pyproject would otherwise silently
+        # publish the wrong version.
+        run: |
+          PYPROJECT_VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match pyproject version $PYPROJECT_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          uv sync --extra dev
+          uv run pytest -q
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

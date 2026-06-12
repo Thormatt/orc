@@ -27,8 +27,8 @@ Built for **research analysts, editorial teams, legal & compliance, agentic-work
 # Install
 uv pip install git+https://github.com/Thormatt/orc
 
-# Or, once published to PyPI:
-# uv pip install orc
+# Or, once published to PyPI (the CLI command and import name stay `orc`):
+# uv pip install orc-ai
 
 # Set up credentials (either of these works; OpenRouter takes priority if both set)
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -63,7 +63,7 @@ claude mcp add orc -- uv run --directory $(pwd) orc mcp serve
 ```
 orc workspace create <name>            create a new workspace
 orc workspace list                     list workspaces
-orc ingest <path-or-url> [-w <name>]   add evidence (md, txt, urls)
+orc ingest <path-or-url> [-w <name>]   add evidence (md, txt, json, pdf, urls)
 orc search "<query>" [-w <name>]       BM25 retrieval, no LLM
 orc verify "<claim>" [-w <name>]       verify a single claim
 orc verify --file <path>               extract + verify every claim in a draft
@@ -111,7 +111,7 @@ A `.env` file in the repo root or at `$ORC_HOME/.env` is auto-loaded. Shell-expo
 
 ## Project status
 
-`v0.1.4` — current. Faithfulness benchmark headline (HaluBench, stratified 504-item subsample, source-aware routing):
+`v0.2.0` — current. Faithfulness benchmark headline (HaluBench, stratified 504-item subsample, source-aware routing; measured on v0.1.4, runtime unchanged since):
 
 | Metric | Score |
 |---|---:|
@@ -122,13 +122,14 @@ A `.env` file in the repo root or at `$ORC_HOME/.env` is auto-loaded. Shell-expo
 
 > **0.864 is competitive with Patronus AI's Lynx-70B published home-court F1 of 0.85** — not a same-set head-to-head: orc's number comes from a stratified 504-item HaluBench subsample, with source-aware routing tuned on that same subsample, while Lynx reported on the full benchmark. It is achieved with a general-purpose Claude Sonnet 4.6 call (no fine-tuning) plus a safe arithmetic evaluator the model can invoke for numeric claims. Orc additionally produces chunk-level citations, deterministic replay against a frozen corpus snapshot, audit-export bundles that can be self-contained (`--include-evidence`), and a multi-approver gate for high-risk verdicts — artifacts the competitive set of post-hoc faithfulness judges does not produce.
 
-What shipped in this version:
+What shipped in v0.2.0:
 
-- `domain=` parameter on `verify_claim` + `--domain` CLI flag → source-aware routing is a real product feature, not a benchmark variant.
-- `--include-evidence` flag on `orc audit export` → optional self-contained bundles (workspace DB + evidence files included) for offline regulator handoff.
-- `mode="arithmetic"` for numeric claims — multi-turn LLM loop with a safe AST-walking calculator. FinanceBench F1 climbed 0.736 → 0.916.
-- Citation guard: an evidence-mode verdict can no longer ship as `supported` with zero valid citations (downgraded to `not_found` and the dropped IDs land in the trace).
-- Self-hosting any open-weight 70B judge: the runtime is model-agnostic — pass `model="llama-3.3-70b-instruct"` (or even Lynx itself) at any compatible endpoint and every artifact above is unchanged.
+- **PDF ingestion** — `orc ingest report.pdf` (and PDF URLs) extracts text via pypdf, with metadata titles, owner-locked-PDF handling, and loud rejection of scanned/image-only files (OCR not yet supported).
+- **Product domain routing** — `domain=` now takes real domains (`general`, `legal`, `clinical`, `biomedical`, `financial`, `numeric`); the HaluBench source names stay accepted as benchmark-only aliases so published numbers remain reproducible.
+- **Hardening from a full code review** — SSRF guard now pins the validated IP against DNS rebinding, decomposed mode can vote against a claim, the citation guard covers judgment mode, chunking is UTF-8-exact for CJK/emoji corpora.
+- **PyPI packaging as `orc-ai`** (the name `orc` was taken; CLI command and import name remain `orc`), plus CI and tag-triggered release workflows.
+
+Shipped earlier in v0.1.4: `--include-evidence` self-contained audit bundles, `mode="arithmetic"` with a safe AST-walking calculator (FinanceBench F1 0.736 → 0.916), the evidence-mode citation guard, and model-agnostic self-hosting of any open-weight judge.
 
 Live walkthrough: **[pagenta.app/p/thorm/orc-how-it-works](https://pagenta.app/p/thorm/orc-how-it-works)** — six-scene visual explainer. Full pitch: **[pagenta.app/p/thorm/orc-pitch](https://pagenta.app/p/thorm/orc-pitch)**.
 
@@ -153,7 +154,7 @@ Live LLM tests are gated behind `ORC_TEST_ALLOW_LIVE_LLM=1` and require a real A
 ## Roadmap
 
 - Embedding-based retrieval (hybrid BM25 + vector via `sqlite-vec`)
-- PDF ingestion
+- OCR for scanned/image-only PDFs
 - Long-running directives (scheduled triggers, cloud execution)
 - `marketing` directive (assisted-only at first, autonomous behind approval gates later)
 - `legal` / `gads` / `code-review` directives — same runtime, new skill packages
