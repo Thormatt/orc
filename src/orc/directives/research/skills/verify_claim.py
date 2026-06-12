@@ -19,7 +19,7 @@ from orc.directives.research.routing import route_to_mode
 from orc.llm.cache import build_verify_messages, format_corpus
 from orc.llm.client import get_client, messages_create, resolve_model_for_provider
 from orc.llm.models import resolve_verify_model
-from orc.retrieval import bm25_search
+from orc.retrieval import retrieve
 from orc.runs.runner import Run
 from orc.storage.workspace import Workspace
 
@@ -372,11 +372,17 @@ class _VerifyClaim:
                 candidates, method=f"{mode}_all", candidates_considered=len(candidates)
             )
         else:
-            pool = bm25_search(
-                run.conn, claim, limit=retrieval_pool, corpus_version=corpus_version
+            res = retrieve(
+                run.conn,
+                claim,
+                workspace=workspace,
+                limit=retrieval_pool,
+                corpus_version=corpus_version,
             )
-            candidates = pool[:k]
-            run.record_retrieval(candidates, method="bm25", candidates_considered=len(pool))
+            candidates = res.chunks[:k]
+            run.record_retrieval(
+                candidates, method=res.method, candidates_considered=res.candidates_considered
+            )
 
         if not candidates:
             return _make_not_found(claim=claim, model=resolved_model, run=run)

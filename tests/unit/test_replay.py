@@ -153,6 +153,69 @@ def test_replay_works_for_extract_claims_runs(
     assert new_trace["output"]["claims"], "extract_claims should have produced claims on replay"
 
 
+def _seed_embedded_corpus(tmp_path: Path, fake) -> str:
+    """Workspace with embeddings enabled; ingest hook embeds via the fake."""
+    fake.vocabulary.update({"skills": 1})
+    ws = ws_module.create("demo", embedding_model=fake.model_id)
+    corpus = tmp_path / "v1"
+    corpus.mkdir()
+    (corpus / "a.md").write_text("# Doc A\n\nThe Skills API ships in October 2025.\n")
+    do_ingest(ws, str(corpus))
+    return ws.name
+
+
+def test_replay_frozen_hybrid_pins_corpus_version(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_embedder
+) -> None:
+    pytest.importorskip("sqlite_vec")
+    name = _seed_embedded_corpus(tmp_path, fake_embedder)
+    original = _verify_once(name, "skills api", monkeypatch)
+    original_trace = load_trace(original)
+    assert original_trace["retrieval"]["method"] == "hybrid_rrf"
+
+    # Grow the corpus (also auto-embedded), bumping corpus_version.
+    extra = tmp_path / "v2"
+    extra.mkdir()
+    (extra / "b.md").write_text("# Doc B\n\nMore skills content arriving later.\n")
+    do_ingest(ws_module.resolve(name), str(extra))
+
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    monkeypatch.setattr(client_module, "_client", fake)
+    out = replay(original)
+    assert out["mode"] == "frozen"
+
+    new_trace = load_trace(out["new_run_id"])
+    assert new_trace["retrieval"]["method"] == "hybrid_rrf"
+    new_chunk_ids = {c["chunk_id"] for c in new_trace["retrieval"]["returned"]}
+    original_chunk_ids = {c["chunk_id"] for c in original_trace["retrieval"]["returned"]}
+    assert new_chunk_ids == original_chunk_ids
+
+
+def test_replay_frozen_warns_on_retrieval_method_mismatch(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_embedder
+) -> None:
+    pytest.importorskip("sqlite_vec")
+    from orc.retrieval import embedder as embedder_module
+    from orc.retrieval.embedder import set_embedder_factory
+
+    name = _seed_embedded_corpus(tmp_path, fake_embedder)
+    original = _verify_once(name, "skills api", monkeypatch)
+    assert load_trace(original)["retrieval"]["method"] == "hybrid_rrf"
+
+    # Embedding deps vanish before the replay: retrieval falls back to BM25,
+    # and the replay engine must surface the method drift.
+    set_embedder_factory(None)
+    monkeypatch.setattr(embedder_module, "find_spec", lambda name: None)
+    fake = FakeAnthropic(responses=[make_verdict_response(label="not_found", confidence=0.5)])
+    monkeypatch.setattr(client_module, "_client", fake)
+    try:
+        with pytest.warns(RuntimeWarning, match="retrieval method"):
+            out = replay(original)
+    finally:
+        set_embedder_factory(lambda model_id: fake_embedder)
+    assert load_trace(out["new_run_id"])["retrieval"]["method"] == "bm25"
+
+
 def test_replay_records_lineage_in_inputs(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

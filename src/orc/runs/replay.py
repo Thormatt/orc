@@ -19,6 +19,7 @@ Kwargs precedence on replay:
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from orc import directives
@@ -70,6 +71,9 @@ def replay(run_id: str, *, live: bool = False) -> dict[str, Any]:
         result = skill.run(workspace=ws, run=run, **skill_kwargs)
         run.close(output=result)
 
+    if not live:
+        _warn_on_retrieval_method_drift(original_trace=trace, new_retrieval=run.retrieval)
+
     return {
         "original_run_id": run_id,
         "new_run_id": run.run_id,
@@ -80,6 +84,27 @@ def replay(run_id: str, *, live: bool = False) -> dict[str, Any]:
         "original_schema_version": schema_version,
         "result": result,
     }
+
+
+def _warn_on_retrieval_method_drift(
+    *,
+    original_trace: dict[str, Any],
+    new_retrieval: dict[str, Any] | None,
+) -> None:
+    """Frozen replay promises reproduction; a retrieval method change (e.g.
+    hybrid_rrf -> bm25 because embedding deps are absent at replay time) means
+    the chunk pool may differ even with corpus_version pinned. Surface it
+    rather than letting the drift pass silently."""
+    original_method = (original_trace.get("retrieval") or {}).get("method")
+    new_method = (new_retrieval or {}).get("method")
+    if original_method and new_method and original_method != new_method:
+        warnings.warn(
+            f"Frozen replay used a different retrieval method than the original "
+            f"run: {original_method!r} -> {new_method!r}. Retrieved chunks may "
+            "differ; check embedding dependencies and chunk_vec state.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
 
 
 def _resolve_replay_kwargs(

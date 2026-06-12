@@ -200,6 +200,25 @@ def test_retrieve_falls_back_when_chunk_vec_absent(
     assert res.method == "bm25"
 
 
+def test_search_evidence_skill_records_hybrid_method(
+    orc_home: Path, tmp_path: Path, fake_embedder: FakeEmbedder
+) -> None:
+    pytest.importorskip("sqlite_vec")
+    from orc.directives.research.skills.search_evidence import search_evidence
+    from orc.runs import open_run
+    from orc.storage.trace_store import load_trace
+
+    ws = _setup_embedded_corpus(tmp_path, fake_embedder)
+    with open_run(ws, directive="research", skill="search_evidence", inputs={}) as run:
+        result = search_evidence.run(workspace=ws, run=run, query="skills", k=5)
+        run.close(output=result)
+
+    trace = load_trace(run.run_id)
+    assert trace["retrieval"]["method"] == "hybrid_rrf"
+    assert trace["retrieval"]["candidates_considered"] >= 1
+    assert result["chunks"], "expected fused hits"
+
+
 def test_retrieve_hybrid_fuses_and_reports_union(
     orc_home: Path, tmp_path: Path, fake_embedder: FakeEmbedder
 ) -> None:
