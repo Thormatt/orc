@@ -151,11 +151,25 @@ def show_command(approval_id: str, workspace: str | None) -> None:
 @click.argument("approval_id")
 @click.option("--workspace", "-w", default=None)
 @click.option("--note", default=None, help="Optional decision note")
-@click.option("--by", "decided_by", default=None, help="Who decided (defaults to $USER)")
+@click.option(
+    "--by",
+    "decided_by",
+    default=None,
+    help="Who decided (defaults to $USER). Self-reported and unauthenticated: "
+    "anyone with shell access can pass any name, so multi-approver gates are "
+    "honor-system unless an authenticated layer supplies this value.",
+)
 def accept_command(
     approval_id: str, workspace: str | None, note: str | None, decided_by: str | None
 ) -> None:
-    """Accept a pending approval."""
+    """Accept a pending approval.
+
+    The recorded approver name comes from --by (or $USER) and is not
+    authenticated by orc. Deployments using approvers_required > 1 as a
+    compliance control (e.g. EU AI Act Article 14(5)) must ensure decisions
+    are submitted through an authenticated surface that pins --by to a
+    verified identity.
+    """
     _decide(approval_id, workspace, note, decided_by, accept=True)
 
 
@@ -163,7 +177,13 @@ def accept_command(
 @click.argument("approval_id")
 @click.option("--workspace", "-w", default=None)
 @click.option("--note", default=None, help="Optional decision note")
-@click.option("--by", "decided_by", default=None)
+@click.option(
+    "--by",
+    "decided_by",
+    default=None,
+    help="Who decided (defaults to $USER). Self-reported and unauthenticated; "
+    "see `orc approve accept --help`.",
+)
 def reject_command(
     approval_id: str, workspace: str | None, note: str | None, decided_by: str | None
 ) -> None:
