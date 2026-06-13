@@ -8,9 +8,8 @@ import click
 from rich.console import Console
 
 from orc import directives
-from orc.errors import WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
 from orc.runs import open_run
-from orc.storage import workspace as ws_module
 
 console = Console()
 
@@ -29,10 +28,7 @@ def research_command(
     as_json: bool,
 ) -> None:
     """Research a topic against the workspace's evidence corpus."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     spec = directives.get("research")
     skill = spec.skills["research_topic"]

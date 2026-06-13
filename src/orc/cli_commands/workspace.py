@@ -12,7 +12,8 @@ from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 
-from orc.errors import EmbeddingsUnavailableError, WorkspaceExistsError, WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
+from orc.errors import EmbeddingsUnavailableError, WorkspaceExistsError
 from orc.paths import workspace_db_path
 from orc.retrieval.embedder import DEFAULT_EMBEDDING_MODEL, embedder_available, get_embedder
 from orc.storage import workspace as ws_module
@@ -84,10 +85,7 @@ def create_command(name: str, embeddings: bool, embedding_model: str | None) -> 
 )
 def embed_command(name: str, model: str | None) -> None:
     """Backfill vector embeddings for all unembedded chunks in a workspace."""
-    try:
-        ws = ws_module.resolve(name)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(name)
 
     if ws.embedding_model is None:
         effective_model = model or DEFAULT_EMBEDDING_MODEL
