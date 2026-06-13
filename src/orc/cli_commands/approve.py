@@ -8,14 +8,13 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from orc.errors import WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
 from orc.queue import approval as approval_module
 from orc.queue.approval import (
     ApprovalAlreadyDecidedError,
     ApprovalNotFoundError,
     DuplicateApproverError,
 )
-from orc.storage import workspace as ws_module
 
 console = Console()
 
@@ -44,10 +43,7 @@ def approve_group() -> None:
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable JSON output")
 def list_command(workspace: str | None, status: str, limit: int, as_json: bool) -> None:
     """List approvals."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
     items = approval_module.list_approvals(
         ws.name, status=None if status == "all" else status, limit=limit
     )
@@ -109,10 +105,7 @@ def list_command(workspace: str | None, status: str, limit: int, as_json: bool) 
 @click.option("--workspace", "-w", default=None)
 def show_command(approval_id: str, workspace: str | None) -> None:
     """Print full payload for an approval."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
     try:
         a = approval_module.get(ws.name, approval_id)
     except ApprovalNotFoundError as exc:
@@ -158,11 +151,25 @@ def show_command(approval_id: str, workspace: str | None) -> None:
 @click.argument("approval_id")
 @click.option("--workspace", "-w", default=None)
 @click.option("--note", default=None, help="Optional decision note")
-@click.option("--by", "decided_by", default=None, help="Who decided (defaults to $USER)")
+@click.option(
+    "--by",
+    "decided_by",
+    default=None,
+    help="Who decided (defaults to $USER). Self-reported and unauthenticated: "
+    "anyone with shell access can pass any name, so multi-approver gates are "
+    "honor-system unless an authenticated layer supplies this value.",
+)
 def accept_command(
     approval_id: str, workspace: str | None, note: str | None, decided_by: str | None
 ) -> None:
-    """Accept a pending approval."""
+    """Accept a pending approval.
+
+    The recorded approver name comes from --by (or $USER) and is not
+    authenticated by orc. Deployments using approvers_required > 1 as a
+    compliance control (e.g. EU AI Act Article 14(5)) must ensure decisions
+    are submitted through an authenticated surface that pins --by to a
+    verified identity.
+    """
     _decide(approval_id, workspace, note, decided_by, accept=True)
 
 
@@ -170,7 +177,13 @@ def accept_command(
 @click.argument("approval_id")
 @click.option("--workspace", "-w", default=None)
 @click.option("--note", default=None, help="Optional decision note")
-@click.option("--by", "decided_by", default=None)
+@click.option(
+    "--by",
+    "decided_by",
+    default=None,
+    help="Who decided (defaults to $USER). Self-reported and unauthenticated; "
+    "see `orc approve accept --help`.",
+)
 def reject_command(
     approval_id: str, workspace: str | None, note: str | None, decided_by: str | None
 ) -> None:
@@ -190,10 +203,7 @@ def _decide(
 
     if decided_by is None:
         decided_by = os.environ.get("USER") or "user"
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
     try:
         if accept:
             a = approval_module.accept(ws.name, approval_id, decided_by=decided_by, note=note)

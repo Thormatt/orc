@@ -16,12 +16,10 @@ surface (CLI/MCP), not here.
 
 from __future__ import annotations
 
-from orc.errors import OrcError
+# Re-exported for callers that historically imported it from here.
+from orc.errors import UnknownDomainError
 
-
-class UnknownDomainError(OrcError):
-    """Raised when a caller passes a domain that is neither a product domain
-    (DOMAIN_TO_MODE) nor a benchmark source alias (BENCHMARK_SOURCE_TO_MODE)."""
+__all__ = ["BENCHMARK_SOURCE_TO_MODE", "DOMAIN_TO_MODE", "UnknownDomainError", "route_to_mode"]
 
 
 # Product domains. Each mode is derived from the benchmark family the domain

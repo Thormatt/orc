@@ -75,6 +75,7 @@ claude mcp add orc -- uv run --directory $(pwd) orc mcp serve
 ```
 orc workspace create <name>            create a new workspace
 orc workspace list                     list workspaces
+orc workspace embed [-w <name>]        backfill vector embeddings (embeddings extra)
 orc ingest <path-or-url> [-w <name>]   add evidence (md, txt, json, pdf, urls)
 orc search "<query>" [-w <name>]       BM25 retrieval, no LLM
 orc verify "<claim>" [-w <name>]       verify a single claim
@@ -86,14 +87,19 @@ orc verify "<claim>" --mode tiered     cheap judge first, escalate only when uns
 orc eval import <file.yaml> [-w <n>]   seed a labelled gold set
 orc eval label <run_id> --verdict <v>  promote/correct a real verdict into gold
 orc eval run [-w <name>] [--json]      score the gate (accuracy, calibration, recall)
+orc eval show [-w <name>]              reprint a persisted eval report
 orc eval calibrate [-w <name>]         tune the tiered escalation threshold
 orc trace show <run_id>                full trace JSON
 orc trace list [-w <name>]             recent runs
 orc replay <run_id> [--live]           re-execute a recorded run
 orc propose <executor> --params <json>  stage an action for human approval
 orc approve list [-w <name>] [--json]   list pending approval items
+orc approve show <id>                  full payload for an approval
 orc approve accept <id> [--note]       accept a pending recommendation
 orc approve reject <id> [--note]       reject one
+orc execute <id> [-w <name>]           execute one approved action
+orc worker [-w <name>]                 auto-drain daemon for approved actions
+orc audit export [-w <name>]           bundle traces + evidence for an auditor
 orc mcp serve                          start the MCP stdio server
 ```
 
@@ -116,6 +122,13 @@ orc propose fs.write_file \
 orc approve accept <id> -w research
 orc execute <id> -w research          # lands in ~/.orc/workspaces/research/out/
 ```
+
+> **Approver identity is self-reported.** `orc approve accept --by <name>`
+> records whatever name the caller passes (default `$USER`) — orc does not
+> authenticate it. Multi-approver gates (`approvers_required > 1`, e.g. for EU
+> AI Act Article 14(5)) are an honor system on a shared shell; for a real
+> separation-of-duties guarantee, route decisions through an authenticated
+> surface that pins `--by` to a verified identity.
 
 ## Architecture
 

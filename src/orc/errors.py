@@ -32,3 +32,8 @@ class IngestError(OrcError):
 
 class EmbeddingsUnavailableError(OrcError):
     """Embeddings were requested but the optional dependencies are missing."""
+
+
+class UnknownDomainError(OrcError):
+    """Raised when a caller passes a domain that is neither a product domain
+    nor a benchmark source alias (see orc.directives.research.routing)."""

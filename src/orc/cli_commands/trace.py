@@ -8,8 +8,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from orc.errors import TraceNotFoundError, WorkspaceNotFoundError
-from orc.storage import workspace as ws_module
+from orc.cli_commands._shared import resolve_workspace
+from orc.errors import TraceNotFoundError
 from orc.storage.trace_store import list_runs, load_trace
 
 console = Console()
@@ -37,10 +37,7 @@ def show_command(run_id: str) -> None:
 @click.option("--limit", type=int, default=20, help="Max rows to show")
 def list_command(workspace: str | None, skill: str | None, limit: int) -> None:
     """List recent runs in a workspace."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
     rows = list_runs(ws.name, skill=skill, limit=limit)
     if not rows:
         console.print("[dim]No runs yet.[/dim]")

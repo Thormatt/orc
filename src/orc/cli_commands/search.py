@@ -9,9 +9,8 @@ from rich.console import Console
 from rich.table import Table
 
 from orc import directives
-from orc.errors import WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
 from orc.runs import open_run
-from orc.storage import workspace as ws_module
 
 console = Console()
 
@@ -23,10 +22,7 @@ console = Console()
 @click.option("--json", "as_json", is_flag=True, help="Emit raw JSON instead of a table")
 def search_command(query: str, workspace: str | None, k: int, as_json: bool) -> None:
     """Retrieve top chunks for a query (no LLM)."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     spec = directives.get("research")
     skill = spec.skills["search_evidence"]
