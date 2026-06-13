@@ -111,6 +111,33 @@ def test_verify_decomposed_all_unfaithful_atoms_yields_not_found(
     assert result["label"] == "not_found"
 
 
+def test_verify_decomposed_trace_records_retrieval_across_all_atoms(
+    orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each atom's binary sub-run overwrote run.retrieval, so the trace audited
+    only the last atom's retrieval. The aggregate must account for every atom:
+    candidates_considered sums across atoms, returned is the deduped union."""
+    name = _setup_corpus(orc_home, tmp_path)
+    fake = FakeAnthropic(
+        responses=[
+            _make_decomposition_response(["A", "B"]),
+            _make_binary_response(faithful=True, confidence=0.9),
+            _make_binary_response(faithful=True, confidence=0.9),
+        ]
+    )
+    _install_fake_client(monkeypatch, fake)
+
+    result = _run_skill(name, claim="x", mode="decomposed")
+
+    traces = list(workspace_traces_dir(name).rglob(f"{result['_run_id']}.json"))
+    assert len(traces) == 1
+    retrieval = json.loads(traces[0].read_text())["retrieval"]
+    # 2 atoms x 1 candidate each: both retrievals must be accounted for.
+    assert retrieval["candidates_considered"] == 2
+    assert {r["chunk_id"] for r in retrieval["returned"]} == {_real_chunk_id(name)}
+    assert retrieval["method"] == "binary_all"
+
+
 def test_verify_decomposed_negative_majority_yields_not_found_not_contradicted(
     orc_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
