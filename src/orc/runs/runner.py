@@ -227,6 +227,15 @@ class Run:
         total_cache_read = sum(c.cache_read_input_tokens for c in self.llm_calls)
         total_cache_creation = sum(c.cache_creation_input_tokens for c in self.llm_calls)
 
+        # Trace JSON first, db row second: if the JSON write fails the row stays
+        # 'running', never 'ok' with no trace file (which audit export treats as
+        # corruption). The reverse failure (row stuck 'running' with a trace on
+        # disk) is recoverable.
+        payload = self.build_trace_payload(
+            ended_at=ended_at, status=status, output=out, error_message=error_message
+        )
+        write_trace_json(self.workspace.name, self.run_id, self.started_at, payload)
+
         with transaction(self.conn):
             finalize_run_row(
                 self.conn,
@@ -241,11 +250,6 @@ class Run:
                 output_summary=summary,
                 error_message=error_message,
             )
-
-        payload = self.build_trace_payload(
-            ended_at=ended_at, status=status, output=out, error_message=error_message
-        )
-        write_trace_json(self.workspace.name, self.run_id, self.started_at, payload)
 
     def build_trace_payload(
         self,
