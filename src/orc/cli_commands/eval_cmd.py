@@ -8,9 +8,8 @@ from pathlib import Path
 import click
 import yaml
 
-from orc.errors import WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
 from orc.eval import gold
-from orc.storage import workspace as ws_module
 from orc.storage.trace_store import load_trace
 
 _LABELS = ["supported", "contradicted", "not_found", "partial"]
@@ -26,7 +25,7 @@ def eval_group() -> None:
 @click.option("--workspace", "-w", default=None, help="Workspace name (env: ORC_DEFAULT_WORKSPACE)")
 def import_command(path: Path, workspace: str | None) -> None:
     """Seed gold claims from a YAML file (id/text/expected[/relevant_chunk_ids/note])."""
-    ws = _resolve(workspace)
+    ws = resolve_workspace(workspace)
     items = yaml.safe_load(path.read_text()) or []
     n = 0
     for item in items:
@@ -69,7 +68,7 @@ def label_command(
         raise click.ClickException(f"Run {run_id} has no claim to label")
     # Resolve the workspace (not just read its name from the trace) so a
     # workspace whose db predates schema v2 gets migrated before we write gold.
-    _resolve(trace["workspace"])
+    resolve_workspace(trace["workspace"])
     gold.add(
         trace["workspace"],
         claim=claim,
@@ -92,7 +91,7 @@ def run_command(workspace: str | None, mode: str, k: int, as_json: bool) -> None
     """Score the gate against the workspace's gold set."""
     from orc.eval.runner import run_eval
 
-    ws = _resolve(workspace)
+    ws = resolve_workspace(workspace)
     try:
         report = run_eval(ws.name, mode=mode, k=k)
     except ValueError as exc:
@@ -128,7 +127,7 @@ def show_command(eval_id: str, workspace: str | None, as_json: bool) -> None:
     """Reprint a persisted eval report."""
     from orc.eval.runner import load_eval
 
-    ws = _resolve(workspace)
+    ws = resolve_workspace(workspace)
     try:
         report = load_eval(ws.name, eval_id)
     except KeyError as exc:
@@ -165,7 +164,7 @@ def calibrate_command(
     from orc.eval.calibrate import DEFAULT_TIER1_MODEL, DEFAULT_TIER2_MODEL, calibrate
     from orc.eval.policy import save_policy
 
-    ws = _resolve(workspace)
+    ws = resolve_workspace(workspace)
     t1 = tier1_model or DEFAULT_TIER1_MODEL
     t2 = tier2_model or DEFAULT_TIER2_MODEL
     result = calibrate(ws.name, target=target, tier1_model=t1)
@@ -207,7 +206,7 @@ def calibrate_command(
 @click.option("--json", "as_json", is_flag=True)
 def gold_command(action: str, workspace: str | None, as_json: bool) -> None:
     """Inspect the gold set (currently: list)."""
-    ws = _resolve(workspace)
+    ws = resolve_workspace(workspace)
     items = gold.list_gold(ws.name)
     stale = {
         g.gold_id
@@ -239,9 +238,3 @@ def gold_command(action: str, workspace: str | None, as_json: bool) -> None:
         flag = "  [stale chunk labels]" if g.gold_id in stale else ""
         click.echo(f"{g.gold_id}  {g.expected_label:<12} {g.claim[:60]}{flag}")
 
-
-def _resolve(workspace: str | None) -> ws_module.Workspace:
-    try:
-        return ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc

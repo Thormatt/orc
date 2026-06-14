@@ -62,12 +62,9 @@ def export_command(
     """Bundle a workspace's traces, run rows, evidence manifest, approvals,
     and runtime metadata into a single tar.gz for handoff to a regulator,
     auditor, or customer."""
-    from orc.storage import workspace as ws_module
+    from orc.cli_commands._shared import resolve_workspace
 
-    try:
-        ws = ws_module.resolve(workspace)
-    except Exception as exc:  # noqa: BLE001 — surface as ClickException
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     if output_path is None:
         from orc.core.clock import now_iso

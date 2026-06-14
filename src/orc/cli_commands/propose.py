@@ -15,10 +15,9 @@ from typing import Any
 import click
 
 from orc import effects
-from orc.errors import WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
 from orc.paths import config_path
 from orc.runs import open_run
-from orc.storage import workspace as ws_module
 
 
 def _load_params(raw: str) -> dict[str, Any]:
@@ -61,10 +60,7 @@ def propose_command(
     wrong (it would silently stage a duplicate effect).
     """
     params = _load_params(params_raw)
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     with open_run(
         ws,

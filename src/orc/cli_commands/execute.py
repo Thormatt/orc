@@ -13,9 +13,9 @@ import click
 from rich.console import Console
 
 from orc import effects
+from orc.cli_commands._shared import resolve_workspace
 from orc.effects.action import Action
 from orc.effects.base import MissingCredentialError
-from orc.errors import WorkspaceNotFoundError
 from orc.queue import approval as approval_module
 from orc.queue.approval import (
     ActionDeadError,
@@ -23,7 +23,6 @@ from orc.queue.approval import (
     ApprovalNotFoundError,
     NotApprovedError,
 )
-from orc.storage import workspace as ws_module
 
 console = Console()
 
@@ -33,10 +32,7 @@ console = Console()
 @click.option("--workspace", "-w", default=None, help="Workspace name (env: ORC_DEFAULT_WORKSPACE)")
 def execute_command(approval_id: str, workspace: str | None) -> None:
     """Execute an approved action by approval_id."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     existing = approval_module.get_execution(ws.name, approval_id)
     if existing is not None and existing["exec_status"] == "succeeded":

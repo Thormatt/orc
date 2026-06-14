@@ -574,6 +574,7 @@ def _run_decomposed(
 
     atom_results: list[dict[str, Any]] = []
     valid_ids: set[str] = set()
+    atom_retrievals: list[dict[str, Any]] = []
     for i, atom in enumerate(atoms):
         # Re-enter verify_claim in binary mode for each atom against the SAME
         # workspace + same retrieved chunks. Each atom's verdict is recorded
@@ -591,6 +592,10 @@ def _run_decomposed(
             mode="binary",
             evidence_id=evidence_id,
         )
+        # Each sub-run overwrites run.retrieval; snapshot it so the parent
+        # trace can aggregate over every atom instead of just the last one.
+        if run.retrieval is not None:
+            atom_retrievals.append(run.retrieval)
         valid_ids.update(sub_result.get("retrieval_chunk_ids") or [])
         atom_results.append(
             {
@@ -601,6 +606,19 @@ def _run_decomposed(
             }
         )
         run.record(f"decomposed_atom_{i}", atom_results[-1])
+
+    if atom_retrievals:
+        returned_by_id: dict[str, dict[str, Any]] = {}
+        for rec in atom_retrievals:
+            for summary in rec["returned"]:
+                returned_by_id.setdefault(summary["chunk_id"], summary)
+        run.retrieval = {
+            "method": atom_retrievals[-1]["method"],
+            "candidates_considered": sum(
+                rec["candidates_considered"] for rec in atom_retrievals
+            ),
+            "returned": list(returned_by_id.values()),
+        }
 
     # Majority aggregation, confidence-weighted. Atoms run in binary mode,
     # which only ever yields "supported" (faithful) or "not_found"

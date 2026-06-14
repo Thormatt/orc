@@ -65,6 +65,33 @@ def test_run_records_error_on_exception(orc_home: Path) -> None:
     assert "boom" in row["error_message"]
 
 
+def test_failed_trace_write_does_not_finalize_run_row(orc_home: Path, monkeypatch) -> None:
+    """A run whose trace JSON cannot be written must never show status='ok' in the
+    db — audit export treats an ok row with no trace file as corruption."""
+    import orc.runs.runner as runner_module
+
+    ws = ws_module.create("demo")
+
+    def _disk_full(*args: object, **kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(runner_module, "write_trace_json", _disk_full)
+
+    run_id = None
+    write_failed = False
+    try:
+        with open_run(ws, directive="research", skill="search_evidence", inputs={}) as run:
+            run_id = run.run_id
+            run.close(output={})
+    except OSError:
+        write_failed = True
+
+    assert write_failed
+    with open_connection(workspace_db_path("demo")) as conn:
+        row = conn.execute("SELECT status FROM run WHERE run_id = ?", (run_id,)).fetchone()
+    assert row["status"] != "ok"
+
+
 def test_list_runs_orders_newest_first(orc_home: Path) -> None:
     ws = ws_module.create("demo")
     for i in range(3):

@@ -7,7 +7,23 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added (not yet released)
+### Planned
+
+- `gads` directive (Google Ads agentic analysis: lens-based decomposition,
+  read-only MCP integration, evidence-bound recommendation verification).
+- `orc eval consistency|perturb|retrieval|regression` reliability commands.
+- Voyage-AI / OpenAI embedding backends behind the existing `Embedder` protocol.
+- Hosted runtime (scheduled triggers, web dashboard, team workspaces).
+- Decomposition + arithmetic combined for DROP-shaped multi-step claims.
+
+## [0.2.0] — unreleased
+
+Packaged for PyPI as **`orc-ai`** (`orc` is taken by an unrelated project);
+the import package (`import orc`) and CLI command (`orc`) are unchanged. The
+release workflow publishes on a `v0.2.0` tag once the trusted publisher is
+configured — not yet tagged or published.
+
+### Added
 
 - **Hybrid retrieval** — opt-in BM25 + dense-vector retrieval fused with
   Reciprocal Rank Fusion. Local `sentence-transformers` embedder by default
@@ -28,25 +44,6 @@ Version numbers follow [SemVer](https://semver.org/spec/v2.0.0.html).
 - **`orc eval calibrate`** — derive the tiered escalation threshold from the
   gold set (lowest cutoff meeting `--target`, default 0.95), with an
   achievability guard that refuses to silently configure always-escalate.
-
-### Planned
-
-- `gads` directive (Google Ads agentic analysis: lens-based decomposition,
-  read-only MCP integration, evidence-bound recommendation verification).
-- `orc eval consistency|perturb|retrieval|regression` reliability commands.
-- Voyage-AI / OpenAI embedding backends behind the existing `Embedder` protocol.
-- Hosted runtime (scheduled triggers, web dashboard, team workspaces).
-- Decomposition + arithmetic combined for DROP-shaped multi-step claims.
-
-## [0.2.0] — unreleased
-
-Packaged for PyPI as **`orc-ai`** (`orc` is taken by an unrelated project);
-the import package (`import orc`) and CLI command (`orc`) are unchanged. The
-release workflow publishes on a `v0.2.0` tag once the trusted publisher is
-configured — not yet tagged or published.
-
-### Added
-
 - **PDF ingestion** — `orc ingest report.pdf` now works alongside markdown,
   text, json, and URLs. Text is extracted page-by-page via `pypdf`, and the
   PDF metadata title is used when the body carries no markdown-style heading

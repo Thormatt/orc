@@ -9,9 +9,8 @@ from __future__ import annotations
 import click
 from rich.console import Console
 
+from orc.cli_commands._shared import resolve_workspace
 from orc.effects.worker import drain_once, run_worker
-from orc.errors import WorkspaceNotFoundError
-from orc.storage import workspace as ws_module
 
 console = Console()
 
@@ -25,10 +24,7 @@ def worker_command(
     workspace: str | None, once: bool, poll_interval: float, max_attempts: int
 ) -> None:
     """Execute approved actions from the queue."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     if once:
         summary = drain_once(ws.name, max_attempts=max_attempts)

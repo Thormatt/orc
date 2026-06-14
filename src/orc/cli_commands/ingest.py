@@ -5,9 +5,9 @@ from __future__ import annotations
 import click
 from rich.console import Console
 
-from orc.errors import IngestError, WorkspaceNotFoundError
+from orc.cli_commands._shared import resolve_workspace
+from orc.errors import IngestError
 from orc.ingest.pipeline import ingest as do_ingest
-from orc.storage import workspace as ws_module
 
 console = Console()
 
@@ -18,10 +18,7 @@ console = Console()
 @click.option("--no-recursive", is_flag=True, help="Skip recursing into subdirectories")
 def ingest_command(source: str, workspace: str | None, no_recursive: bool) -> None:
     """Ingest a file, directory, or URL into the workspace's evidence corpus."""
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
     try:
         ids = do_ingest(ws, source, recursive=not no_recursive)
     except IngestError as exc:

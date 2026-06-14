@@ -10,11 +10,10 @@ import click
 from rich.console import Console
 
 from orc import directives
+from orc.cli_commands._shared import resolve_workspace
 from orc.directives.research.routing import UnknownDomainError
-from orc.errors import WorkspaceNotFoundError
 from orc.ingest.loaders import load_file, load_url
 from orc.runs import open_run
-from orc.storage import workspace as ws_module
 from orc.storage.workspace import Workspace
 
 console = Console()
@@ -69,10 +68,7 @@ def verify_command(
     if not claim and not from_file and not from_url:
         raise click.UsageError("Provide CLAIM, --file <path>, or --url <url>.")
 
-    try:
-        ws = ws_module.resolve(workspace)
-    except WorkspaceNotFoundError as exc:
-        raise click.ClickException(str(exc)) from exc
+    ws = resolve_workspace(workspace)
 
     if from_file or from_url:
         _verify_from_document(
