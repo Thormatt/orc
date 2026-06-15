@@ -183,7 +183,7 @@ What shipped in v0.2.0:
 
 Shipped earlier in v0.1.4: `--include-evidence` self-contained audit bundles, `mode="arithmetic"` with a safe AST-walking calculator (FinanceBench F1 0.736 → 0.916), the evidence-mode citation guard, and model-agnostic self-hosting of any open-weight judge.
 
-One claim, raw LLM vs. orc, side by side (real captured output): **[docs/demos/defensible-verification.md](./docs/demos/defensible-verification.md)** — run it yourself with `uv run python -m demos.orc_vs_raw --live`.
+Raw LLM vs. orc, side by side on real claims — including a large private corpus the model has never seen, where a bare call can't verify at all: **[docs/demos/defensible-verification.md](./docs/demos/defensible-verification.md)**. Run them yourself: `uv run python -m demos.orc_vs_raw --live` and `uv run python -m demos.orc_large_corpus --live`.
 
 Live walkthrough: **[pagenta.app/p/thorm/orc-how-it-works](https://pagenta.app/p/thorm/orc-how-it-works)** — six-scene visual explainer. Full pitch: **[pagenta.app/p/thorm/orc-pitch](https://pagenta.app/p/thorm/orc-pitch)**.
 

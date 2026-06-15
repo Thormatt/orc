@@ -1,10 +1,11 @@
 # A raw LLM call vs. orc, on one claim
 
-> **The thesis in one line:** with a frontier model, orc usually reaches the
-> *same verdict* as a bare API call — its value is not a smarter answer, it is a
-> **defensible** one: a structured label, a calibrated confidence, a chunk-level
-> citation validated against the retrieval set, and a replayable trace. Plus one
-> thing a raw call structurally cannot do — refuse to ship a fabricated citation.
+> **The thesis in one line:** when the whole source fits in the prompt, a
+> frontier model is already a strong judge — orc's value there is a *defensible*
+> verdict (structured label, calibrated confidence, validated citation,
+> replayable trace), not a smarter one. But the moment the source is a *large
+> private corpus* the model has never seen, a raw call can't verify at all — and
+> that is the case orc is actually built for (Example 4).
 
 Aggregate benchmark numbers (F1 0.864 on HaluBench) are abstract. This page runs
 the *same model* two ways on a single, human-legible claim so the difference is
@@ -143,6 +144,67 @@ The weaker or cheaper the model, the wider this gap gets.
 
 ---
 
+## Example 4 — the case single passages can't show: a large private corpus
+
+The three examples above hand the model the source passage inline. That is the
+*best* case for a raw call. The real world is the opposite: a knowledge base of
+many documents the model has never seen, where the answer to a claim lives in
+one specific file and a reviewer needs to know *which* one.
+
+[`demos/orc_large_corpus.py`](../../demos/orc_large_corpus.py) ingests a small,
+deliberately fictional internal knowledge base (`demos/corpus/` — 11 documents
+for a made-up logistics company) and verifies two claims about a single incident
+buried in one postmortem. Fictional on purpose: the model cannot lean on world
+knowledge, so this isolates the value of grounding + citation.
+
+```
+CORPUS: 11 private documents → 18 retrievable chunks
+(a fictional internal knowledge base the model has never seen)
+
+CLAIM: The 2026-03-14 Helix Freight checkout outage was caused by an
+       expired TLS certificate.                          (truth: FALSE)
+──────────────────────────────────────────────────────────────────────────
+① RAW LLM (no corpus access — the 'ask the chatbot' baseline)
+   "I cannot verify or refute this claim. I don't have access to any internal
+    Helix Freight Systems documents... I will not fabricate a source document
+    or render a true/false verdict without a legitimate evidentiary basis."
+
+② ORC (retrieves across the corpus, cites the exact source)
+   verdict     : CONTRADICTED   confidence: 0.99
+   citation    : incident-2026-03-14-postmortem.md · chunk [01KV4JCC81RY…]
+   reasoning   : ...the root cause was "database connection-pool exhaustion"
+                 and directly rules out a TLS/certificate problem...
+
+CLAIM: The 2026-03-14 Helix Freight checkout outage lasted 73 minutes.
+                                                          (truth: TRUE)
+──────────────────────────────────────────────────────────────────────────
+① RAW LLM
+   "I cannot verify or refute this claim... Verdict: Unable to determine —
+    I have no source document to cite."
+
+② ORC
+   verdict     : SUPPORTED   confidence: 0.99
+   citation    : incident-2026-03-14-postmortem.md · chunk [01KV4JCC81RY…]
+   reasoning   : ...explicitly states "unavailable or degraded for 73 minutes,
+                 from 14:02 to 15:15 UTC." A near-direct quotation.
+```
+
+This is the whole pitch in one screen. A **well-aligned** model does the
+responsible thing — it *refuses* rather than confabulating — but the
+consequence is the same: **a raw call cannot verify a claim against documents
+you own.** It is blind to your corpus, and a less careful model (or a more
+leading prompt) fabricates a citation instead of refusing. orc retrieves the one
+relevant chunk out of 18, returns the right verdict, and names the exact file an
+auditor can open. The citation isn't decoration — it's the difference between
+"the model says it's false" and "it's false, see
+`incident-2026-03-14-postmortem.md`."
+
+This is also where the artifacts compound: that verdict carries a replayable
+trace, and `orc audit export` bundles the corpus, the retrieval, and the verdict
+into one hashed tar.gz a regulator re-runs. You cannot get there from a chat box.
+
+---
+
 ## So what does orc actually buy you?
 
 Two regimes, both honest:
@@ -222,6 +284,9 @@ Category positioning: [`docs/positioning/competitive.md`](../positioning/competi
 uv run python -m demos.orc_vs_raw --live --item halueval-803
 uv run python -m demos.orc_vs_raw --live --item financebench_id_02747
 uv run python -m demos.orc_vs_raw --live --item financebench_id_07081
+
+# The large private-corpus demo — orc's actual moat (live):
+uv run python -m demos.orc_large_corpus --live
 
 # The citation invariant (free — adversarial fake LLM, no API spend):
 uv run python -m benchmarks.citation_enforcement.run --n 100
