@@ -93,18 +93,68 @@ trace       : (replay with `orc replay 01KV4FJYPQ3GK6HK2WRESD2QD9`)
 Again, **both get it right** — Sonnet 4.6 does the CAGR cleanly. We are not
 going to pretend otherwise on a cherry-picked example. What changes is that
 orc's calculation is captured as a tool call in the trace, so an auditor sees
-*the math*, not just the conclusion — and on weaker or cheaper models, where the
-mental arithmetic does break down, that calculator is the difference between a
-right and a wrong verdict (FinanceBench F1 climbs 0.736 → 0.916 with arithmetic
-mode; see [the benchmark](../benchmarks/results-2026-05-19-phase2-arithmetic.md)).
+*the math*, not just the conclusion.
+
+---
+
+## Example 3 — where the raw verdict actually breaks
+
+The tie above is not universal. We scanned the two hardest HaluBench categories
+(DROP tabular reasoning, FinanceBench) for items where the **production-shaped
+raw call gets the verdict wrong and orc gets it right** — and they exist. This
+is a CVS Health ROA claim: net income ÷ average total assets. The claimed
+**0.04** is wrong; the figures give **0.03**. Ground truth: **FAIL**.
+
+The distinction that matters: in a real pipeline you need a *quick, parseable*
+verdict, not a paragraph. So we asked the raw model the way a pipeline would —
+Lynx's binary `YES/NO` faithfulness prompt:
+
+```
+ITEM financebench_id_07081  ·  source: FinanceBench
+────────────────────────────────────────────────────────────────────────
+Question      : FY2021 return on assets (ROA) for CVS Health?
+                (net income / average total assets, FY2020–FY2021)
+Claimed answer: 0.04
+Ground truth  : HALLUCINATED (FAIL)
+
+① RAW LLM  (binary YES/NO faithfulness prompt — pipeline-shaped)
+────────────────────────────────────────────────────────────────────────
+raw answer  : "YES"          ← says the 0.04 claim IS faithful.  WRONG.
+
+② ORC  (verify_claim, arithmetic mode)
+────────────────────────────────────────────────────────────────────────
+verdict     : NOT_FOUND
+confidence  : 0.95
+reasoning   : Using the passage figures — net income $7,898M, FY2021 total
+              assets $232,999M, FY2020 $230,715M — average assets $231,857M,
+              ROA = 7,898 / 231,857 ≈ 0.034 → 0.03, not 0.04 as claimed.
+```
+
+The quick raw call **answers before it computes** and rubber-stamps the wrong
+number. (Asked for a *paragraph* instead, the same model rambles its way to the
+right conclusion — but it opens with "Yes, the claimed answer is faithful…" and
+then contradicts itself, which is exactly the unparseable mush you can't put
+behind an automated gate.) orc's arithmetic mode forces compute-then-verdict
+with a real calculator, so the structured label is right.
+
+This is the at-scale pattern, not a fluke: with the calculator, FinanceBench F1
+climbs **0.736 → 0.916** ([benchmark](../benchmarks/results-2026-05-19-phase2-arithmetic.md)).
+The weaker or cheaper the model, the wider this gap gets.
 
 ---
 
 ## So what does orc actually buy you?
 
-On these items, verdict correctness is a **tie**. That is the honest result, and
-it is the right framing: orc is not sold as a smarter judge than a frontier
-model. It is the layer that turns a model's opinion into a defensible record.
+Two regimes, both honest:
+
+- **On easy items (Examples 1–2), verdict correctness is a tie.** orc is not a
+  smarter judge than a frontier model handed a short passage. Its value there is
+  the *defensible record*.
+- **On hard items (Example 3), the production-shaped raw verdict breaks** and
+  orc holds — because orc forces the model through retrieval and tool use
+  instead of trusting a snap judgment.
+
+Either way, the table below is what you get on **every** call, easy or hard:
 
 | | Raw LLM call | orc `verify_claim` |
 |---|---|---|
@@ -168,9 +218,10 @@ Category positioning: [`docs/positioning/competitive.md`](../positioning/competi
 ## Reproduce this
 
 ```bash
-# The two worked examples above (live; a few cents on Sonnet 4.6):
+# The worked examples above (live; a few cents each on Sonnet 4.6):
 uv run python -m demos.orc_vs_raw --live --item halueval-803
 uv run python -m demos.orc_vs_raw --live --item financebench_id_02747
+uv run python -m demos.orc_vs_raw --live --item financebench_id_07081
 
 # The citation invariant (free — adversarial fake LLM, no API spend):
 uv run python -m benchmarks.citation_enforcement.run --n 100
@@ -184,10 +235,14 @@ ORC_BENCHMARK_ALLOW_LIVE_LLM=1 uv run python -m benchmarks.faithfulness.run --n 
 
 - **This is two items.** They illustrate the *shape* of the difference; the
   aggregate F1 is the evidence it generalizes.
-- **A frontier model is a strong judge.** orc's correctness edge shows up on
-  harder items, weaker/cheaper models, and numeric claims — not on every easy
-  one. The artifact edge (citation, confidence, trace, replay, audit) is present
-  on *every* call, easy or hard.
+- **A frontier model is a strong judge** on short single passages. orc's
+  *correctness* edge shows up on harder items, weaker/cheaper models, and numeric
+  claims (Example 3) — not on every easy one. The *artifact* edge (citation,
+  confidence, trace, replay, audit) is present on **every** call, easy or hard.
+- **Example 3 was found by scanning, not invented.** Across DROP + FinanceBench,
+  most verdicts still agree with Sonnet 4.6; the raw-wrong/orc-right items are a
+  minority, and orc has its own misses too (it is ~0.86 F1, not 1.0). The point
+  is that the failure mode exists and orc's structure removes a real slice of it.
 - **orc verifies against your corpus, not the world.** A faithfully-cited but
   wrong/stale/poisoned source is not caught — by orc or by any post-hoc judge.
   See the "faithful-but-wrong" row in

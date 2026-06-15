@@ -47,6 +47,7 @@ DEFAULT_ITEM = "halueval-803"
 MODE_BY_ITEM = {
     "halueval-803": "evidence",
     "financebench_id_02747": "arithmetic",
+    "financebench_id_07081": "arithmetic",
 }
 
 
