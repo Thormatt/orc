@@ -254,10 +254,17 @@ Honest gaps, kept current so prospects know what they're buying:
   decomposition primitive (`mode="decomposed"`) is available for callers
   willing to spend extra LLM calls; integrating it with `arithmetic` atoms
   is on the roadmap.
-- **No published head-to-head against Lynx / HHEM / RAGAS on the same
-  503-item subsample yet.** The faithfulness benchmark is reproducible
-  against an open dataset, so a third party can run that comparison; we
-  will publish ours once the HHEM tokenizer-load issue is resolved.
+- **HHEM head-to-head: done. Lynx / RAGAS: still published-number only.**
+  The HHEM-2.1-Open comparison on the same 503-item subsample is now run
+  end-to-end (the tokenizer-load issue was a transformers-5.x incompatibility,
+  fixed by pinning `transformers<5`): **Orc F1 0.864 vs HHEM 0.643** on
+  identical items, threshold 0.5, standard input. HHEM stays competitive on
+  RAG-style passages (RAGTruth 0.80) but collapses on numeric/tabular reasoning
+  (FinanceBench 0.30, DROP 0.45); the gap is not a context-window artifact.
+  Full accounting, caveats, and reproduction in
+  [results-2026-06-15-hhem-head-to-head.md](../benchmarks/results-2026-06-15-hhem-head-to-head.md).
+  A strict Lynx comparison still needs a 70B self-host we haven't run; that row
+  stays a published-number comparison.
 - **No multi-tenancy or team workspace primitives in 0.1.x.** Each
   workspace is owned by one filesystem.
 - **Truth of the corpus.** The runtime guarantee is "every claim is

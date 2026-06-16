@@ -264,11 +264,11 @@ against the published faithfulness-judge field:
 |---|---|---:|:---:|:---:|:---:|
 | **orc** | verification runtime (general Claude Sonnet 4.6) | **0.864** | ✅ validated | ✅ | ✅ |
 | Patronus **Lynx-70B** | fine-tuned faithfulness classifier | 0.85¹ | ❌ | ❌ | ❌ |
-| Vectara **HHEM-2.1** | open-weight consistency scorer | —² | ❌ | ❌ | ❌ |
+| Vectara **HHEM-2.1** | open-weight consistency scorer | 0.643² | ❌ | ❌ | ❌ |
 | Raw LLM call | one prompt | n/a³ | ❌ | ❌ | ❌ |
 
 ¹ Lynx's own paper, full HaluBench ([arXiv:2407.08488](https://arxiv.org/abs/2407.08488)) — a 70B model dedicated to this one task. orc matches it with a general-purpose call and ships the artifacts Lynx doesn't.
-² A live head-to-head HHEM run on the same 504-item subsample is the honest next step; the self-hosted harness is wired (`benchmarks/faithfulness/run.py --hhem`) but not yet run end-to-end. We cite published positioning, not our own HHEM number, until then.
+² **Now a real same-set number.** HHEM-2.1-Open scored on the *identical* 503 items: F1 0.643 vs orc's 0.864 (threshold 0.5, standard input). Not a truncation artifact (0.623 even on items inside HHEM's 512-token window); HHEM is competitive on RAG passages (RAGTruth 0.80) but collapses on numeric/tabular reasoning (FinanceBench 0.30). This stratified subsample equal-weights the hard categories, so it's tougher for HHEM than its ~0.75 full-HaluBench headline — and orc's 0.864 is on the same harder set. Full accounting: [results-2026-06-15-hhem-head-to-head.md](../benchmarks/results-2026-06-15-hhem-head-to-head.md).
 ³ Not a like-for-like — a raw call produces no structured label to score at scale without wrapping it in… essentially orc.
 
 Full per-source breakdown and reproduction:
@@ -312,5 +312,6 @@ ORC_BENCHMARK_ALLOW_LIVE_LLM=1 uv run python -m benchmarks.faithfulness.run --n 
   wrong/stale/poisoned source is not caught — by orc or by any post-hoc judge.
   See the "faithful-but-wrong" row in
   [`competitive.md`](../positioning/competitive.md).
-- **The HHEM head-to-head is not yet run.** The table cites published numbers;
-  the live comparison is wired but pending.
+- **The HHEM head-to-head is now run** (same 503 items: orc 0.864 vs HHEM
+  0.643). Lynx remains a published-number comparison — self-hosting a 70B judge
+  is the one piece still outstanding.

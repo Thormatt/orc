@@ -151,6 +151,22 @@
   .num-cell .s{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-dim);margin-top:6px;letter-spacing:.04em}
   @media(max-width:760px){.trio,.prims,.num-grid{grid-template-columns:1fr}
     .num-cell{border-right:none;border-bottom:1px solid var(--border)}}
+  /* same-set head-to-head bars */
+  .h2h{margin-top:40px}
+  .h2h .cap{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:18px}
+  .h2h-row{display:grid;grid-template-columns:200px 1fr 64px;align-items:center;gap:16px;margin-bottom:12px}
+  .h2h-row .who{font-size:14px}
+  .h2h-row .who.us{color:var(--accent);font-weight:600}
+  .h2h-row .who small{color:var(--text-dim);font-size:11px;display:block;font-family:'JetBrains Mono',monospace}
+  .h2h-bar{height:14px;background:var(--bg-code);border:1px solid var(--border);border-radius:3px;overflow:hidden}
+  .h2h-bar i{display:block;height:100%;border-radius:2px}
+  .h2h-bar i.us{background:linear-gradient(90deg,var(--accent-soft),var(--accent))}
+  .h2h-bar i.them{background:var(--border-strong)}
+  .h2h-row .v{font-family:'Source Serif 4',serif;font-size:20px;text-align:right}
+  .h2h-row .v.us{color:var(--accent)}.h2h-row .v.them{color:var(--text-mute)}
+  .h2h .note{font-size:13px;color:var(--text-dim);margin-top:14px;max-width:70ch}
+  @media(max-width:760px){.h2h-row{grid-template-columns:1fr 52px;grid-template-areas:'who v' 'bar bar'}
+    .h2h-row .who{grid-area:who}.h2h-row .v{grid-area:v}.h2h-bar{grid-area:bar}}
 
   /* Category table */
   .cat{margin-top:40px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
@@ -371,6 +387,21 @@
       <div class="num-cell reveal"><div class="n">0<small>/300</small></div><div class="l">fabricated citations leaked</div><div class="s">free adversarial benchmark</div></div>
       <div class="num-cell reveal"><div class="n">0.916</div><div class="l">FinanceBench F1, arithmetic mode</div><div class="s">up from 0.736 — calculator in-loop</div></div>
       <div class="num-cell reveal"><div class="n">MIT</div><div class="l">core is open source</div><div class="s">400+ tests · CLI + MCP server</div></div>
+    </div>
+
+    <div class="h2h reveal">
+      <div class="cap">Same-set head-to-head · identical 503 items · F1</div>
+      <div class="h2h-row">
+        <div class="who us">Orc <small>source-routed</small></div>
+        <div class="h2h-bar"><i class="us" style="width:86.4%"></i></div>
+        <div class="v us">0.864</div>
+      </div>
+      <div class="h2h-row">
+        <div class="who">Vectara HHEM-2.1 <small>open-weight judge</small></div>
+        <div class="h2h-bar"><i class="them" style="width:64.3%"></i></div>
+        <div class="v them">0.643</div>
+      </div>
+      <p class="note">Run on the <em>same</em> items, same threshold, same scoring — not two separate evals. HHEM stays competitive on RAG-style passages (0.80) but collapses on numeric and tabular reasoning (FinanceBench 0.30). This stratified set equal-weights the hard categories, so it's tougher for HHEM than its full-benchmark headline — and orc's number is on that same harder set. <a href="https://github.com/Thormatt/orc/blob/main/docs/benchmarks/results-2026-06-15-hhem-head-to-head.md">Full accounting →</a></p>
     </div>
   </div>
 </section>
