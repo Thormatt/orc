@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Orc — proof your AI can defend itself under the EU AI Act</title>
+<meta name="description" content="The EU AI Act asks high-risk AI to keep records, show human oversight, and stay transparent. Orc produces exactly that evidence — automatic audit traces, cited verdicts, a two-person approval gate, and a hashed bundle a regulator can re-run." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0b09; --bg-elev:#14130f; --bg-code:#070709; --bg-card:#100f0c;
+    --border:#211f1b; --border-strong:#2c2a25;
+    --text:#ece8df; --text-mute:#a09a8e; --text-dim:#6a655c;
+    --accent:#d4a55a; --accent-soft:#b88a44; --accent-glow:rgba(212,165,90,.16);
+    --eu:#3b5bdb; --eu-soft:#7592e8; --eu-glow:rgba(80,110,230,.16);
+    --green:#7faf6d; --red:#c46f5a;
+    --maxw:1040px;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(115% 75% at 78% -10%,var(--eu-glow),transparent 55%),
+               radial-gradient(100% 70% at 12% -5%,var(--accent-glow),transparent 55%);opacity:.8}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .container{max-width:var(--maxw);margin:0 auto;padding:0 32px;position:relative;z-index:2}
+  a{color:var(--accent);text-decoration:none}a:hover{color:var(--text)}
+  ::selection{background:var(--accent);color:#1a1612}
+
+  nav{padding:22px 0;border-bottom:1px solid var(--border);position:sticky;top:0;
+    background:rgba(12,11,9,.86);backdrop-filter:blur(10px);z-index:20}
+  .nav-inner{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:19px;color:var(--text)}
+  .logo .dot{color:var(--accent)}
+  .nav-right{display:flex;align-items:center;gap:24px}
+  .nav-right a{color:var(--text-mute);font-size:14px}.nav-right a:hover{color:var(--text)}
+  .nav-right .cta{padding:7px 15px;border:1px solid var(--border-strong);border-radius:4px;color:var(--text)}
+  .nav-right .cta:hover{border-color:var(--accent);color:var(--accent)}
+  @media(max-width:680px){.nav-hide{display:none}}
+
+  .btn{display:inline-block;padding:13px 24px;border-radius:4px;font-size:14px;font-weight:600;transition:.18s;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#1a1612;border:1px solid var(--accent)}
+  .btn-primary:hover{background:#e8bd76;transform:translateY(-1px)}
+  .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border-strong)}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+
+  .hero{padding:96px 0 56px}
+  .flag{display:inline-flex;align-items:center;gap:11px;font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--eu-soft);margin-bottom:26px}
+  .flag .stars{display:inline-grid;grid-template-columns:repeat(4,1fr);gap:2px}
+  .flag .stars i{width:4px;height:4px;border-radius:50%;background:var(--eu-soft);opacity:.9}
+  h1{font-family:'Source Serif 4',Georgia,serif;font-weight:400;font-size:clamp(38px,6vw,64px);
+    line-height:1.05;letter-spacing:-.022em;margin:0 0 26px;max-width:17ch}
+  h1 em{font-style:italic;color:var(--accent)}
+  .lede{font-size:20px;line-height:1.55;color:var(--text-mute);max-width:62ch;margin:0 0 34px}
+  .lede strong{color:var(--text);font-weight:500}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap}
+
+  section{padding:80px 0;border-top:1px solid var(--border)}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-soft);margin-bottom:18px}
+  h2{font-family:'Source Serif 4',serif;font-weight:400;font-size:clamp(27px,3.8vw,38px);line-height:1.13;letter-spacing:-.015em;margin:0 0 18px;max-width:22ch}
+  h2 em{font-style:italic;color:var(--accent)}
+  .section-lede{font-size:18px;color:var(--text-mute);max-width:66ch}
+
+  /* timeline */
+  .timeline{margin-top:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .tl{padding:26px 24px;border-right:1px solid var(--border);position:relative}
+  .tl:last-child{border-right:none}
+  .tl.now::before,.tl.key::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px}
+  .tl.now::before{background:linear-gradient(90deg,var(--green),transparent)}
+  .tl.key::before{background:linear-gradient(90deg,var(--eu),transparent)}
+  .tl .d{font-family:'Source Serif 4',serif;font-size:26px;color:var(--text);line-height:1}
+  .tl .tag{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin:12px 0 8px}
+  .tl.now .tag{color:var(--green)}.tl.key .tag{color:var(--eu-soft)}.tl .tag.future{color:var(--text-dim)}
+  .tl p{font-size:14px;color:var(--text-mute);margin:0}
+  .penalty{margin-top:22px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+    background:var(--bg-card);border:1px solid var(--border-strong);border-left:3px solid var(--red);border-radius:8px;padding:20px 26px}
+  .penalty .big{font-family:'Source Serif 4',serif;font-size:26px;color:var(--red);white-space:nowrap}
+  .penalty p{margin:0;font-size:14.5px;color:var(--text-mute)}
+
+  /* gap row */
+  .gap-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:42px}
+  .gapc{background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:26px}
+  .gapc .art{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.05em;color:var(--eu-soft);margin-bottom:12px}
+  .gapc h3{font-family:'Source Serif 4',serif;font-weight:500;font-size:19px;margin:0 0 9px;color:var(--text)}
+  .gapc p{font-size:14.5px;color:var(--text-mute);margin:0}
+
+  /* mapping table */
+  .map{margin-top:42px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .map-row{display:grid;grid-template-columns:.95fr 1.4fr 1.4fr;border-bottom:1px solid var(--border)}
+  .map-row:last-child{border-bottom:none}
+  .map-row.head{background:var(--bg-elev);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim)}
+  .map-row>div{padding:18px 20px}
+  .map-row .a{color:var(--eu-soft);font-family:'JetBrains Mono',monospace;font-size:13px;border-right:1px solid var(--border)}
+  .map-row .a b{display:block;color:var(--text);font-family:'Source Serif 4',serif;font-size:17px;font-weight:500;margin-bottom:5px;letter-spacing:0}
+  .map-row .req{color:var(--text-mute);font-size:14px;border-right:1px solid var(--border)}
+  .map-row .orc{color:var(--text);font-size:14px}
+  .map-row .orc code{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--accent-soft);background:rgba(212,165,90,.07);padding:1px 5px;border-radius:3px}
+  .map-row .orc .chk{color:var(--green)}
+  @media(max-width:760px){.map-row{grid-template-columns:1fr}.map-row.head{display:none}
+    .map-row .a,.map-row .req{border-right:none;border-bottom:1px solid var(--border)}}
+
+  .disclaimer{margin-top:38px;background:var(--bg-elev);border:1px solid var(--border-strong);border-radius:9px;padding:26px 30px}
+  .disclaimer .lab{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-soft);margin-bottom:10px}
+  .disclaimer p{margin:0;font-size:15px;color:var(--text-mute)}
+  .disclaimer strong{color:var(--text);font-weight:500}
+
+  /* proof receipt */
+  .receipt{margin-top:42px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-code)}
+  .receipt .bar{display:flex;align-items:center;gap:8px;padding:11px 16px;background:var(--bg-elev);border-bottom:1px solid var(--border)}
+  .receipt .bar i{width:10px;height:10px;border-radius:50%;background:var(--border-strong)}
+  .receipt .bar .t{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);margin-left:auto}
+  .receipt pre{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;margin:0;padding:22px;overflow-x:auto;color:var(--text-mute)}
+  .receipt .v{color:var(--green);font-weight:700}.receipt .k{color:var(--text-dim)}
+  .receipt .c{color:var(--accent)}.receipt .hl{color:var(--text)}
+
+  /* who */
+  .who-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:42px}
+  .who{background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:22px}
+  .who h3{font-family:'Source Serif 4',serif;font-weight:500;font-size:17px;margin:0 0 8px;color:var(--accent)}
+  .who p{font-size:13.5px;color:var(--text-mute);margin:0}
+
+  .stats{display:flex;gap:40px;flex-wrap:wrap;margin-top:42px;padding-top:32px;border-top:1px solid var(--border)}
+  .stat .n{font-family:'Source Serif 4',serif;font-size:32px;color:var(--accent);line-height:1}
+  .stat .l{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-dim);margin-top:9px}
+
+  .cta-band{text-align:center;padding:96px 0}
+  .cta-band h2{margin:0 auto 22px;max-width:24ch}
+  .cta-band .hero-cta{justify-content:center}
+
+  footer{border-top:1px solid var(--border);padding:36px 0;color:var(--text-dim);font-size:13px}
+  .foot-inner{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:center}
+  .foot-note{font-size:12px;color:var(--text-dim);margin-top:14px;max-width:80ch;line-height:1.5}
+
+  @media(max-width:760px){.timeline,.gap-grid,.who-grid{grid-template-columns:1fr}
+    .tl{border-right:none;border-bottom:1px solid var(--border)}}
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+</style>
+<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
+</head>
+<body>
+
+<nav>
+  <div class="container nav-inner">
+    <a href="#top" class="logo">orc<span class="dot">.</span></a>
+    <div class="nav-right">
+      <a href="#clock" class="nav-hide">The deadline</a>
+      <a href="#mapping" class="nav-hide">The Articles</a>
+      <a href="#proof" class="nav-hide">Proof</a>
+      <a href="#contact" class="cta">Book a pilot</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="container">
+    <div class="flag reveal"><span class="stars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span> For European teams deploying high-risk AI</div>
+    <h1 class="reveal">When the regulator asks your AI to <em>prove itself</em>, what do you hand them?</h1>
+    <p class="lede reveal">The EU AI Act requires high-risk systems to keep records, show human oversight, and stay transparent enough to interpret. A raw model call produces <strong>none</strong> of that. Orc is the runtime that turns each AI decision into a defensible record — an automatic audit trace, a cited verdict, a two-person approval gate, and a hashed bundle a reviewer can re-run.</p>
+    <div class="hero-cta reveal">
+      <a href="#mapping" class="btn btn-primary">See it mapped to the Articles ↓</a>
+      <a href="#contact" class="btn btn-secondary">Book a 30-day pilot</a>
+    </div>
+  </div>
+</header>
+
+<!-- CLOCK -->
+<section id="clock">
+  <div class="container">
+    <div class="kicker reveal">The timeline · Regulation (EU) 2024/1689</div>
+    <h2 class="reveal">The preparation window is <em>open</em> — not the deadline-tomorrow panic, the get-ready-now reality.</h2>
+    <p class="section-lede reveal">The Act is already partly in force. The obligations that need a technical audit trail land on a clock you can still get ahead of — but the evidence has to exist <em>before</em> the decision, not be reconstructed after.</p>
+    <div class="timeline">
+      <div class="tl now reveal">
+        <div class="d">Aug 2026</div>
+        <div class="tag">broadly applicable now</div>
+        <p>The regulation is broadly applicable; GPAI-model obligations and most procedural duties are in effect.</p>
+      </div>
+      <div class="tl key reveal">
+        <div class="d">Dec 2027</div>
+        <div class="tag">the date deployers prepare for</div>
+        <p>High-risk obligations under the Annex III categories — biometrics, critical infrastructure, education, employment, migration — apply. Record-keeping, oversight, transparency.</p>
+      </div>
+      <div class="tl reveal">
+        <div class="d">Aug 2028</div>
+        <div class="tag future">product-integrated</div>
+        <p>High-risk systems embedded in regulated products are governed under sectoral law.</p>
+      </div>
+    </div>
+    <div class="penalty reveal">
+      <div class="big">€15M · 3%</div>
+      <p>Breaching the high-risk operator obligations can cost up to <strong>€15 million or 3% of worldwide annual turnover</strong>, whichever is higher. The cheapest insurance is a trail you can produce on demand.</p>
+    </div>
+  </div>
+</section>
+
+<!-- THE GAP -->
+<section id="gap">
+  <div class="container">
+    <div class="kicker reveal">The gap</div>
+    <h2 class="reveal">What the Act demands, and what a model call <em>can't give you</em>.</h2>
+    <div class="gap-grid">
+      <div class="gapc reveal"><div class="art">Article 12 — Record-keeping</div><h3>Automatic logs, retained ≥ 6 months</h3><p>Every event over the system's lifetime must be recorded so a risk situation can be identified later. A chat log you maybe kept is not that.</p></div>
+      <div class="gapc reveal"><div class="art">Article 14 — Human oversight</div><h3>A named person can intervene</h3><p>Some Annex III systems require <em>two</em> natural persons to confirm before action is taken. The override has to be recorded, not assumed.</p></div>
+      <div class="gapc reveal"><div class="art">Article 13 — Transparency</div><h3>Output you can interpret</h3><p>A deployer must be able to read why the system produced an output. "Trust the model" is not an interpretation; a citation to a source is.</p></div>
+      <div class="gapc reveal"><div class="art">Articles 9 &amp; 72 — Risk &amp; monitoring</div><h3>Reconstruct any past decision</h3><p>Continuous risk management and post-market monitoring mean re-running an incident against the exact inputs that produced it.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- MAPPING -->
+<section id="mapping">
+  <div class="container">
+    <div class="kicker reveal">The mapping</div>
+    <h2 class="reveal">Each obligation, and the <em>artifact</em> Orc produces for it.</h2>
+    <p class="section-lede reveal">Orc doesn't make you compliant — it produces the machine-generated evidence the obligations require, by default, on every call. Each row points at behavior you (or your auditor) can inspect in the open-source code.</p>
+    <div class="map">
+      <div class="map-row head"><div>Article</div><div>What it requires</div><div>What Orc produces</div></div>
+      <div class="map-row reveal">
+        <div class="a"><b>Art. 12</b>Record-keeping</div>
+        <div class="req">Automatic logging of events over the lifetime; ≥ 6-month retention (Art. 26(6)).</div>
+        <div class="orc"><span class="chk">▸</span> Every call writes a <code>run</code> row + a trace JSON under <code>traces/YYYY/MM/</code>. Append-only, cannot be disabled.</div>
+      </div>
+      <div class="map-row reveal">
+        <div class="a"><b>Art. 14</b>Human oversight</div>
+        <div class="req">Effective oversight; for some systems, two natural persons must verify before action.</div>
+        <div class="orc"><span class="chk">▸</span> An approval queue blocks any external action until a human accepts; <code>approvers_required ≥ 2</code> enforces the two-person rule, every decision recorded.</div>
+      </div>
+      <div class="map-row reveal">
+        <div class="a"><b>Art. 13</b>Transparency</div>
+        <div class="req">Output transparent enough for a deployer to interpret and use correctly.</div>
+        <div class="orc"><span class="chk">▸</span> Every verdict ships a structured label, a confidence score, plain-language reasoning, and <span class="chk">chunk-level citations</span> to the exact source.</div>
+      </div>
+      <div class="map-row reveal">
+        <div class="a"><b>Art. 9 / 72</b>Risk &amp; monitoring</div>
+        <div class="req">Continuous risk management; post-market monitoring and incident reconstruction.</div>
+        <div class="orc"><span class="chk">▸</span> <code>orc replay &lt;id&gt;</code> re-executes a decision against the frozen corpus snapshot; <code>orc audit export</code> bundles everything into a hashed tar.gz.</div>
+      </div>
+    </div>
+    <div class="disclaimer reveal">
+      <div class="lab">An honest line, because your compliance team will ask</div>
+      <p>Orc is a <strong>tool</strong>, not a certification. The obligations under the AI Act fall on you as the deployer or provider — Orc gives you the machinery to <strong>produce the evidence</strong> those obligations require: automatic logging, audit-grade traces, human-oversight gates, deterministic replay. The full claim-by-claim mapping (Articles 9–15, 26, 72) is published and auditable.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF -->
+<section id="proof">
+  <div class="container">
+    <div class="kicker reveal">The proof · real captured output</div>
+    <h2 class="reveal">A verdict you can <em>defend</em>, not prose you have to trust.</h2>
+    <p class="section-lede reveal">Verifying a claim against your own internal documents — the daily work of compliance, legal, and clinical review. A raw call can't cite your evidence. Orc retrieves it, decides, and names the exact file.</p>
+    <div class="receipt reveal">
+      <div class="bar"><i></i><i></i><i></i><span class="t">orc verify · evidence mode</span></div>
+<pre><span class="k"># Claim checked against a private corpus the model has never seen</span>
+verdict      : <span class="v">CONTRADICTED</span>   confidence: 0.99
+reasoning    : <span class="hl">the source states the root cause was connection-pool
+               exhaustion and explicitly rules out a TLS certificate.</span>
+citation     : <span class="c">incident-2026-03-14-postmortem.md</span>  · chunk [01KV4JCC81RY…]
+trace        : traces/2026/06/01KV4JCC…json   <span class="k">(replayable · audit-exportable)</span></pre>
+    </div>
+    <div class="stats">
+      <div class="stat reveal"><div class="n">0.864</div><div class="l">HaluBench F1 · vs open HHEM 0.64</div></div>
+      <div class="stat reveal"><div class="n">0 / 300</div><div class="l">fabricated citations leaked</div></div>
+      <div class="stat reveal"><div class="n">100%</div><div class="l">decisions replayable</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO -->
+<section id="who">
+  <div class="container">
+    <div class="kicker reveal">Who this is for</div>
+    <h2 class="reveal">An AI team inside a regulated org with <em>one workflow it has to defend</em>.</h2>
+    <p class="section-lede reveal">Not "every AI team." The teams where a head of compliance or counsel can name a specific decision an auditor will eventually question.</p>
+    <div class="who-grid">
+      <div class="who reveal"><h3>Finance</h3><p>Credit memos, AML / transaction-monitoring narratives, earnings analysis, model-risk filings.</p></div>
+      <div class="who reveal"><h3>Health &amp; life sciences</h3><p>Clinical evidence summaries, regulatory submissions, post-market surveillance.</p></div>
+      <div class="who reveal"><h3>Insurance</h3><p>Underwriting narratives, claims-adjudication explanations.</p></div>
+      <div class="who reveal"><h3>Legal ops</h3><p>Contract review, e-discovery, opinion drafting — at firms or in-house.</p></div>
+      <div class="who reveal"><h3>HR / talent (EU)</h3><p>Automated screening or scoring — Annex III high-risk by definition.</p></div>
+      <div class="who reveal"><h3>EU-facing SaaS</h3><p>Any product shipping AI features where Article 26 deployer duties bind.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-band" id="contact">
+  <div class="container">
+    <div class="kicker reveal" style="text-align:center">The pilot offer</div>
+    <h2 class="reveal" style="margin-left:auto;margin-right:auto">Give us one AI workflow that has to be defensible. In 30 days, you'll have the audit bundle.</h2>
+    <div class="hero-cta reveal">
+      <a href="mailto:thormatt@gmail.com?subject=Orc%20EU%20AI%20Act%20pilot" class="btn btn-primary">Book a 30-day pilot</a>
+      <a href="https://github.com/Thormatt/orc" class="btn btn-secondary">Read the code &amp; mapping</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="foot-inner">
+      <div class="logo">orc<span class="dot">.</span></div>
+      <div>The verification runtime for AI that has to be defensible · MIT-licensed core</div>
+    </div>
+    <p class="foot-note">This page is informational, not legal advice. Orc is a tool used by deployers and providers of AI systems; the AI Act obligations fall on them, not on Orc as a product. Dates and Articles reference Regulation (EU) 2024/1689; confirm applicability for your system with counsel. Benchmark figures (F1 0.864 vs HHEM-2.1 0.643 on an identical 503-item set; 0/300 fabricated citations) are reproducible from the open-source repository.</p>
+  </div>
+</footer>
+
+<script>
+  var io = new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12,rootMargin:'0px 0px -8% 0px'});
+  var rev = document.querySelectorAll('.reveal');
+  rev.forEach(function(el,i){if(el.closest('.hero'))el.style.transitionDelay=(i*70)+'ms';io.observe(el);});
+  setTimeout(function(){rev.forEach(function(el){el.classList.add('in');});},2500);
+</script>
+</body>
+</html>
