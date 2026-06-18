@@ -183,6 +183,8 @@ What shipped in v0.2.0:
 
 Shipped earlier in v0.1.4: `--include-evidence` self-contained audit bundles, `mode="arithmetic"` with a safe AST-walking calculator (FinanceBench F1 0.736 → 0.916), the evidence-mode citation guard, and model-agnostic self-hosting of any open-weight judge.
 
+Raw LLM vs. orc, side by side on real claims — including a large private corpus the model has never seen, where a bare call can't verify at all: **[docs/demos/defensible-verification.md](./docs/demos/defensible-verification.md)**. Run them yourself: `uv run python -m demos.orc_vs_raw --live` and `uv run python -m demos.orc_large_corpus --live`.
+
 Live walkthrough: **[pagenta.app/p/thorm/orc-how-it-works](https://pagenta.app/p/thorm/orc-how-it-works)** — six-scene visual explainer. Full pitch: **[pagenta.app/p/thorm/orc-pitch](https://pagenta.app/p/thorm/orc-pitch)**.
 
 Full per-source breakdown + reproducing instructions: [`docs/benchmarks/results-2026-05-19-phase2-arithmetic.md`](./docs/benchmarks/results-2026-05-19-phase2-arithmetic.md). Multi-model portability (Sonnet, Haiku, GPT-4o, Gemini Flash, Llama 3.3 70B): [`docs/benchmarks/results-2026-05-19-multi-model.md`](./docs/benchmarks/results-2026-05-19-multi-model.md). Competitive positioning: [`docs/positioning/competitive.md`](./docs/positioning/competitive.md). EU AI Act mapping: [`docs/compliance/eu-ai-act.md`](./docs/compliance/eu-ai-act.md). Business model + stage-by-stage roadmap: [`docs/business/roadmap.md`](./docs/business/roadmap.md). Cost economics across all tested models (Sonnet, Haiku, GPT-4o, Gemini Flash, Llama, Qwen, Gemma): [`docs/business/cost-economics.md`](./docs/business/cost-economics.md).

@@ -65,7 +65,10 @@ dev = [
 # comparable head-to-head. Install with `uv sync --extra benchmarks`.
 benchmarks = [
     "datasets>=2.16",
-    "transformers>=4.40",
+    # HHEM-2.1-Open ships vendored modeling code written for the transformers 4.x
+    # API; transformers 5.x removed `_tied_weights_keys` and the remote code
+    # raises on load. Pinning <5 is the fix for the "HHEM tokenizer-load issue".
+    "transformers>=4.40,<5",
     "torch>=2.2",
 ]
 
